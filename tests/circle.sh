@@ -29,7 +29,7 @@ sleep 10
 
 # basic json validation
 echo "Validating json request data..."
-jq "." tests/datastore_request.json >/dev/null
+jq "." tests/datastore_request.json
 
 # test the generated data against the service
 echo "Running the test data through the datastore service..."
