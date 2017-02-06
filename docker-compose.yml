@@ -15,6 +15,20 @@ services:
       - POSTGRES_PASSWORD=changeme
       - PGDATA=/data/postgres
 
+  datastore:
+    image: opentraffic/datastore:latest
+    networks:
+      - opentraffic_datastore
+    ports:
+      - "8003:8003"
+    volumes:
+      - ${DATAPATH}:/data
+    environment:
+      - POSTGRES_USER=opentraffic
+      - POSTGRES_PASSWORD=changeme
+      - POSTGRES_DB=opentraffic
+      - POSTGRES_HOST=postgres
+
 networks:
   opentraffic_datastore:
     driver: bridge

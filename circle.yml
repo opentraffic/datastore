@@ -1,0 +1,14 @@
+machine:
+  services:
+    - docker
+
+dependencies:
+  pre:
+    - sudo apt-get update; sudo apt-get install jq
+  override:
+    - docker info
+    - docker build --rm=false -t opentraffic/datastore .
+
+test:
+  override:
+    - ./tests/circle.sh
