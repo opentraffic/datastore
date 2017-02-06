@@ -11,6 +11,7 @@ services:
       - ${PGDATA}:/data
     environment:
       - POSTGRES_USER=opentraffic
+      - POSTGRES_DB=opentraffic
       - POSTGRES_PASSWORD=changeme
       - PGDATA=/data/postgres
 
