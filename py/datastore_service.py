@@ -105,7 +105,7 @@ class StoreHandler(BaseHTTPRequestHandler):
     #for report in reports:
       
     #TODO: insert some data
-    #self.sql_conn.some_function()
+    #self.server.sql_conn.some_function()
 
     #hand it back
     return 'OK'
