@@ -11,3 +11,4 @@ The Datastore ingests input from distributed [Reporter](https://github.com/opent
 #### Docker Compose
 
     PGDATA=. DATAPATH=. sudo -E docker-compose up
+
