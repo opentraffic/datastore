@@ -109,55 +109,34 @@ class StoreHandler(BaseHTTPRequestHandler):
     #self.server.sql_conn.some_function()
 
     #hand it back
-    return 'OK'
+    return 200, 'ok'
 
-  #send a success
-  def succeed(self, response):
-    self.send_response(200)
+  #send an answer
+  def answer(self, code, body):
+    response = json.dumps({'response': body })
+    self.send_response(code)
 
     #set some basic info
     self.send_header('Access-Control-Allow-Origin','*')
-    if jsonp:
-      self.send_header('Content-type', 'text/plain;charset=utf-8')
-    else:
-      self.send_header('Content-type', 'application/json;charset=utf-8')
-      self.send_header('Content-length', len(response))
+    self.send_header('Content-type', 'application/json;charset=utf-8')
+    self.send_header('Content-length', len(response))
     self.end_headers()
 
     #hand it back
     self.wfile.write(response)
 
-  #send a fail
-  def fail(self, error):
-    self.send_response(400)
-
-    #set some basic info
-    self.send_header('Access-Control-Allow-Origin','*')
-    self.send_header('Content-type', 'text/plain;charset=utf-8')
-    self.send_header('Content-length', len(error))
-    self.end_headers()
-
-    #hand it back
-    self.wfile.write(str(error))
-
   #handle the request
+  def do(self, post):
+    try:
+      code, body = self.handle_request(post)
+      self.answer(code, body)
+    except Exception as e:
+      self.answer(400, str(e))
+
   def do_GET(self):
-    #get out the bits we care about
-    try:
-      response = self.handle_request(False)
-      self.succeed(response)
-    except Exception as e:
-      self.fail(str(e))
-
-  #handle the request
+    self.do(False)
   def do_POST(self):
-    #get out the bits we care about
-    try:
-      response = self.handle_request(True)
-      self.succeed(response)
-    except Exception as e:
-      self.fail(str(e))
-
+    self.do(True)
 
 #program entry point
 if __name__ == '__main__':
