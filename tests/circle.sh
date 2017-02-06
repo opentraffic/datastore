@@ -24,7 +24,8 @@ docker run \
   -e 'POSTGRES_HOST=postgres' \
   opentraffic/datastore
 
-sleep 15
+echo "Container is running, sleeping to allow creation of database..."
+sleep 10
 
 # basic json validation
 echo "Validating json request data..."
