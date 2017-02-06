@@ -80,7 +80,8 @@ class StoreHandler(BaseHTTPRequestHandler):
       raise Exception('Try a url that looks like /action?query_string')
     #path has the costing method and action in it
     try:
-      action = actions[split.path.split('/')[-1]]
+      if split.path.split('/')[-1] not in actions:
+        raise
     except:
       raise Exception('Try a valid action: ' + str([k for k in actions]))
     #get a dict and unexplode non-list entries
