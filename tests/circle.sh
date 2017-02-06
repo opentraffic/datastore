@@ -7,6 +7,8 @@ docker run \
   --name datastore-postgres \
   -d postgres:9.6.1
 
+sleep 15
+
 echo "Starting the datastore container..."
 docker run \
   -d \
@@ -16,7 +18,7 @@ docker run \
   -v ${PWD}/data:/data \
   opentraffic/datastore
 
-sleep 5
+sleep 15
 
 # basic json validation
 echo "Validating json request data..."
