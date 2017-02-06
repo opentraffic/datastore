@@ -1,0 +1,14 @@
+machine:
+  services:
+    - docker
+
+dependencies:
+  pre:
+    - sudo apt-get update; sudo apt-get install awscli parallel jq
+  override:
+    - docker info
+    - docker build --rm=false -t opentraffic/reporter .
+
+test:
+  override:
+    - ./tests/circle.sh
