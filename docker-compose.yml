@@ -13,7 +13,6 @@ services:
       - POSTGRES_USER=opentraffic
       - POSTGRES_DB=opentraffic
       - POSTGRES_PASSWORD=changeme
-      - POSTGRES_DB=opentraffic
       - PGDATA=/data/postgres
 
   datastore:
