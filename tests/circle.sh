@@ -5,7 +5,11 @@ set -e
 echo "Starting the postgres container..."
 docker run \
   --name datastore-postgres \
-  -d postgres:9.6.1
+  -d postgres:9.6.1 \
+  -e 'POSTGRES_USER=opentraffic' \
+  -e 'POSTGRES_PASSWORD=changeme' \
+  -e 'POSTGRES_DB=opentraffic'
+
 
 echo "Starting the datastore container..."
 docker run \
@@ -14,6 +18,10 @@ docker run \
   --name datastore \
   --link datastore-postgres:postgres \
   -v ${PWD}/data:/data \
+  -e 'POSTGRES_USER=opentraffic' \
+  -e 'POSTGRES_PASSWORD=changeme' \
+  -e 'POSTGRES_DB=opentraffic' \
+  -e 'POSTGRES_HOST=postgres'
   opentraffic/datastore
 
 sleep 15
