@@ -21,7 +21,7 @@ docker run \
   -e 'POSTGRES_USER=opentraffic' \
   -e 'POSTGRES_PASSWORD=changeme' \
   -e 'POSTGRES_DB=opentraffic' \
-  -e 'POSTGRES_HOST=postgres'
+  -e 'POSTGRES_HOST=postgres' \
   opentraffic/datastore
 
 sleep 15
