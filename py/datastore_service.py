@@ -48,7 +48,8 @@ class ThreadPoolMixIn(ThreadingMixIn):
         break
       except Exception as e:
         sys.stderr.write('Failed to connect to database with: %s' % repr(e))
-        time.sleep(10)
+        sys.stderr.flush()
+        time.sleep(5)
 
   def process_request_thread(self):
     self.make_thread_locals()
@@ -78,24 +79,24 @@ class StoreHandler(BaseHTTPRequestHandler):
       split = urlparse.urlsplit(self.path)
     except:
       raise Exception('Try a url that looks like /action?query_string')
-    #path has the costing method and action in it
+    #path has the action in it
     try:
       if split.path.split('/')[-1] not in actions:
         raise
     except:
       raise Exception('Try a valid action: ' + str([k for k in actions]))
-    #get a dict and unexplode non-list entries
-    params = urlparse.parse_qs(split.query)
-    for k,v in params.iteritems():
-      if len(v) == 1:
-        params[k] = v[0]
-    #handle GET
-    if 'json' in params:
-      params = json.loads(params['json'])
     #handle POST
     if post:
-      params = json.loads(self.rfile.read(int(self.headers['Content-Length'])).decode('utf-8'))
-    return params
+      body = self.rfile.read(int(self.headers['Content-Length'])).decode('utf-8')
+      sys.stderr.write(body)
+      sys.stderr.flush()
+      return json.loads(body)
+    #handle GET
+    else:
+      params = urlparse.parse_qs(split.query)
+      if 'json' in params:      
+        return json.loads(params['json'][0])
+    raise Exception('No json provided')
 
   #parse the request because we dont get this for free!
   def handle_request(self, post):
@@ -151,7 +152,8 @@ if __name__ == '__main__':
     os.environ['POSTGRES_HOST']
     os.environ['POSTGRES_PASSWORD']
   except Exception as e:
-    sys.stderr.write('Bad address or environment: {0}\n'.format(e)) 
+    sys.stderr.write('Bad address or environment: {0}\n'.format(e))
+    sys.stderr.flush()
     sys.exit(1)
 
   #setup the server
