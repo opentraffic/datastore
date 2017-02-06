@@ -33,6 +33,6 @@ jq "." tests/datastore_request.json >/dev/null
 
 # test the generated data against the service
 echo "Running the test data through the datastore service..."
-curl -s --data tests/datastore_request.json localhost:8003/store?
+curl -s --fail --data tests/datastore_request.json localhost:8003/store?
 
 echo "Done!"
