@@ -1,8 +1,6 @@
 machine:
   services:
     - docker
-  ruby:
-    version: 2.4.0
 
 dependencies:
   pre:
@@ -15,11 +13,8 @@ test:
   override:
     - ./tests/circle.sh
 
-deployment:
-  ecs:
-    branch: master
-    commands:
-      - aws ecr get-login --region us-east-1 >login.sh
-      - bash login.sh
-      - docker tag opentraffic/datastore:latest 056357055360.dkr.ecr.us-east-1.amazonaws.com/opentraffic/datastore:latest
-      - deploy/ecs.rb
+#deployment:
+#  ecs:
+#    branch: master
+#    commands:
+#      - deploy/ecs.sh prod
