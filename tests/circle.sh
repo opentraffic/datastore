@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -e
 
+datastore_port=8003
+
 # start the container
 echo "Starting the postgres container..."
 docker run \
@@ -11,11 +13,10 @@ docker run \
   -e 'POSTGRES_DB=opentraffic' \
   postgres:9.6.1
 
-
 echo "Starting the datastore container..."
 docker run \
   -d \
-  -p 8003:8003 \
+  -p ${datastore_port}:${datastore_port} \
   --name datastore \
   --link datastore-postgres:postgres \
   -v ${PWD}/data:/data \
@@ -34,6 +35,6 @@ jq "." tests/datastore_request.json >/dev/null
 
 # test the generated data against the service
 echo "Running the test data through the datastore service..."
-curl --fail --max-time 15 --retry 3 --retry-delay 5 --data @tests/datastore_request.json localhost:8003/store?
+curl --fail --max-time 15 --retry 3 --retry-delay 5 --data @tests/datastore_request.json localhost:${datastore_port}/store?
 
 echo "Done!"
