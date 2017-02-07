@@ -7,6 +7,11 @@ ENV DEBIAN_FRONTEND noninteractive
 ENV STORE_BIND_ADDR ${STORE_BIND_ADDR:-"0.0.0.0"}
 ENV STORE_LISTEN_PORT ${STORE_LISTEN_PORT:-"8003"}
 
+ENV POSTGRES_USER ${POSTGRES_USER:-"opentraffic"}
+ENV POSTGRES_PASSWORD ${POSTGRES_PASSWORD:-"changeme"}
+ENV POSTGRES_DB ${POSTGRES_DB:-"opentraffic"}
+ENV POSTGRES_HOST ${POSTGRES_HOST:-"postgres"}
+
 # install dependencies
 RUN apt-get update && apt-get install -y python python-psycopg2
 

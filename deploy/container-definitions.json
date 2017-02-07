@@ -1,0 +1,25 @@
+[
+    {
+        "cpu": 8192,
+        "dns_servers": [],
+        "environment": [
+            {
+                "name": "SOME_VARIABLE",
+                "value": "some_value"
+            }
+        ],
+        "essential": true,
+        "image": "056357055360.dkr.ecr.us-east-1.amazonaws.com/opentraffic/datastore:latest",
+        "memory": 15000,
+        "mount_points": [],
+        "name": "opentraffic-datastore",
+        "port_mappings": [
+            {
+                "container_port": 8002,
+                "host_port": 8002,
+                "protocol": "tcp"
+            }
+        ],
+        "volumes_from": []
+    }
+]
