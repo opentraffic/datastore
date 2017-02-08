@@ -51,8 +51,8 @@ make_task_def(){
       "name": "opentraffic-reporter",
       "image": "%s.dkr.ecr.us-east-1.amazonaws.com/opentraffic/datastore:%s",
       "essential": true,
-      "memory": 1024,
-      "cpu": 1024,
+      "memory": %s,
+      "cpu": %s,
       "environment": [
         {
           "name": "POSTGRES_HOST",
@@ -80,7 +80,7 @@ make_task_def(){
     }
   ]'
 
-  task_def=$(printf "$task_template" $AWS_ACCOUNT_ID $CIRCLE_SHA1 $POSTGRES_HOST $POSTGRES_USER $POSTGRES_PASSWORD $POSTGRES_DB)
+  task_def=$(printf "$task_template" $AWS_ACCOUNT_ID $CIRCLE_SHA1 $TASK_MEMORY $TASK_CPU $POSTGRES_HOST $POSTGRES_USER $POSTGRES_PASSWORD $POSTGRES_DB)
 }
 
 push_ecr_image(){
