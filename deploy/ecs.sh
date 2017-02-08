@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
-if [ ! -z $1 ]; then
-  echo "I need an argument! $0 [prod|dev]"
+if [ -z $1 ]; then
+  echo "Usage: $0 [prod|dev]"
   exit 1
 else
   ENV=$1
