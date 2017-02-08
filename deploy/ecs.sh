@@ -17,7 +17,7 @@ configure_aws_cli(){
 }
 
 deploy_cluster() {
-  family="opentraffic-datastore-task-family"
+  family="opentraffic-datastore"
 
   make_task_def
   register_definition
