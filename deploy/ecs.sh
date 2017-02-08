@@ -51,8 +51,8 @@ make_task_def(){
       "name": "opentraffic-reporter",
       "image": "%s.dkr.ecr.us-east-1.amazonaws.com/opentraffic/datastore:%s",
       "essential": true,
-      "memory": 200,
-      "cpu": 10,
+      "memory": 1024,
+      "cpu": 1024,
       "environment": [
         {
           "name": "POSTGRES_HOST",
