@@ -4,7 +4,15 @@ if [ -z $1 ]; then
   echo "Usage: $0 [prod|dev]"
   exit 1
 else
-  ENV=$1
+  case $1 in
+    'prod'|'dev')
+      ENV=$1
+      ;;
+    *)
+      echo "Usage: $0 [prod|dev]"
+      exit 2
+      ;;
+  esac
 fi
 
 # more bash-friendly output for jq
