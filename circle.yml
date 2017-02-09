@@ -17,6 +17,7 @@ deployment:
   prod:
     branch: master
     commands:
+      - deploy/ecs.sh dev
       - deploy/ecs.sh prod
   dev:
     branch: dev
