@@ -13,8 +13,12 @@ test:
   override:
     - ./tests/circle.sh
 
-#deployment:
-#  ecs:
-#    branch: master
-#    commands:
-#      - deploy/ecs.sh prod
+deployment:
+  prod:
+    branch: master
+    commands:
+      - deploy/ecs.sh prod
+  dev:
+    branch: dev
+    commands:
+      - deploy/ecs.sh dev
