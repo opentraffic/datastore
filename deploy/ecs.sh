@@ -22,7 +22,7 @@ deploy_cluster() {
   make_task_def
   register_definition
 
-  if [[ $(aws ecs update-service --cluster datastore-$ENV --service datastore-$ENV --task-definition $revision | $JQ '.service.taskDefinition') != $revision ]]; then
+  if [[ $(aws ecs update-service --cluster datastore-$ENV --service opentraffic-datastore --task-definition $revision | $JQ '.service.taskDefinition') != $revision ]]; then
     echo "Error updating service."
     return 1
   fi
@@ -30,7 +30,7 @@ deploy_cluster() {
   # wait for older revisions to disappear
   # not really necessary, but nice for demos
   for attempt in {1..30}; do
-    if stale=$(aws ecs describe-services --cluster datastore-$ENV --services datastore-$ENV | \
+    if stale=$(aws ecs describe-services --cluster datastore-$ENV --services opentraffic-datastore | \
             $JQ ".services[0].deployments | .[] | select(.taskDefinition != \"$revision\") | .taskDefinition"); then
       echo "Waiting for stale deployments:"
       echo "$stale"
