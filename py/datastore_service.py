@@ -43,14 +43,32 @@ class ThreadPoolMixIn(ThreadingMixIn):
   def make_thread_locals(self):
     #try to connect forever...
     credentials = (os.environ['POSTGRES_DB'], os.environ['POSTGRES_USER'], os.environ['POSTGRES_HOST'], os.environ['POSTGRES_PASSWORD'])
-    while True:
-      try:
-        self.sql_conn = psycopg2.connect("dbname='%s' user='%s' host='%s' password='%s'" % credentials)
-        break
-      except Exception as e:
-        # repeat until you connect.
-        time.sleep(5)
-    print "Connected to db\n"
+    try:
+      self.sql_conn = psycopg2.connect("dbname='%s' user='%s' host='%s' password='%s'" % credentials)
+    except Exception as e:
+      sys.stderr.write('Failed to connect to database with: %s' % repr(e))
+      sys.stdout.flush()
+
+    sys.stdout.write("Connected to db\n")
+    sys.stdout.flush()
+
+    try:
+      # check and see if prepared statement exists...if not, create it
+      cursor = self.sql_conn.cursor()
+      cursor.execute("select exists(select name from pg_prepared_statements where name = 'report');")
+
+      if cursor.fetchone()[0] == False:
+        try:
+          prepare_statement = "PREPARE report AS INSERT INTO segments (segment_id,prev_segment_id,mode," \
+                              "start_time,end_time,length,provider) VALUES ($1,$2,$3,$4,$5,$6,$7);"
+          cursor.execute(prepare_statement)
+          self.sql_conn.commit()
+          sys.stdout.write("Created prepare statement.\n")
+          sys.stdout.flush()
+        except:
+          return 400, "Can't create prepare statement."
+    except:
+      return 400, "Can't check for prepare statement."
 
   def process_request_thread(self):
     self.make_thread_locals()
@@ -104,24 +122,7 @@ class StoreHandler(BaseHTTPRequestHandler):
     #get the reporter data
     reports = self.parse_reports(post)
 
-    try:
-      # check and see if prepared statement exists...if not, create it
-      cursor = self.server.sql_conn.cursor()
-      cursor.execute("select exists(select name from pg_prepared_statements where name = 'report');")
-
-      if cursor.fetchone()[0] == False:
-        try:
-          prepare_statement = "PREPARE report AS INSERT INTO segments (segment_id,prev_segment_id,mode," \
-                              "start_time,end_time,length,provider) VALUES ($1,$2,$3,$4,$5,$6,$7);"
-          cursor.execute(prepare_statement)
-          self.server.sql_conn.commit()
-          print "Created prepare statement.\n"
-        except:
-          return 400, "Can't create prepare statement."
-    except:
-      return 400, "Can't check for prepare statement."
-    
-    try:
+    try:   
       # get the provider. 
       provider = reports['provider']
 
@@ -135,8 +136,8 @@ class StoreHandler(BaseHTTPRequestHandler):
         length = report['length']
 
         # send it to the cursor.
-        cursor.execute("execute report (%s,%s,%s,%s,%s,%s,%s)",
-                      (segment_id, prev_segment_id, mode, start_time, end_time, length, provider))
+        self.server.sql_conn.cursor().execute("execute report (%s,%s,%s,%s,%s,%s,%s)",
+          (segment_id, prev_segment_id, mode, start_time, end_time, length, provider))
       
       # write all the data to the db.
       self.server.sql_conn.commit()                
@@ -191,17 +192,21 @@ def initialize_db():
     cursor.execute("select exists(select relname from pg_class where relname = 'segments' and relkind='r');")
 
     if cursor.fetchone()[0] == False:
-      print "Creating tables.\n"
+      sys.stdout.write("Creating tables.\n")
+      sys.stdout.flush()
       try:
         # may need some more indexes here.
         cursor.execute("CREATE TABLE segments(segment_id integer primary key, prev_segment_id integer, " \
                        "mode text,start_time integer,end_time integer, length integer, provider text);")
         sql_conn.commit()
-        print "Created tables and prepares\n"
+        sys.stdout.write("Done.\n")
+        sys.stdout.flush()
       except:
-        print "Can't create tables.\n"
+        sys.stdout.write("Can't create tables.\n")
+        sys.stdout.flush()
   except:
-    print "Can't check for tables.\n"
+    sys.stdout.write("Can't check for tables.\n")
+    sys.stdout.flush()
  
   sql_conn.close()
 
