@@ -82,7 +82,7 @@ make_task_def(){
       "portMappings": [
         {
           "containerPort": 8003,
-          "hostPort": 8003
+          "hostPort": 0
         }
       ]
     }
