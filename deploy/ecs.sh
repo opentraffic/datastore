@@ -60,7 +60,7 @@ make_task_def(){
       "image": "%s.dkr.ecr.us-east-1.amazonaws.com/opentraffic/datastore:%s",
       "essential": true,
       "memory": 1024,
-      "cpu": 1024,
+      "cpu": 512,
       "environment": [
         {
           "name": "POSTGRES_HOST",
