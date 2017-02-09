@@ -48,7 +48,7 @@ deploy_cluster() {
 make_task_def(){
   task_template='[
     {
-      "name": "opentraffic-reporter",
+      "name": "opentraffic-datastore",
       "image": "%s.dkr.ecr.us-east-1.amazonaws.com/opentraffic/datastore:%s",
       "essential": true,
       "memory": 1024,
