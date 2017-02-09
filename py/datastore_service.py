@@ -46,8 +46,7 @@ class ThreadPoolMixIn(ThreadingMixIn):
     try:
       self.sql_conn = psycopg2.connect("dbname='%s' user='%s' host='%s' password='%s'" % credentials)
     except Exception as e:
-      sys.stderr.write('Failed to connect to database with: %s' % repr(e))
-      sys.stdout.flush()
+      raise Exception('Failed to connect to database with: %s' % repr(e))
 
     sys.stdout.write("Connected to db\n")
     sys.stdout.flush()
@@ -65,10 +64,10 @@ class ThreadPoolMixIn(ThreadingMixIn):
           self.sql_conn.commit()
           sys.stdout.write("Created prepare statement.\n")
           sys.stdout.flush()
-        except:
-          return 400, "Can't create prepare statement."
-    except:
-      return 400, "Can't check for prepare statement."
+        except Exception as e:
+          raise Exception("Can't create prepare statement: %s" % repr(e))
+    except Exception as e:
+      raise Exception("Can't check for prepare statement: %s" % repr(e))
 
   def process_request_thread(self):
     self.make_thread_locals()
@@ -201,13 +200,15 @@ def initialize_db():
         sql_conn.commit()
         sys.stdout.write("Done.\n")
         sys.stdout.flush()
-      except:
-        sys.stdout.write("Can't create tables.\n")
+      except Exception as e:
+        sys.stdout.write("Can't create tables: {0}\n".format(e))
         sys.stdout.flush()
-  except:
-    sys.stdout.write("Can't check for tables.\n")
+        sys.exit(1)
+  except Exception as e:
+    sys.stdout.write("Can't check for tables.: {0}\n".format(e))
     sys.stdout.flush()
- 
+    sys.exit(1)
+
   sql_conn.close()
 
 #program entry point
