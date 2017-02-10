@@ -88,7 +88,7 @@ make_task_def(){
     }
   ]'
 
-  task_def=$(printf "$task_template" $ENV $AWS_ACCOUNT_ID $ENV $CIRCLE_SHA1 $ENV_$POSTGRES_HOST $ENV_$POSTGRES_USER $ENV_$POSTGRES_PASSWORD $ENV_$POSTGRES_DB)
+  task_def=$(printf "$task_template" $ENV $AWS_ACCOUNT_ID $ENV $CIRCLE_SHA1 $ENV_POSTGRES_HOST $ENV_POSTGRES_USER $ENV_POSTGRES_PASSWORD $ENV_POSTGRES_DB)
 }
 
 push_ecr_image(){
