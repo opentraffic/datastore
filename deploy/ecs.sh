@@ -25,7 +25,7 @@ configure_aws_cli(){
 }
 
 deploy_cluster() {
-  family="opentraffic-datastore"
+  family="opentraffic-datastore-$ENV"
 
   make_task_def
   register_definition
@@ -56,7 +56,7 @@ deploy_cluster() {
 make_task_def(){
   task_template='[
     {
-      "name": "opentraffic-datastore",
+      "name": "opentraffic-datastore-%s",
       "image": "%s.dkr.ecr.us-east-1.amazonaws.com/opentraffic/datastore-%s:%s",
       "essential": true,
       "memory": 1024,
@@ -88,7 +88,7 @@ make_task_def(){
     }
   ]'
 
-  task_def=$(printf "$task_template" $AWS_ACCOUNT_ID $ENV $CIRCLE_SHA1 $ENV_$POSTGRES_HOST $ENV_$POSTGRES_USER $ENV_$POSTGRES_PASSWORD $ENV_$POSTGRES_DB)
+  task_def=$(printf "$task_template" $ENV $AWS_ACCOUNT_ID $ENV $CIRCLE_SHA1 $ENV_$POSTGRES_HOST $ENV_$POSTGRES_USER $ENV_$POSTGRES_PASSWORD $ENV_$POSTGRES_DB)
 }
 
 push_ecr_image(){
