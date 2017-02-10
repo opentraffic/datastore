@@ -24,7 +24,7 @@ docker run \
   -e 'POSTGRES_PASSWORD=changeme' \
   -e 'POSTGRES_DB=opentraffic' \
   -e 'POSTGRES_HOST=postgres' \
-  $AWS_ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/opentraffic/datastore:$CIRCLE_SHA1
+  datastore:latest
 
 echo "Container is running, sleeping to allow creation of database..."
 sleep 10

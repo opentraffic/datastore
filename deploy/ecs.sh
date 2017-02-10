@@ -57,7 +57,7 @@ make_task_def(){
   task_template='[
     {
       "name": "opentraffic-datastore",
-      "image": "%s.dkr.ecr.us-east-1.amazonaws.com/opentraffic/datastore:%s",
+      "image": "%s.dkr.ecr.us-east-1.amazonaws.com/opentraffic/datastore-%s:%s",
       "essential": true,
       "memory": 1024,
       "cpu": 512,
@@ -88,11 +88,12 @@ make_task_def(){
     }
   ]'
 
-  task_def=$(printf "$task_template" $AWS_ACCOUNT_ID $CIRCLE_SHA1 $ENV_$POSTGRES_HOST $ENV_$POSTGRES_USER $ENV_$POSTGRES_PASSWORD $ENV_$POSTGRES_DB)
+  task_def=$(printf "$task_template" $AWS_ACCOUNT_ID $ENV $CIRCLE_SHA1 $ENV_$POSTGRES_HOST $ENV_$POSTGRES_USER $ENV_$POSTGRES_PASSWORD $ENV_$POSTGRES_DB)
 }
 
 push_ecr_image(){
   eval $(aws ecr get-login --region us-east-1)
+  docker tag datastore:latest $AWS_ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/opentraffic/datastore-$ENV:$CIRCLE_SHA1
   docker push $AWS_ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/opentraffic/datastore:$CIRCLE_SHA1
 }
 
