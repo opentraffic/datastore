@@ -88,7 +88,20 @@ make_task_def(){
     }
   ]'
 
-  task_def=$(printf "$task_template" $ENV $AWS_ACCOUNT_ID $ENV $CIRCLE_SHA1 $ENV_POSTGRES_HOST $ENV_POSTGRES_USER $ENV_POSTGRES_PASSWORD $ENV_POSTGRES_DB)
+  # figure out vars per env
+  pg_host_raw=$(echo $`printf $ENV`_POSTGRES_HOST)
+  pg_host=$(eval echo $pg_host_raw)
+
+  pg_db_raw=$(echo $`printf $ENV`_POSTGRES_DB)
+  pg_db=$(eval echo $pg_db_raw)
+
+  pg_user_raw=$(echo $`printf $ENV`_POSTGRES_USER)
+  pg_user=$(eval echo $pg_user_raw)
+
+  pg_password_raw=$(echo $`printf $ENV`_POSTGRES_PASSWORD)
+  pg_password=$(eval echo $pg_password_raw)
+
+  task_def=$(printf "$task_template" $ENV $AWS_ACCOUNT_ID $ENV $CIRCLE_SHA1 $pg_host $pg_user $pg_password $pg_db)
 }
 
 push_ecr_image(){
