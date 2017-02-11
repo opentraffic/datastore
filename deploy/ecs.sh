@@ -59,7 +59,7 @@ make_task_def(){
       "name": "opentraffic-datastore-%s",
       "image": "%s.dkr.ecr.us-east-1.amazonaws.com/opentraffic/datastore-%s:%s",
       "essential": true,
-      "memory": 1024,
+      "memoryReservation": 512,
       "cpu": 512,
       "environment": [
         {
