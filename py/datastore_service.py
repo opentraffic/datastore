@@ -195,7 +195,7 @@ def initialize_db():
       sys.stdout.flush()
       try:
         # may need some more indexes here.
-        cursor.execute("CREATE TABLE segments(segment_id integer primary key, prev_segment_id integer, " \
+        cursor.execute("CREATE TABLE segments(segment_id integer, prev_segment_id integer, " \
                        "mode text,start_time integer,end_time integer, length integer, provider text);")
         sql_conn.commit()
         sys.stdout.write("Done.\n")
