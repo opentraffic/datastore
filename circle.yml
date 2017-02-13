@@ -7,8 +7,19 @@ dependencies:
     - sudo apt-get update; sudo apt-get install jq
   override:
     - docker info
-    - docker build --rm=false -t opentraffic/datastore .
+    - docker build --rm=false -t datastore:latest .
 
 test:
   override:
     - ./tests/circle.sh
+
+deployment:
+  prod:
+    branch: master
+    commands:
+      - deploy/ecs.sh dev
+      - deploy/ecs.sh prod
+  dev:
+    branch: dev
+    commands:
+      - deploy/ecs.sh dev
