@@ -64,9 +64,8 @@ make_task_def(){
       "logConfiguration": {
         "logDriver": "awslogs",
           "options": {
-          "awslogs-group": "datastore",
-          "awslogs-region": "us-east-1",
-          "awslogs-stream-prefix": "%s"
+          "awslogs-group": "datastore-%s",
+          "awslogs-region": "us-east-1"
         }
       },
       "environment": [
