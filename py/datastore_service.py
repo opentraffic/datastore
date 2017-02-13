@@ -18,7 +18,6 @@ from BaseHTTPServer import HTTPServer, BaseHTTPRequestHandler
 from SocketServer import ThreadingMixIn
 from cgi import urlparse
 import psycopg2
-from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
 import os
 import time
 
@@ -41,10 +40,9 @@ class ThreadPoolMixIn(ThreadingMixIn):
     self.server_close()
 
   def make_thread_locals(self):
-    #try to connect forever...
     credentials = (os.environ['POSTGRES_DB'], os.environ['POSTGRES_USER'], os.environ['POSTGRES_HOST'], os.environ['POSTGRES_PASSWORD'])
     try:
-      self.sql_conn = psycopg2.connect("dbname='%s' user='%s' host='%s' password='%s'" % credentials)
+      sql_conn = psycopg2.connect("dbname='%s' user='%s' host='%s' password='%s'" % credentials)
     except Exception as e:
       raise Exception('Failed to connect to database with: %s' % repr(e))
 
@@ -53,7 +51,7 @@ class ThreadPoolMixIn(ThreadingMixIn):
 
     try:
       # check and see if prepared statement exists...if not, create it
-      cursor = self.sql_conn.cursor()
+      cursor = sql_conn.cursor()
       cursor.execute("select exists(select name from pg_prepared_statements where name = 'report');")
 
       if cursor.fetchone()[0] == False:
@@ -61,20 +59,21 @@ class ThreadPoolMixIn(ThreadingMixIn):
           prepare_statement = "PREPARE report AS INSERT INTO segments (segment_id,prev_segment_id,mode," \
                               "start_time,end_time,length,provider) VALUES ($1,$2,$3,$4,$5,$6,$7);"
           cursor.execute(prepare_statement)
-          self.sql_conn.commit()
+          sql_conn.commit()
           sys.stdout.write("Created prepare statement.\n")
           sys.stdout.flush()
         except Exception as e:
           raise Exception("Can't create prepare statement: %s" % repr(e))
     except Exception as e:
       raise Exception("Can't check for prepare statement: %s" % repr(e))
+    self.sql_conn = sql_conn
 
   def process_request_thread(self):
     self.make_thread_locals()
     while True:
       request, client_address = self.requests.get()
       ThreadingMixIn.process_request_thread(self, request, client_address)
-    
+
   def handle_request(self):
     try:
       request, client_address = self.get_request()
@@ -195,7 +194,7 @@ def initialize_db():
       sys.stdout.flush()
       try:
         # may need some more indexes here.
-        cursor.execute("CREATE TABLE segments(segment_id integer primary key, prev_segment_id integer, " \
+        cursor.execute("CREATE TABLE segments(segment_id integer, prev_segment_id integer, " \
                        "mode text,start_time integer,end_time integer, length integer, provider text);")
         sql_conn.commit()
         sys.stdout.write("Done.\n")
