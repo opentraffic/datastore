@@ -61,6 +61,14 @@ make_task_def(){
       "essential": true,
       "memoryReservation": 512,
       "cpu": 512,
+      "logConfiguration": {
+        "logDriver": "awslogs",
+          "options": {
+          "awslogs-group": "datastore",
+          "awslogs-region": "us-east-1",
+          "awslogs-stream-prefix": "%s"
+        }
+      },
       "environment": [
         {
           "name": "POSTGRES_HOST",
@@ -101,7 +109,7 @@ make_task_def(){
   pg_password_raw=$(echo $`printf $ENV`_POSTGRES_PASSWORD)
   pg_password=$(eval echo $pg_password_raw)
 
-  task_def=$(printf "$task_template" $ENV $AWS_ACCOUNT_ID $ENV $CIRCLE_SHA1 $pg_host $pg_user $pg_password $pg_db)
+  task_def=$(printf "$task_template" $ENV $AWS_ACCOUNT_ID $ENV $CIRCLE_SHA1 $ENV $pg_host $pg_user $pg_password $pg_db)
 }
 
 push_ecr_image(){
