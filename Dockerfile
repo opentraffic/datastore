@@ -11,7 +11,7 @@ ENV POSTGRES_USER ${POSTGRES_USER:-"opentraffic"}
 ENV POSTGRES_PASSWORD ${POSTGRES_PASSWORD:-"changeme"}
 ENV POSTGRES_DB ${POSTGRES_DB:-"opentraffic"}
 ENV POSTGRES_HOST ${POSTGRES_HOST:-"postgres"}
-ENV POSTGRES_PORT ${POSTGRES_HOST:-"5432"}
+ENV POSTGRES_PORT ${POSTGRES_PORT:-"5432"}
 
 # install dependencies
 RUN apt-get update && apt-get install -y python python-psycopg2
