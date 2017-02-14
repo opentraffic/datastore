@@ -86,6 +86,10 @@ make_task_def(){
           "value": "%s"
         },
         {
+          "name": "POSTGRES_PORT",
+          "value": "%s"
+        },
+        {
           "name": "POSTGRES_USER",
           "value": "%s"
         },
@@ -111,6 +115,9 @@ make_task_def(){
   pg_host_raw=$(echo $`printf $ENV`_POSTGRES_HOST)
   pg_host=$(eval echo $pg_host_raw)
 
+  pg_port_raw=$(echo $`printf $ENV`_POSTGRES_PORT)
+  pg_port=$(eval echo $pg_port_raw)
+
   pg_db_raw=$(echo $`printf $ENV`_POSTGRES_DB)
   pg_db=$(eval echo $pg_db_raw)
 
@@ -120,7 +127,7 @@ make_task_def(){
   pg_password_raw=$(echo $`printf $ENV`_POSTGRES_PASSWORD)
   pg_password=$(eval echo $pg_password_raw)
 
-  task_def=$(printf "$task_template" $ENV $AWS_ACCOUNT_ID $REGION $ENV $CIRCLE_SHA1 $ENV $REGION $pg_host $pg_user $pg_password $pg_db)
+  task_def=$(printf "$task_template" $ENV $AWS_ACCOUNT_ID $REGION $ENV $CIRCLE_SHA1 $ENV $REGION $pg_host $pg_port $pg_user $pg_password $pg_db)
 }
 
 push_ecr_image(){
