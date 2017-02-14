@@ -106,8 +106,6 @@ class StoreHandler(BaseHTTPRequestHandler):
     #handle POST
     if post:
       body = self.rfile.read(int(self.headers['Content-Length'])).decode('utf-8')
-      sys.stderr.write(body)
-      sys.stderr.flush()
       return json.loads(body)
     #handle GET
     else:
