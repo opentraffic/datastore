@@ -40,9 +40,10 @@ class ThreadPoolMixIn(ThreadingMixIn):
     self.server_close()
 
   def make_thread_locals(self):
-    credentials = (os.environ['POSTGRES_DB'], os.environ['POSTGRES_USER'], os.environ['POSTGRES_HOST'], os.environ['POSTGRES_PASSWORD'])
+    credentials = (os.environ['POSTGRES_DB'], os.environ['POSTGRES_USER'], os.environ['POSTGRES_HOST'], 
+                   os.environ['POSTGRES_PASSWORD'], os.environ['POSTGRES_PORT'])
     try:
-      sql_conn = psycopg2.connect("dbname='%s' user='%s' host='%s' password='%s'" % credentials)
+      sql_conn = psycopg2.connect("dbname='%s' user='%s' host='%s' password='%s' port='%s'" % credentials)
     except Exception as e:
       raise Exception('Failed to connect to database with: %s' % repr(e))
 
@@ -174,10 +175,11 @@ class StoreHandler(BaseHTTPRequestHandler):
 
 def initialize_db():
   #try to connect forever...
-  credentials = (os.environ['POSTGRES_DB'], os.environ['POSTGRES_USER'], os.environ['POSTGRES_HOST'], os.environ['POSTGRES_PASSWORD'])
+  credentials = (os.environ['POSTGRES_DB'], os.environ['POSTGRES_USER'], os.environ['POSTGRES_HOST'], 
+                 os.environ['POSTGRES_PASSWORD'], os.environ['POSTGRES_PORT'])
   while True:
     try:
-      sql_conn = psycopg2.connect("dbname='%s' user='%s' host='%s' password='%s'" % credentials)
+      sql_conn = psycopg2.connect("dbname='%s' user='%s' host='%s' password='%s' port='%s'" % credentials)
       break
     except Exception as e:
       # repeat until you connect.
@@ -222,6 +224,7 @@ if __name__ == '__main__':
     os.environ['POSTGRES_USER']
     os.environ['POSTGRES_HOST']
     os.environ['POSTGRES_PASSWORD']
+    os.environ['POSTGRES_PORT']
   except Exception as e:
     sys.stderr.write('Bad address or environment: {0}\n'.format(e))
     sys.stderr.flush()
