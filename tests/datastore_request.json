@@ -1,29 +1,29 @@
 {
-    "reports": [{
+    "segments": [{
         "mode": "auto",
         "segment_id": 345678,
         "prev_segment_id": 356789,
-        "start_time": 98765,
+        "begin_time": 98765,
         "end_time": 98777,
         "length":555
     }, {
         "mode": "bus",
         "segment_id": 345780,
-        "start_time": 98767,
+        "begin_time": 98767,
         "end_time": 98779,
         "length":678
     }, {
         "mode": "auto",
         "segment_id": 345795,
         "prev_segment_id": 656784,
-        "start_time": 98725,
+        "begin_time": 98725,
         "end_time": 98778,
         "length":479
     }, {
         "mode": "auto",
         "segment_id": 545678,
         "prev_segment_id": 556789,
-        "start_time": 98735,
+        "begin_time": 98735,
         "end_time": 98747,
         "length":1234
     }],
