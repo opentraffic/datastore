@@ -5,7 +5,34 @@ If you're running this from this directory you can start the server with the fol
 ./datastore_service.py localhost:8003
 
 sample url looks like this:
-http://localhost:8003/store?json={%22segments%22:[{%22mode%22:%20%22auto%22,%22segment_id%22:%20345678,%22prev_segment_id%22:%20356789,%22start_time%22:%2098765,%22end_time%22:%2098777,%22length%22:555},{%22mode%22:%20%22bus%22,%22segment_id%22:%20345780,%22start_time%22:%2098767,%22end_time%22:%2098779,%22length%22:678},{%22mode%22:%20%22auto%22,%22segment_id%22:%20345795,%22prev_segment_id%22:%20656784,%22start_time%22:%2098725,%22end_time%22:%2098778,%22length%22:479},{%22mode%22:%20%22auto%22,%22segment_id%22:%20545678,%22prev_segment_id%22:%20556789,%22start_time%22:%2098735,%22end_time%22:%2098747,%22length%22:1234}],%22provider%22:%20123456}
+http://localhost:8003/store?json={
+    "segments": [{
+        "segment_id": 345678,
+        "prev_segment_id": 356789,
+        "start_time": 98765,
+        "end_time": 98777,
+        "length":555
+    }, {
+        "segment_id": 345780,
+        "start_time": 98767,
+        "end_time": 98779,
+        "length":678
+    }, {
+        "segment_id": 345795,
+        "prev_segment_id": 656784,
+        "start_time": 98725,
+        "end_time": 98778,
+        "length":479
+    }, {
+        "segment_id": 545678,
+        "prev_segment_id": 556789,
+        "start_time": 98735,
+        "end_time": 98747,
+        "length":1234
+    }],
+    "provider": 123456,
+    "mode": "auto"
+}
 '''
 
 import sys
