@@ -5,7 +5,7 @@ If you're running this from this directory you can start the server with the fol
 ./datastore_service.py localhost:8003
 
 sample url looks like this:
-http://localhost:8003/store?json={%22reports%22:[{%22segment_id%22:%20345678,%22prev_segment_id%22:%20356789,%22start_time%22:%2098765,%22end_time%22:%2098777,%22length%22:555},{%22mode%22:%20%22bus%22,%22segment_id%22:%20345780,%22start_time%22:%2098767,%22end_time%22:%2098779,%22length%22:678},{%22mode%22:%20%22auto%22,%22segment_id%22:%20345795,%22prev_segment_id%22:%20656784,%22start_time%22:%2098725,%22end_time%22:%2098778,%22length%22:479},{%22mode%22:%20%22auto%22,%22segment_id%22:%20545678,%22prev_segment_id%22:%20556789,%22start_time%22:%2098735,%22end_time%22:%2098747,%22length%22:1234}],%22provider%22:%20123456}
+http://localhost:8003/store?json={%22reports%22:[{%22mode%22:%20%22auto%22,%22segment_id%22:%20345678,%22prev_segment_id%22:%20356789,%22start_time%22:%2098765,%22end_time%22:%2098777,%22length%22:555},{%22mode%22:%20%22bus%22,%22segment_id%22:%20345780,%22start_time%22:%2098767,%22end_time%22:%2098779,%22length%22:678},{%22mode%22:%20%22auto%22,%22segment_id%22:%20345795,%22prev_segment_id%22:%20656784,%22start_time%22:%2098725,%22end_time%22:%2098778,%22length%22:479},{%22mode%22:%20%22auto%22,%22segment_id%22:%20545678,%22prev_segment_id%22:%20556789,%22start_time%22:%2098735,%22end_time%22:%2098747,%22length%22:1234}],%22provider%22:%20123456}
 '''
 
 import sys
@@ -127,7 +127,7 @@ class StoreHandler(BaseHTTPRequestHandler):
       for report in reports['reports']:
         segment_id = report['segment_id']
         prev_segment_id = report.get('prev_segment_id', None)
-        mode = report.get('mode', 'auto')
+        mode = report['mode']
         start_time = report['start_time']
         end_time = report['end_time']
         length = report['length']
