@@ -18,11 +18,8 @@ deployment:
     branch: master
     commands:
       - deploy/ecs.sh prod us-east-1
-
-  dockerhub:
-    branch: master
-    commands:
-      - curl -H "Content-Type: application/json" --data '{"source_type": "Branch", "source_name": "master"}' -X POST "https://registry.hub.docker.com/u/opentraffic/datastore/trigger/${DOCKERHUB_TOKEN}/"
+      - >
+        curl -H "Content-Type: application/json" --data '{"source_type": "Branch", "source_name": "master"}' -X POST "https://registry.hub.docker.com/u/opentraffic/datastore/trigger/${DOCKERHUB_TOKEN}/"
 
   dev:
     branch: dev
