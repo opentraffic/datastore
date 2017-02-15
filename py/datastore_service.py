@@ -127,7 +127,7 @@ class StoreHandler(BaseHTTPRequestHandler):
       for report in reports['reports']:
         segment_id = report['segment_id']
         prev_segment_id = report.get('prev_segment_id', None)
-        mode = report.get('mode', 'NULL')
+        mode = report['mode']
         start_time = report['start_time']
         end_time = report['end_time']
         length = report['length']
