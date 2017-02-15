@@ -5,7 +5,7 @@ If you're running this from this directory you can start the server with the fol
 ./datastore_service.py localhost:8003
 
 sample url looks like this:
-http://localhost:8003/store?json={%22segments%22:[{%22mode%22:%20%22auto%22,%22segment_id%22:%20345678,%22prev_segment_id%22:%20356789,%22begin_time%22:%2098765,%22end_time%22:%2098777,%22length%22:555},{%22mode%22:%20%22bus%22,%22segment_id%22:%20345780,%22begin_time%22:%2098767,%22end_time%22:%2098779,%22length%22:678},{%22mode%22:%20%22auto%22,%22segment_id%22:%20345795,%22prev_segment_id%22:%20656784,%22begin_time%22:%2098725,%22end_time%22:%2098778,%22length%22:479},{%22mode%22:%20%22auto%22,%22segment_id%22:%20545678,%22prev_segment_id%22:%20556789,%22begin_time%22:%2098735,%22end_time%22:%2098747,%22length%22:1234}],%22provider%22:%20123456}
+http://localhost:8003/store?json={%22segments%22:[{%22mode%22:%20%22auto%22,%22segment_id%22:%20345678,%22prev_segment_id%22:%20356789,%22start_time%22:%2098765,%22end_time%22:%2098777,%22length%22:555},{%22mode%22:%20%22bus%22,%22segment_id%22:%20345780,%22start_time%22:%2098767,%22end_time%22:%2098779,%22length%22:678},{%22mode%22:%20%22auto%22,%22segment_id%22:%20345795,%22prev_segment_id%22:%20656784,%22start_time%22:%2098725,%22end_time%22:%2098778,%22length%22:479},{%22mode%22:%20%22auto%22,%22segment_id%22:%20545678,%22prev_segment_id%22:%20556789,%22start_time%22:%2098735,%22end_time%22:%2098747,%22length%22:1234}],%22provider%22:%20123456}
 '''
 
 import sys
@@ -122,15 +122,15 @@ class StoreHandler(BaseHTTPRequestHandler):
     try:   
       # get the provider. 
       provider = segments['provider']
+      mode = segments['mode']
 
       # get the segments and loop over to get the rest of the data.
       for segment in segments['segments']:
-        segment_id = segment['segment_id']
-        prev_segment_id = segment.get('prev_segment_id', None)
-        mode = segment['mode']
-        start_time = segment['begin_time']
-        end_time = segment['end_time']
-        length = segment['length']
+        segment_id = int(segment['segment_id'])
+        prev_segment_id = int(segment.get('prev_segment_id')) if 'prev_segment_id' in segment else None
+        start_time = int(segment['start_time'])
+        end_time = int(segment['end_time'])
+        length = int(segment['length'])
 
         # send it to the cursor.
         self.server.sql_conn.cursor().execute("execute report (%s,%s,%s,%s,%s,%s,%s)",
@@ -194,7 +194,7 @@ def initialize_db():
       sys.stdout.flush()
       try:
         # may need some more indexes here.
-        cursor.execute("CREATE TABLE segments(segment_id integer, prev_segment_id integer, " \
+        cursor.execute("CREATE TABLE segments(segment_id bigint, prev_segment_id bigint, " \
                        "mode text,start_time integer,end_time integer, length integer, provider text);")
         sql_conn.commit()
         sys.stdout.write("Done.\n")
