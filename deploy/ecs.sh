@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+set -e
 
 usage(){
   echo "Usage: $0 [prod|dev] [us-east-1]"
