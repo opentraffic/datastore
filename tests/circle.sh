@@ -1,16 +1,22 @@
 #!/usr/bin/env bash
 set -e
 
+# env
+#
 datastore_port=8003
+
+postgres_user="opentraffic"
+postgres_password="changeme"
+postgres_db="opentraffic"
 
 # start the container
 echo "Starting the postgres container..."
 docker run \
   -d \
   --name datastore-postgres \
-  -e 'POSTGRES_USER=opentraffic' \
-  -e 'POSTGRES_PASSWORD=changeme' \
-  -e 'POSTGRES_DB=opentraffic' \
+  -e "POSTGRES_USER=${postgres_user}" \
+  -e "POSTGRES_PASSWORD=${postgres_password}" \
+  -e "POSTGRES_DB=${postgres_db}" \
   postgres:9.6.1
 
 echo "Starting the datastore container..."
@@ -19,10 +25,9 @@ docker run \
   -p ${datastore_port}:${datastore_port} \
   --name datastore \
   --link datastore-postgres:postgres \
-  -v ${PWD}/data:/data \
-  -e 'POSTGRES_USER=opentraffic' \
-  -e 'POSTGRES_PASSWORD=changeme' \
-  -e 'POSTGRES_DB=opentraffic' \
+  -e "POSTGRES_USER=${postgres_user}" \
+  -e "POSTGRES_PASSWORD=${postgres_password}" \
+  -e "POSTGRES_DB=${postgres_db}" \
   -e 'POSTGRES_HOST=postgres' \
   datastore:latest
 
