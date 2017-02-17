@@ -40,6 +40,12 @@ jq "." tests/datastore_request.json >/dev/null
 
 # test the generated data against the service
 echo "Running the test data through the datastore service..."
-curl --fail --max-time 15 --retry 3 --retry-delay 5 --data @tests/datastore_request.json localhost:${datastore_port}/store?
+curl \
+  --fail \
+  --silent \
+  --max-time 15 \
+  --retry 3 \
+  --retry-delay 5 \
+  --data @tests/datastore_request.json localhost:${datastore_port}/store?
 
 echo "Done!"
