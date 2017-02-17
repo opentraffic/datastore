@@ -153,11 +153,11 @@ class StoreHandler(BaseHTTPRequestHandler):
 
       # get the segments and loop over to get the rest of the data.
       for segment in segments['segments']:
-        segment_id = int(segment['segment_id'])
-        prev_segment_id = int(segment.get('prev_segment_id')) if 'prev_segment_id' in segment else None
-        start_time = int(segment['start_time'])
-        end_time = int(segment['end_time'])
-        length = int(segment['length'])
+        segment_id = segment['segment_id']
+        prev_segment_id = segment.get('prev_segment_id', None)
+        start_time = segment['start_time']
+        end_time = segment['end_time']
+        length = segment['length']
 
         # send it to the cursor.
         self.server.sql_conn.cursor().execute("execute report (%s,%s,%s,%s,%s,%s,%s)",
