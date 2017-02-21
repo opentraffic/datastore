@@ -73,7 +73,7 @@ make_task_def(){
       "image": "%s.dkr.ecr.%s.amazonaws.com/opentraffic/datastore-%s:%s",
       "essential": true,
       "memoryReservation": 512,
-      "cpu": 512,
+      "cpu": 1024,
       "logConfiguration": {
         "logDriver": "awslogs",
           "options": {
