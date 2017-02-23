@@ -45,7 +45,7 @@ class ThreadPoolMixIn(ThreadingMixIn):
     try:
       sql_conn = psycopg2.connect("dbname='%s' user='%s' host='%s' password='%s' port='%s'" % credentials)
     except Exception as e:
-      raise Exception('Failed to connect to database with: %s' % repr(e))
+      raise Exception('Failed to connect to database')
 
     sys.stdout.write("Connected to db\n")
     sys.stdout.flush()
@@ -65,9 +65,9 @@ class ThreadPoolMixIn(ThreadingMixIn):
           sys.stdout.write("Created prepare statement.\n")
           sys.stdout.flush()
         except Exception as e:
-          raise Exception("Can't create prepare statement: %s" % repr(e))
+          raise Exception("Can't create prepare statement")
     except Exception as e:
-      raise Exception("Can't check for prepare statement: %s" % repr(e))
+      raise Exception("Can't check for prepare statement")
     self.sql_conn = sql_conn
 
   def process_request_thread(self):
