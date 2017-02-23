@@ -5,34 +5,7 @@ If you're running this from this directory you can start the server with the fol
 ./datastore_service.py localhost:8003
 
 sample url looks like this:
-http://localhost:8003/store?json={
-    "segments": [{
-        "segment_id": 345678,
-        "prev_segment_id": 356789,
-        "start_time": 98765,
-        "end_time": 98777,
-        "length":555
-    }, {
-        "segment_id": 345780,
-        "start_time": 98767,
-        "end_time": 98779,
-        "length":678
-    }, {
-        "segment_id": 345795,
-        "prev_segment_id": 656784,
-        "start_time": 98725,
-        "end_time": 98778,
-        "length":479
-    }, {
-        "segment_id": 545678,
-        "prev_segment_id": 556789,
-        "start_time": 98735,
-        "end_time": 98747,
-        "length":1234
-    }],
-    "provider": 123456,
-    "mode": "auto"
-}
+http://localhost:8003/store?json={"segments": [{"segment_id": 345678,"prev_segment_id": 356789,"start_time": 98765,"end_time": 98777,"length":555}, {"segment_id": 345780,"start_time": 98767,"end_time": 98779,"length":678}, {"segment_id": 345795,"prev_segment_id": 656784,"start_time": 98725,"end_time": 98778,"length":479}, {"segment_id": 545678,"prev_segment_id": 556789,"start_time": 98735,"end_time": 98747,"length":1234}],"provider": 123456,"mode": "auto"}
 '''
 
 import sys
@@ -85,7 +58,8 @@ class ThreadPoolMixIn(ThreadingMixIn):
       if cursor.fetchone()[0] == False:
         try:
           prepare_statement = "PREPARE report AS INSERT INTO segments (segment_id,prev_segment_id,mode," \
-                              "start_time,end_time,length,provider) VALUES ($1,$2,$3,$4,$5,$6,$7);"
+                              "start_time,start_time_dow,start_time_hour,end_time,length,provider) " \
+                              "VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9);"
           cursor.execute(prepare_statement)
           sql_conn.commit()
           sys.stdout.write("Created prepare statement.\n")
@@ -156,16 +130,20 @@ class StoreHandler(BaseHTTPRequestHandler):
         segment_id = segment['segment_id']
         prev_segment_id = segment.get('prev_segment_id', None)
         start_time = segment['start_time']
+        start_time_dow = time.strftime("%w", time.gmtime(start_time))
+        start_time_hour = time.strftime("%H", time.gmtime(start_time))
         end_time = segment['end_time']
         length = segment['length']
 
         # send it to the cursor.
-        self.server.sql_conn.cursor().execute("execute report (%s,%s,%s,%s,%s,%s,%s)",
-          (segment_id, prev_segment_id, mode, start_time, end_time, length, provider))
-      
+        self.server.sql_conn.cursor().execute("execute report (%s,%s,%s,%s,%s,%s,%s,%s,%s)",
+          (segment_id, prev_segment_id, mode, start_time, start_time_dow, start_time_hour, 
+           end_time, length, provider))
+
       # write all the data to the db.
       self.server.sql_conn.commit()                
     except Exception as e:
+      self.server.sql_conn.commit()
       return 400, str(e)
 
     #hand it back
@@ -220,9 +198,11 @@ def initialize_db():
       sys.stdout.write("Creating tables.\n")
       sys.stdout.flush()
       try:
-        # may need some more indexes here.
         cursor.execute("CREATE TABLE segments(segment_id bigint, prev_segment_id bigint, " \
-                       "mode text,start_time integer,end_time integer, length integer, provider text);")
+                       "mode text,start_time integer,start_time_dow smallint, start_time_hour smallint, " \
+                       "end_time integer, length integer, provider text); " \
+                       "CREATE INDEX index_segment ON segments (segment_id); CREATE INDEX index_range ON " \
+                       "segments (start_time, end_time);")
         sql_conn.commit()
         sys.stdout.write("Done.\n")
         sys.stdout.flush()
