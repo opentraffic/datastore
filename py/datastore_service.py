@@ -58,8 +58,8 @@ class ThreadPoolMixIn(ThreadingMixIn):
       if cursor.fetchone()[0] == False:
         try:
           prepare_statement = "PREPARE report AS INSERT INTO segments (segment_id,prev_segment_id,mode," \
-                              "start_time,start_time_dow,start_time_hour,end_time,length,provider) " \
-                              "VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9);"
+                              "start_time,start_time_dow,start_time_hour,end_time,length,speed,provider) " \
+                              "VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10);"
           cursor.execute(prepare_statement)
           sql_conn.commit()
           sys.stdout.write("Created prepare statement.\n")
@@ -135,10 +135,17 @@ class StoreHandler(BaseHTTPRequestHandler):
         end_time = segment['end_time']
         length = segment['length']
 
+        seconds = end_time - start_time
+        if seconds <= 0:
+          speed = 0.0
+        else:
+          #kph
+          speed = round((length / (seconds * 1.0))*3.6,2)
+
         # send it to the cursor.
-        self.server.sql_conn.cursor().execute("execute report (%s,%s,%s,%s,%s,%s,%s,%s,%s)",
+        self.server.sql_conn.cursor().execute("execute report (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",
           (segment_id, prev_segment_id, mode, start_time, start_time_dow, start_time_hour, 
-           end_time, length, provider))
+           end_time, length, speed, provider))
 
       # write all the data to the db.
       self.server.sql_conn.commit()                
@@ -200,7 +207,7 @@ def initialize_db():
       try:
         cursor.execute("CREATE TABLE segments(segment_id bigint, prev_segment_id bigint, " \
                        "mode text,start_time integer,start_time_dow smallint, start_time_hour smallint, " \
-                       "end_time integer, length integer, provider text); " \
+                       "end_time integer, length integer, speed smallint, provider text); " \
                        "CREATE INDEX index_segment ON segments (segment_id); CREATE INDEX index_range ON " \
                        "segments (start_time, end_time);")
         sql_conn.commit()

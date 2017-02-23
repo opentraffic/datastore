@@ -58,7 +58,7 @@ class ThreadPoolMixIn(ThreadingMixIn):
       if cursor.fetchone()[0] == False:
         try:
           prepare_statement = "PREPARE query_by_id AS SELECT segment_id, prev_segment_id, start_time, " \
-                              "start_time_dow, start_time_hour, end_time, length FROM segments where " \
+                              "start_time_dow, start_time_hour, end_time, speed, length FROM segments where " \
                               "segment_id = ANY ($1) order by segment_id, prev_segment_id;"
           cursor.execute(prepare_statement)
           sql_conn.commit()
@@ -70,7 +70,7 @@ class ThreadPoolMixIn(ThreadingMixIn):
       if cursor.fetchone()[0] == False:
         try:
           prepare_statement = "PREPARE query_by_range AS SELECT segment_id, prev_segment_id, start_time, " \
-                              "start_time_dow, start_time_hour, end_time, length FROM segments where " \
+                              "start_time_dow, start_time_hour, end_time, speed, length FROM segments where " \
                               "start_time >= $1 and start_time <= $2 order by segment_id, prev_segment_id;"
           cursor.execute(prepare_statement)
           sql_conn.commit()
@@ -159,13 +159,8 @@ class StoreHandler(BaseHTTPRequestHandler):
         d['start_time_dow'] = row[3]
         d['start_time_hour'] = row[4]
         d['end_time'] = row[5]
-        d['length'] = row[6]
-        seconds = d['end_time'] - d['start_time']
-        if seconds <= 0:
-          d['speed'] = 0.0
-        else:
-          #kph
-          d['speed'] = round((d['length'] / (seconds * 1.0))*3.6,2)
+        d['speed'] = row[6]
+        d['length'] = row[7]
 
         segments['segments'].append(d)
 
