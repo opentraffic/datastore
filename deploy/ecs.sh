@@ -59,14 +59,14 @@ deploy_cluster() {
     else
       echo "Deployed!"
       echo "Writing deployment metric to Cloudwatch."
-      aws cloudwatch put-metric-data --metric-name deploy-succeeded --namespace reporter/$ENV --value 1
+      aws cloudwatch put-metric-data --metric-name deploy-succeeded --namespace datastore/$ENV --value 1
       return 0
     fi
   done
 
   echo "Service update took too long."
   echo "Writing deployment metric to Cloudwatch."
-  aws cloudwatch put-metric-data --metric-name deploy-failed --namespace reporter/$ENV --value 1
+  aws cloudwatch put-metric-data --metric-name deploy-failed --namespace datastore/$ENV --value 1
   return 1
 }
 
