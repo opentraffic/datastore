@@ -45,7 +45,7 @@ class ThreadPoolMixIn(ThreadingMixIn):
     try:
       sql_conn = psycopg2.connect("dbname='%s' user='%s' host='%s' password='%s' port='%s'" % credentials)
     except Exception as e:
-      raise Exception('Failed to connect to database with: %s' % repr(e))
+      raise Exception('Failed to connect to database.')
 
     sys.stdout.write("Connected to db\n")
     sys.stdout.flush()
@@ -63,7 +63,7 @@ class ThreadPoolMixIn(ThreadingMixIn):
           cursor.execute(prepare_statement)
           sql_conn.commit()
         except Exception as e:
-          raise Exception("Can't create prepare statements: %s" % repr(e))
+          raise Exception("Can't create prepare statements")
 
       cursor.execute("select exists(select name from pg_prepared_statements where name = 'query_by_range');")
 
@@ -75,9 +75,9 @@ class ThreadPoolMixIn(ThreadingMixIn):
           cursor.execute(prepare_statement)
           sql_conn.commit()
         except Exception as e:
-          raise Exception("Can't create prepare statements: %s" % repr(e))
+          raise Exception("Can't create prepare statements")
     except Exception as e:
-      raise Exception("Can't check for prepare statements: %s" % repr(e))
+      raise Exception("Can't check for prepare statements")
     self.sql_conn = sql_conn
     sys.stdout.write("Created prepare statements.\n")
     sys.stdout.flush()
