@@ -20,6 +20,7 @@ import psycopg2
 import os
 import time
 import calendar
+import datetime
 
 actions = set(['query_by_ids','query_by_range'])
 
@@ -71,7 +72,7 @@ class ThreadPoolMixIn(ThreadingMixIn):
         try:
           prepare_statement = "PREPARE query_by_range AS SELECT segment_id, prev_segment_id, start_time, " \
                               "start_time_dow, start_time_hour, end_time, speed, length FROM segments where " \
-                              "start_time >= $1 and start_time <= $2 order by segment_id, prev_segment_id;"
+                              "start_time >= $1 and start_time < $2 order by segment_id, prev_segment_id;"
           cursor.execute(prepare_statement)
           sql_conn.commit()
         except Exception as e:
@@ -144,8 +145,10 @@ class StoreHandler(BaseHTTPRequestHandler):
       if None in (start_date_time, end_date_time):
         cursor.execute("execute query_by_id (%s)",(list_of_ids,))
       else:
-        s_date_time = calendar.timegm(time.strptime(start_date_time,"%Y-%m-%dT%H:%M:%SZ"))
-        e_date_time = calendar.timegm(time.strptime(end_date_time,"%Y-%m-%dT%H:%M:%SZ"))
+        s_date_time = calendar.timegm(time.strptime(start_date_time,"%Y-%m-%d"))
+        # add a day so that we include the end day in the range.
+        d = datetime.datetime.strptime(end_date_time,"%Y-%m-%d") + datetime.timedelta(days=1)
+        e_date_time = calendar.timegm(d.timetuple())
 
         cursor.execute("execute query_by_range (%s, %s)",(s_date_time,e_date_time))
       rows = cursor.fetchall()      
