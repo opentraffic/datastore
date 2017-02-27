@@ -6,7 +6,7 @@ If you're running this from this directory you can start the server with the fol
 
 sample url looks like this:
 http://localhost:8004/query?segment_ids=203037887352,272596224888,194112691049
-http://localhost:8005/query?segment_ids=203037887352,272596224888,194112691049&start_date_time=2016-11-29T00:00:00&end_date_time=2016-12-01T16:00:00'''
+http://localhost:8004/query?segment_ids=203037887352,272596224888,194112691049&start_date_time=2016-11-29T00:00:00&end_date_time=2016-12-01T16:00:00'''
 
 import sys
 import json
