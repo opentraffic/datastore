@@ -2,10 +2,11 @@
 
 '''
 If you're running this from this directory you can start the server with the following command:
-./query.py localhost:8005
+./query.py localhost:8004
 
 sample url looks like this:
-http://localhost:8005/query_by_ids?json={"segments":[345678,345780,345795]}'''
+http://localhost:8004/query?segment_ids=203037887352,272596224888,194112691049
+http://localhost:8005/query?segment_ids=203037887352,272596224888,194112691049&start_date_time=2016-11-29T00:00:00&end_date_time=2016-12-01T16:00:00'''
 
 import sys
 import json
@@ -21,8 +22,9 @@ import os
 import time
 import calendar
 import datetime
+import urllib
 
-actions = set(['query_by_ids','query_by_range'])
+actions = set(['query'])
 
 #use a thread pool instead of just frittering off new threads for every request
 class ThreadPoolMixIn(ThreadingMixIn):
@@ -58,9 +60,8 @@ class ThreadPoolMixIn(ThreadingMixIn):
 
       if cursor.fetchone()[0] == False:
         try:
-          prepare_statement = "PREPARE query_by_id AS SELECT segment_id, prev_segment_id, start_time, " \
-                              "start_time_dow, start_time_hour, end_time, speed, length FROM segments where " \
-                              "segment_id = ANY ($1) order by segment_id, prev_segment_id;"
+          prepare_statement = "PREPARE query_by_id AS SELECT segment_id, avg(speed) as average_speed FROM " \
+                              " segments where segment_id = ANY ($1) group by segment_id;"
           cursor.execute(prepare_statement)
           sql_conn.commit()
         except Exception as e:
@@ -70,13 +71,14 @@ class ThreadPoolMixIn(ThreadingMixIn):
 
       if cursor.fetchone()[0] == False:
         try:
-          prepare_statement = "PREPARE query_by_range AS SELECT segment_id, prev_segment_id, start_time, " \
-                              "start_time_dow, start_time_hour, end_time, speed, length FROM segments where " \
-                              "start_time >= $1 and start_time < $2 order by segment_id, prev_segment_id;"
+          prepare_statement = "PREPARE query_by_range AS SELECT segment_id, avg(speed) as average_speed FROM " \
+                              "segments where segment_id = ANY ($1) and ((start_time >= $2 and start_time < $3) " \
+                              "and (end_time >= $4 and end_time < $5)) group by segment_id;"
           cursor.execute(prepare_statement)
           sql_conn.commit()
         except Exception as e:
           raise Exception("Can't create prepare statements")
+
     except Exception as e:
       raise Exception("Can't check for prepare statements")
     self.sql_conn = sql_conn
@@ -102,10 +104,10 @@ class ThreadedHTTPServer(ThreadPoolMixIn, HTTPServer):
   pass
 
 #custom handler for getting routes
-class StoreHandler(BaseHTTPRequestHandler):
+class QueryHandler(BaseHTTPRequestHandler):
 
   #boiler plate parsing
-  def parse_segments(self, post):
+  def parse_url(self, post):
     #split the query from the path
     try:
       split = urlparse.urlsplit(self.path)
@@ -120,58 +122,64 @@ class StoreHandler(BaseHTTPRequestHandler):
     #handle POST
     if post:
       body = self.rfile.read(int(self.headers['Content-Length'])).decode('utf-8')
-      return json.loads(body)
+      params = urlparse.parse_qs(body)
+      return params
     #handle GET
     else:
       params = urlparse.parse_qs(split.query)
-      if 'json' in params:      
-        return json.loads(params['json'][0])
-    raise Exception('No json provided')
+      return params
 
   #parse the request because we dont get this for free!
   def handle_request(self, post):
     #get the query data
-    segments = self.parse_segments(post)
+    params = self.parse_url(post)
 
     try:   
-      # get the provider. 
-      list_of_ids = segments['segments'] if 'segments' in segments else None
-      start_date_time = segments.get('start_date_time', None)
-      end_date_time = segments.get('end_date_time', None)
+      # get the kvs
+      ids = s_date_time = e_date_time = None
+      list_of_ids = params['segment_ids'] if 'segment_ids' in params else None
+      start_date_time = params.get('start_date_time', None)
+      end_date_time = params.get('end_date_time', None)
       cursor = self.server.sql_conn.cursor()
 
-      # send it to the cursor.
-
-      if None in (start_date_time, end_date_time):
-        cursor.execute("execute query_by_id (%s)",(list_of_ids,))
+      #ids will come in as csv string.  we must split and cast to list
+      #so that the cursor can bind the list.
+      if list_of_ids:
+        ids = [ int(i) for i in list_of_ids[0].split(',')]
       else:
-        s_date_time = calendar.timegm(time.strptime(start_date_time,"%Y-%m-%d"))
-        # add a day so that we include the end day in the range.
-        d = datetime.datetime.strptime(end_date_time,"%Y-%m-%d") + datetime.timedelta(days=1)
-        e_date_time = calendar.timegm(d.timetuple())
+        # for now return error...ids are required.
+        return 400, "Please provide a list of ids."
 
-        cursor.execute("execute query_by_range (%s, %s)",(s_date_time,e_date_time))
-      rows = cursor.fetchall()      
+      if start_date_time and not end_date_time:
+        return 400, "Please provide an end_date_time."
+      elif end_date_time and not start_date_time:
+        return 400, "Please provide a start_date_time."
+
+      if start_date_time:
+        s_date_time = calendar.timegm(time.strptime(start_date_time[0],"%Y-%m-%dT%H:%M:%S"))
+
+      if end_date_time:
+        e_date_time = calendar.timegm(time.strptime(end_date_time[0],"%Y-%m-%dT%H:%M:%S"))
+
+      #id only query
+      if list_of_ids and all(_ is None for _ in (s_date_time, e_date_time)):
+        cursor.execute("execute query_by_id (%s)",(ids,))
+      # id and date query
+      elif all(_ is not None for _ in (list_of_ids, s_date_time, e_date_time)):
+        cursor.execute("execute query_by_range (%s, %s, %s, %s, %s)",
+                      ((ids,),s_date_time,e_date_time,s_date_time,e_date_time))
+
+      rows = cursor.fetchall()
       segments = {'segments':[]}
-
+      columns = ['segment_id', 'average_speed']
       for row in rows:
-        d = dict()
-        d['segment_id'] = row[0]
-        d['prev_segment_id'] = row[1]
-        d['start_time'] = row[2]
-        d['start_time_dow'] = row[3]
-        d['start_time_hour'] = row[4]
-        d['end_time'] = row[5]
-        d['speed'] = row[6]
-        d['length'] = row[7]
-
-        segments['segments'].append(d)
-
+        segment = dict(zip(columns, row))
+        segments['segments'].append(segment)
       results = json.dumps(segments)
 
     except Exception as e:
       # must commit if failure
-      #self.server.sql_conn.commit()             
+      self.server.sql_conn.commit()
       return 400, str(e)
 
     #hand it back
@@ -255,8 +263,8 @@ if __name__ == '__main__':
   initialize_db()
   
   #setup the server
-  StoreHandler.protocol_version = 'HTTP/1.0'
-  httpd = ThreadedHTTPServer(address, StoreHandler)
+  QueryHandler.protocol_version = 'HTTP/1.0'
+  httpd = ThreadedHTTPServer(address, QueryHandler)
 
   #wait until interrupt
   try:
