@@ -2,11 +2,11 @@
 
 '''
 If you're running this from this directory you can start the server with the following command:
-./datastore_service.py localhost:8003
+./query.py localhost:8004
 
 sample url looks like this:
-http://localhost:8003/store?json={"segments": [{"segment_id": 345678,"prev_segment_id": 356789,"start_time": 98765,"end_time": 98777,"length":555}, {"segment_id": 345780,"start_time": 98767,"end_time": 98779,"length":678}, {"segment_id": 345795,"prev_segment_id": 656784,"start_time": 98725,"end_time": 98778,"length":479}, {"segment_id": 545678,"prev_segment_id": 556789,"start_time": 98735,"end_time": 98747,"length":1234}],"provider": 123456,"mode": "auto"}
-'''
+http://localhost:8004/query?segment_ids=203037887352,272596224888,194112691049
+http://localhost:8004/query?segment_ids=203037887352,272596224888,194112691049&start_date_time=2016-11-29T00:00:00&end_date_time=2016-12-01T16:00:00'''
 
 import sys
 import json
@@ -20,8 +20,11 @@ from cgi import urlparse
 import psycopg2
 import os
 import time
+import calendar
+import datetime
+import urllib
 
-actions = set(['store'])
+actions = set(['query'])
 
 #use a thread pool instead of just frittering off new threads for every request
 class ThreadPoolMixIn(ThreadingMixIn):
@@ -45,30 +48,42 @@ class ThreadPoolMixIn(ThreadingMixIn):
     try:
       sql_conn = psycopg2.connect("dbname='%s' user='%s' host='%s' password='%s' port='%s'" % credentials)
     except Exception as e:
-      raise Exception('Failed to connect to database')
+      raise Exception('Failed to connect to database.')
 
     sys.stdout.write("Connected to db\n")
     sys.stdout.flush()
 
     try:
-      # check and see if prepared statement exists...if not, create it
+      # check and see if prepare statements exists...if not, create them
       cursor = sql_conn.cursor()
-      cursor.execute("select exists(select name from pg_prepared_statements where name = 'report');")
+      cursor.execute("select exists(select name from pg_prepared_statements where name = 'query_by_id');")
 
       if cursor.fetchone()[0] == False:
         try:
-          prepare_statement = "PREPARE report AS INSERT INTO segments (segment_id,prev_segment_id,mode," \
-                              "start_time,start_time_dow,start_time_hour,end_time,length,speed,provider) " \
-                              "VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10);"
+          prepare_statement = "PREPARE query_by_id AS SELECT segment_id, avg(speed) as average_speed FROM " \
+                              " segments where segment_id = ANY ($1) group by segment_id;"
           cursor.execute(prepare_statement)
           sql_conn.commit()
-          sys.stdout.write("Created prepare statement.\n")
-          sys.stdout.flush()
         except Exception as e:
-          raise Exception("Can't create prepare statement")
+          raise Exception("Can't create prepare statements")
+
+      cursor.execute("select exists(select name from pg_prepared_statements where name = 'query_by_range');")
+
+      if cursor.fetchone()[0] == False:
+        try:
+          prepare_statement = "PREPARE query_by_range AS SELECT segment_id, avg(speed) as average_speed FROM " \
+                              "segments where segment_id = ANY ($1) and ((start_time >= $2 and start_time < $3) " \
+                              "and (end_time >= $4 and end_time < $5)) group by segment_id;"
+          cursor.execute(prepare_statement)
+          sql_conn.commit()
+        except Exception as e:
+          raise Exception("Can't create prepare statements")
+
     except Exception as e:
-      raise Exception("Can't check for prepare statement")
+      raise Exception("Can't check for prepare statements")
     self.sql_conn = sql_conn
+    sys.stdout.write("Created prepare statements.\n")
+    sys.stdout.flush()
 
   def process_request_thread(self):
     self.make_thread_locals()
@@ -89,10 +104,10 @@ class ThreadedHTTPServer(ThreadPoolMixIn, HTTPServer):
   pass
 
 #custom handler for getting routes
-class StoreHandler(BaseHTTPRequestHandler):
+class QueryHandler(BaseHTTPRequestHandler):
 
   #boiler plate parsing
-  def parse_segments(self, post):
+  def parse_url(self, post):
     #split the query from the path
     try:
       split = urlparse.urlsplit(self.path)
@@ -107,58 +122,73 @@ class StoreHandler(BaseHTTPRequestHandler):
     #handle POST
     if post:
       body = self.rfile.read(int(self.headers['Content-Length'])).decode('utf-8')
-      return json.loads(body)
+      params = urlparse.parse_qs(body)
+      return params
     #handle GET
     else:
       params = urlparse.parse_qs(split.query)
-      if 'json' in params:      
-        return json.loads(params['json'][0])
-    raise Exception('No json provided')
+      return params
 
   #parse the request because we dont get this for free!
   def handle_request(self, post):
-    #get the reporter data
-    segments = self.parse_segments(post)
+    #get the query data
+    params = self.parse_url(post)
 
     try:   
-      # get the provider. 
-      provider = segments['provider']
-      mode = segments['mode']
+      # get the kvs
+      ids = s_date_time = e_date_time = None
+      list_of_ids = params['segment_ids'] if 'segment_ids' in params else None
+      start_date_time = params.get('start_date_time', None)
+      end_date_time = params.get('end_date_time', None)
+      cursor = self.server.sql_conn.cursor()
 
-      # get the segments and loop over to get the rest of the data.
-      for segment in segments['segments']:
-        segment_id = segment['segment_id']
-        prev_segment_id = segment.get('prev_segment_id', None)
-        start_time = segment['start_time']
-        start_time_dow = time.strftime("%w", time.gmtime(start_time))
-        start_time_hour = time.strftime("%H", time.gmtime(start_time))
-        end_time = segment['end_time']
-        length = segment['length']
+      #ids will come in as csv string.  we must split and cast to list
+      #so that the cursor can bind the list.
+      if list_of_ids:
+        ids = [ int(i) for i in list_of_ids[0].split(',')]
+      else:
+        # for now return error...ids are required.
+        return 400, "Please provide a list of ids."
 
-        seconds = end_time - start_time
-        if seconds <= 0:
-          speed = 0.0
-        else:
-          #kph
-          speed = round((length / (seconds * 1.0))*3.6,2)
+      if start_date_time and not end_date_time:
+        return 400, "Please provide an end_date_time."
+      elif end_date_time and not start_date_time:
+        return 400, "Please provide a start_date_time."
 
-        # send it to the cursor.
-        self.server.sql_conn.cursor().execute("execute report (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",
-          (segment_id, prev_segment_id, mode, start_time, start_time_dow, start_time_hour, 
-           end_time, length, speed, provider))
+      if start_date_time:
+        s_date_time = calendar.timegm(time.strptime(start_date_time[0],"%Y-%m-%dT%H:%M:%S"))
 
-      # write all the data to the db.
-      self.server.sql_conn.commit()                
+      if end_date_time:
+        e_date_time = calendar.timegm(time.strptime(end_date_time[0],"%Y-%m-%dT%H:%M:%S"))
+
+      #id only query
+      if list_of_ids and all(parameters is None for parameters in (s_date_time, e_date_time)):
+        cursor.execute("execute query_by_id (%s)",(ids,))
+      # id and date query
+      elif all(parameters is not None for parameters in (list_of_ids, s_date_time, e_date_time)):
+        cursor.execute("execute query_by_range (%s, %s, %s, %s, %s)",
+                      ((ids,),s_date_time,e_date_time,s_date_time,e_date_time))
+
+      rows = cursor.fetchall()
+      results = {'segments':[]}
+      columns = ['segment_id', 'average_speed']
+      for row in rows:
+        segment = dict(zip(columns, row))
+        results['segments'].append(segment)
+
     except Exception as e:
+      # must commit if failure
       self.server.sql_conn.commit()
       return 400, str(e)
 
     #hand it back
-    return 200, 'ok'
+    return 200, results
 
   #send an answer
   def answer(self, code, body):
-    response = json.dumps({'response': body })
+
+    response = json.dumps(body, separators=(',', ':')) if type(body) == dict else json.dumps({'response': body})
+
     self.send_response(code)
 
     #set some basic info
@@ -202,21 +232,9 @@ def initialize_db():
     cursor.execute("select exists(select relname from pg_class where relname = 'segments' and relkind='r');")
 
     if cursor.fetchone()[0] == False:
-      sys.stdout.write("Creating tables.\n")
+      sys.stdout.write("No tables exist!\n".format(e))
       sys.stdout.flush()
-      try:
-        cursor.execute("CREATE TABLE segments(segment_id bigint, prev_segment_id bigint, " \
-                       "mode text,start_time integer,start_time_dow smallint, start_time_hour smallint, " \
-                       "end_time integer, length integer, speed float, provider text); " \
-                       "CREATE INDEX index_segment ON segments (segment_id); CREATE INDEX index_id_range ON " \
-                       "segments (segment_id, start_time, end_time);")
-        sql_conn.commit()
-        sys.stdout.write("Done.\n")
-        sys.stdout.flush()
-      except Exception as e:
-        sys.stdout.write("Can't create tables: {0}\n".format(e))
-        sys.stdout.flush()
-        sys.exit(1)
+      sys.exit(1)
   except Exception as e:
     sys.stdout.write("Can't check for tables.: {0}\n".format(e))
     sys.stdout.flush()
@@ -246,8 +264,8 @@ if __name__ == '__main__':
   initialize_db()
   
   #setup the server
-  StoreHandler.protocol_version = 'HTTP/1.0'
-  httpd = ThreadedHTTPServer(address, StoreHandler)
+  QueryHandler.protocol_version = 'HTTP/1.0'
+  httpd = ThreadedHTTPServer(address, QueryHandler)
 
   #wait until interrupt
   try:
