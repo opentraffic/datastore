@@ -170,12 +170,11 @@ class QueryHandler(BaseHTTPRequestHandler):
                       ((ids,),s_date_time,e_date_time,s_date_time,e_date_time))
 
       rows = cursor.fetchall()
-      segments = {'segments':[]}
+      results = {'segments':[]}
       columns = ['segment_id', 'average_speed']
       for row in rows:
         segment = dict(zip(columns, row))
-        segments['segments'].append(segment)
-      results = json.dumps(segments)
+        results['segments'].append(segment)
 
     except Exception as e:
       # must commit if failure
@@ -183,11 +182,13 @@ class QueryHandler(BaseHTTPRequestHandler):
       return 400, str(e)
 
     #hand it back
-    return 200, json.loads(results)
+    return 200, results
 
   #send an answer
   def answer(self, code, body):
-    response = json.dumps({'response': body })
+
+    response = json.dumps(body, separators=(',', ':')) if type(body) == dict else json.dumps({'response': body})
+
     self.send_response(code)
 
     #set some basic info
