@@ -162,10 +162,10 @@ class QueryHandler(BaseHTTPRequestHandler):
         e_date_time = calendar.timegm(time.strptime(end_date_time[0],"%Y-%m-%dT%H:%M:%S"))
 
       #id only query
-      if list_of_ids and all(_ is None for _ in (s_date_time, e_date_time)):
+      if list_of_ids and all(parameters is None for parameters in (s_date_time, e_date_time)):
         cursor.execute("execute query_by_id (%s)",(ids,))
       # id and date query
-      elif all(_ is not None for _ in (list_of_ids, s_date_time, e_date_time)):
+      elif all(parameters is not None for parameters in (list_of_ids, s_date_time, e_date_time)):
         cursor.execute("execute query_by_range (%s, %s, %s, %s, %s)",
                       ((ids,),s_date_time,e_date_time,s_date_time,e_date_time))
 
