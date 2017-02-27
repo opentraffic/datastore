@@ -208,8 +208,8 @@ def initialize_db():
         cursor.execute("CREATE TABLE segments(segment_id bigint, prev_segment_id bigint, " \
                        "mode text,start_time integer,start_time_dow smallint, start_time_hour smallint, " \
                        "end_time integer, length integer, speed float, provider text); " \
-                       "CREATE INDEX index_segment ON segments (segment_id); CREATE INDEX index_range ON " \
-                       "segments (start_time, end_time);")
+                       "CREATE INDEX index_segment ON segments (segment_id); CREATE INDEX index_id_range ON " \
+                       "segments (segment_id, start_time, end_time);")
         sql_conn.commit()
         sys.stdout.write("Done.\n")
         sys.stdout.flush()
