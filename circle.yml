@@ -23,4 +23,4 @@ deployment:
   dev:
     branch: dev
     commands:
-      - deploy/ecs.sh --env prod --region us-east-1 --mem-reservation 512 --cpu-reservation 1024
+      - deploy/ecs.sh --env dev --region us-east-1 --mem-reservation 512 --cpu-reservation 1024
