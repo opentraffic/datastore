@@ -12,37 +12,63 @@ CPU=1024
 REGION="us-east-1"
 ENV="bogus"
 
-if [ -z $1 ]
-then
+if [ -z $1 ]; then
   usage
 fi
 
 while [[ $# -gt 0 ]]
 do
   case "$1" in
-  --env|-e)
-    ENV=$2
-    shift
-    ;;
+    --env|-e)
+      case "$2" in
+        'prod'|'dev')
+          ENV=$2
+		      shift
+        ;;
 
-  --region|-r)
-    REGION=$2
-    shift
-    ;;
+        *)
+          usage
+          ;;
+      esac
+      ;;
 
-  --cpu-reservation|-c)
-    CPU=$2
-    shift
-    ;;
+    --region|-r)
+      case "$2" in
+        'us-east-1')
+          REGION=$2
+		      shift
+          ;;
+        *)
+          usage
+          ;;
+      esac
+      ;;
 
-  --mem-reservation|-m)
-    MEM=$2
-    shift
-    ;;
+    --cpu-reservation|-c)
+		  re='^[0-9]+$'
+		  if ! [[ "$2" =~ $re ]]; then
+        echo "error: --cpu-reservation needs to be an integer" >&2
+        usage
+      else
+        CPU=$2
+		    shift
+      fi
+      ;;
 
-  *)
-    usage
-    ;;
+    --mem-reservation|-m)
+		  re='^[0-9]+$'
+		  if ! [[ "$2" =~ $re ]]; then
+        echo "error: --mem-reservation needs to be an integer" >&2
+        usage
+      else
+        MEM=$2
+        shift
+      fi
+      ;;
+
+    *)
+      usage
+      ;;
   esac
   shift
 done
