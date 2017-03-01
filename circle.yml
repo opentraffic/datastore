@@ -4,7 +4,8 @@ machine:
 
 dependencies:
   pre:
-    - sudo apt-get update; sudo apt-get install jq
+    - sudo apt-get update; sudo apt-get install jq git
+    - git clone git@github.com:opentraffic/ecs-deploy
   override:
     - docker info
     - docker build --rm=false -t datastore:latest .
@@ -17,10 +18,10 @@ deployment:
   prod:
     branch: master
     commands:
-      - deploy/ecs.sh --env prod --region us-east-1 --mem-reservation 512 --cpu-reservation 512
+      - ecs-deploy/bin/circle.sh --env prod --region us-east-1 --project datastore
       - deploy/dockerhub.sh
 
   dev:
     branch: dev
     commands:
-      - deploy/ecs.sh --env dev --region us-east-1 --mem-reservation 512 --cpu-reservation 512
+      - ecs-deploy/bin/circle.sh --env dev --region us-east-1 --project datastore
