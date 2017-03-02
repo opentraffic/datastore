@@ -29,8 +29,9 @@ class ThreadPoolMixIn(ThreadingMixIn):
 
   def serve_forever(self):
     # set up the threadpool
-    self.requests = Queue(int(os.environ.get('THREAD_POOL_MULTIPLIER', 1)) * multiprocessing.cpu_count())
-    for x in range(multiprocessing.cpu_count()):
+    pool_size = int(os.environ.get('THREAD_POOL_MULTIPLIER', 1)) * multiprocessing.cpu_count()
+    self.requests = Queue(pool_size)
+    for x in range(pool_size):
       t = threading.Thread(target = self.process_request_thread)
       t.setDaemon(1)
       t.start()

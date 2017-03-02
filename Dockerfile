@@ -24,6 +24,7 @@ RUN apt-get clean && \
       rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 EXPOSE ${STORE_LISTEN_PORT}
+EXPOSE 5432
 
 # start the datastore service
 CMD python -u /datastore/datastore_service.py ${STORE_BIND_ADDR}:${STORE_LISTEN_PORT}
