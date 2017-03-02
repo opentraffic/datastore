@@ -18,10 +18,10 @@ deployment:
   prod:
     branch: master
     commands:
-      - ecs-deploy/bin/circle.sh --env prod --region us-east-1 --project datastore
+      - ecs-deploy/bin/deploy.sh --env prod --region us-east-1 --project datastore
       - deploy/dockerhub.sh
 
   dev:
     branch: dev
     commands:
-      - ecs-deploy/bin/circle.sh --env dev --region us-east-1 --project datastore
+      - ecs-deploy/bin/deploy.sh --env dev --region us-east-1 --project datastore
