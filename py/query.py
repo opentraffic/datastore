@@ -30,6 +30,7 @@ import time
 import calendar
 import datetime
 import urllib
+from distutils.util import strtobool
 
 actions = set(['query'])
 
@@ -80,8 +81,8 @@ class ThreadPoolMixIn(ThreadingMixIn):
       if cursor.fetchone()[0] == False:
         try:
           prepare_statement = "PREPARE q_ids_date_hours_dow AS SELECT segment_id, avg(speed) as average_speed, " \
-                              "start_time_dow as dow, start_time_hour as hour FROM segments where " \
-                              "segment_id = ANY ($1) and " \
+                              "start_time_dow as dow, start_time_hour as hour, count(segment_id) as observation_count " \
+                              "FROM segments where segment_id = ANY ($1) and " \
                               "((start_time >= $2 and start_time <= $3) and (end_time >= $2 and end_time <= $3)) and " \
                               "(start_time_hour = ANY ($4) and end_time_hour = ANY ($4)) and " \
                               "(start_time_dow = ANY ($5) and end_time_dow = ANY ($5)) " \
@@ -126,8 +127,8 @@ class ThreadPoolMixIn(ThreadingMixIn):
       if cursor.fetchone()[0] == False:
         try:
           prepare_statement = "PREPARE q_ids_hours_dow AS SELECT segment_id, avg(speed) as average_speed, " \
-                              "start_time_dow as dow, start_time_hour as hour FROM segments where " \
-                              "segment_id = ANY ($1) and " \
+                              "start_time_dow as dow, start_time_hour as hour, count(segment_id) as observation_count " \
+                              "FROM segments where segment_id = ANY ($1) and " \
                               "(start_time_hour = ANY ($2) and end_time_hour = ANY ($2)) and " \
                               "(start_time_dow = ANY ($3) and end_time_dow = ANY ($3)) " \
                               "group by segment_id, start_time_dow, start_time_hour;"
@@ -241,6 +242,7 @@ class QueryHandler(BaseHTTPRequestHandler):
       list_of_hours = params['hours'] if 'hours' in params else None
       start_date_time = params.get('start_date_time', None)
       end_date_time = params.get('end_date_time', None)
+      include_observation_counts = params.get('include_observation_counts', None)
       cursor = self.server.sql_conn.cursor()
 
       #ids will come in as csv string.  we must split and cast to list
@@ -268,6 +270,16 @@ class QueryHandler(BaseHTTPRequestHandler):
       if list_of_hours:
         hours = [ int(i) for i in list_of_hours[0].split(',')]
 
+      #observation counts for authorized users.
+      try:
+        if include_observation_counts:
+          include_observation_counts = bool(strtobool(str(include_observation_counts[0])))
+        else:
+          include_observation_counts = False
+      #invalid value entered.
+      except:
+        include_observation_counts = False
+
       columns = ['segment_id', 'average_speed']
       # id only query
       if all(parameters is None for parameters in (s_date_time, e_date_time, hours, dow)):
@@ -277,7 +289,10 @@ class QueryHandler(BaseHTTPRequestHandler):
       elif all(parameters is not None for parameters in (s_date_time, e_date_time, hours, dow)):
         cursor.execute("execute q_ids_date_hours_dow (%s, %s, %s, %s, %s)",
                       ((ids,),s_date_time,e_date_time,(hours,),(dow,)))
-        columns = ['segment_id', 'average_speed', 'dow', 'hour']
+        if include_observation_counts:
+          columns = ['segment_id', 'average_speed', 'dow', 'hour', 'observation_count']
+        else:
+          columns = ['segment_id', 'average_speed', 'dow', 'hour']
 
       # id, date, and hours query
       elif all(parameters is not None for parameters in (s_date_time, e_date_time, hours)):
@@ -295,7 +310,10 @@ class QueryHandler(BaseHTTPRequestHandler):
       elif all(parameters is not None for parameters in (hours, dow)):
         cursor.execute("execute q_ids_hours_dow (%s, %s, %s)",
                       ((ids,),(hours,),(dow,)))
-        columns = ['segment_id', 'average_speed', 'dow', 'hour']
+        if include_observation_counts:
+          columns = ['segment_id', 'average_speed', 'dow', 'hour', 'observation_count']
+        else:
+          columns = ['segment_id', 'average_speed', 'dow', 'hour']
 
       # id and date query
       elif all(parameters is not None for parameters in (s_date_time, e_date_time)):
