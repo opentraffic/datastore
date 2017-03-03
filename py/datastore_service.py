@@ -58,8 +58,8 @@ class ThreadPoolMixIn(ThreadingMixIn):
       if cursor.fetchone()[0] == False:
         try:
           prepare_statement = "PREPARE report AS INSERT INTO segments (segment_id,prev_segment_id,mode," \
-                              "start_time,start_time_dow,start_time_hour,end_time,length,speed,provider) " \
-                              "VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10);"
+                              "start_time,start_time_dow,start_time_hour,end_time,end_time_dow,"\
+                              "end_time_hour,length,speed,provider) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12);"
           cursor.execute(prepare_statement)
           sql_conn.commit()
           sys.stdout.write("Created prepare statement.\n")
@@ -133,6 +133,8 @@ class StoreHandler(BaseHTTPRequestHandler):
         start_time_dow = time.strftime("%w", time.gmtime(start_time))
         start_time_hour = time.strftime("%H", time.gmtime(start_time))
         end_time = segment['end_time']
+        end_time_dow = time.strftime("%w", time.gmtime(end_time))
+        end_time_hour = time.strftime("%H", time.gmtime(end_time))
         length = segment['length']
 
         seconds = end_time - start_time
@@ -143,9 +145,9 @@ class StoreHandler(BaseHTTPRequestHandler):
           speed = round((length / (seconds * 1.0))*3.6,2)
 
         # send it to the cursor.
-        self.server.sql_conn.cursor().execute("execute report (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",
+        self.server.sql_conn.cursor().execute("execute report (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",
           (segment_id, prev_segment_id, mode, start_time, start_time_dow, start_time_hour, 
-           end_time, length, speed, provider))
+           end_time, end_time_dow, end_time_hour, length, speed, provider))
 
       # write all the data to the db.
       self.server.sql_conn.commit()                
@@ -207,9 +209,16 @@ def initialize_db():
       try:
         cursor.execute("CREATE TABLE segments(segment_id bigint, prev_segment_id bigint, " \
                        "mode text,start_time integer,start_time_dow smallint, start_time_hour smallint, " \
-                       "end_time integer, length integer, speed float, provider text); " \
-                       "CREATE INDEX index_segment ON segments (segment_id); CREATE INDEX index_id_range ON " \
-                       "segments (segment_id, start_time, end_time);")
+                       "end_time integer, end_time_dow smallint, end_time_hour smallint, length integer, " \
+                       "speed float, provider text); " \
+                       "CREATE INDEX index_ids ON segments (segment_id);" \
+                       "CREATE INDEX index_ids_dates ON segments (segment_id,start_time,end_time);" \
+                       "CREATE INDEX index_ids_dow ON segments (segment_id,start_time_dow,end_time_dow);" \
+                       "CREATE INDEX index_ids_hours ON segments (segment_id,start_time_hour,end_time_hour);" \
+                       "CREATE INDEX index_ids_hours_dow ON segments (segment_id,start_time_dow,start_time_hour,end_time_dow,end_time_hour);" \
+                       "CREATE INDEX index_ids_dates_hours ON segments (segment_id,start_time,start_time_hour,end_time,end_time_hour);" \
+                       "CREATE INDEX index_ids_dates_dow ON segments (segment_id,start_time,start_time_dow,end_time,end_time_dow);" \
+                       "CREATE INDEX index_ids_dates_hours_dow ON segments (segment_id,start_time,start_time_dow,start_time_hour,end_time,end_time_dow,end_time_hour);")
         sql_conn.commit()
         sys.stdout.write("Done.\n")
         sys.stdout.flush()

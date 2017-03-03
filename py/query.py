@@ -5,8 +5,15 @@ If you're running this from this directory you can start the server with the fol
 ./query.py localhost:8004
 
 sample url looks like this:
-http://localhost:8004/query?segment_ids=203037887352,272596224888,194112691049
-http://localhost:8004/query?segment_ids=203037887352,272596224888,194112691049&start_date_time=2016-11-29T00:00:00&end_date_time=2016-12-01T16:00:00'''
+http://localhost:8004/query?segment_ids=19320,67128184
+http://localhost:8004/query?segment_ids=19320,67128184&start_date_time=2017-01-02T00:00:00&end_date_time=2017-03-07T16:00:00
+http://localhost:8004/query?segment_ids=19320,67128184&dow=0
+http://localhost:8004/query?segment_ids=19320,67128184&hours=11,12,3
+http://localhost:8004/query?segment_ids=19320,67128184&hours=11,12,3&dow=0,1,2,3,4,5,6
+http://localhost:8004/query?segment_ids=19320,67128184&start_date_time=2017-01-02T00:00:00&end_date_time=2017-03-07T16:00:00&hours=11,12,3,0
+http://localhost:8004/query?segment_ids=19320,67128184&start_date_time=2017-01-02T00:00:00&end_date_time=2017-03-07T16:00:00&dow=0,1,2,3,4,5,6
+http://localhost:8004/query?segment_ids=19320,67128184&start_date_time=2017-01-02T00:00:00&end_date_time=2017-03-07T16:00:00&hours=11,12,3,0&dow=0,1,2,3,4,5,6
+'''
 
 import sys
 import json
@@ -23,6 +30,7 @@ import time
 import calendar
 import datetime
 import urllib
+from distutils.util import strtobool
 
 actions = set(['query'])
 
@@ -56,24 +64,116 @@ class ThreadPoolMixIn(ThreadingMixIn):
     try:
       # check and see if prepare statements exists...if not, create them
       cursor = sql_conn.cursor()
-      cursor.execute("select exists(select name from pg_prepared_statements where name = 'query_by_id');")
 
+      # id only query
+      cursor.execute("select exists(select name from pg_prepared_statements where name = 'q_ids');")
       if cursor.fetchone()[0] == False:
         try:
-          prepare_statement = "PREPARE query_by_id AS SELECT segment_id, avg(speed) as average_speed FROM " \
+          prepare_statement = "PREPARE q_ids AS SELECT segment_id, avg(speed) as average_speed FROM " \
                               " segments where segment_id = ANY ($1) group by segment_id;"
           cursor.execute(prepare_statement)
           sql_conn.commit()
         except Exception as e:
           raise Exception("Can't create prepare statements")
 
-      cursor.execute("select exists(select name from pg_prepared_statements where name = 'query_by_range');")
-
+      # id, date, hours, and dow query
+      cursor.execute("select exists(select name from pg_prepared_statements where name = 'q_ids_date_hours_dow');")
       if cursor.fetchone()[0] == False:
         try:
-          prepare_statement = "PREPARE query_by_range AS SELECT segment_id, avg(speed) as average_speed FROM " \
-                              "segments where segment_id = ANY ($1) and ((start_time >= $2 and start_time < $3) " \
-                              "and (end_time >= $4 and end_time < $5)) group by segment_id;"
+          prepare_statement = "PREPARE q_ids_date_hours_dow AS SELECT segment_id, avg(speed) as average_speed, " \
+                              "start_time_dow as dow, start_time_hour as hour, count(segment_id) as observation_count " \
+                              "FROM segments where segment_id = ANY ($1) and " \
+                              "((start_time >= $2 and start_time <= $3) and (end_time >= $2 and end_time <= $3)) and " \
+                              "(start_time_hour = ANY ($4) and end_time_hour = ANY ($4)) and " \
+                              "(start_time_dow = ANY ($5) and end_time_dow = ANY ($5)) " \
+                              "group by segment_id, start_time_dow, start_time_hour;"
+          cursor.execute(prepare_statement)
+          sql_conn.commit()
+        except Exception as e:
+          raise Exception("Can't create prepare statements")
+
+      # id, date, and hours query
+      cursor.execute("select exists(select name from pg_prepared_statements where name = 'q_ids_date_hours');")
+      if cursor.fetchone()[0] == False:
+        try:
+          prepare_statement = "PREPARE q_ids_date_hours AS SELECT segment_id, avg(speed) as average_speed, " \
+                              "start_time_hour as hour FROM segments where " \
+                              "segment_id = ANY ($1) and " \
+                              "((start_time >= $2 and start_time <= $3) and (end_time >= $2 and end_time <= $3)) and " \
+                              "(start_time_hour = ANY ($4) and end_time_hour = ANY ($4)) " \
+                              "group by segment_id, start_time_hour;"
+          cursor.execute(prepare_statement)
+          sql_conn.commit()
+        except Exception as e:
+          raise Exception("Can't create prepare statements")
+
+      # id, date, and dow query
+      cursor.execute("select exists(select name from pg_prepared_statements where name = 'q_ids_date_dow');")
+      if cursor.fetchone()[0] == False:
+        try:
+          prepare_statement = "PREPARE q_ids_date_dow AS SELECT segment_id, avg(speed) as average_speed, " \
+                              "start_time_dow as dow FROM segments where " \
+                              "segment_id = ANY ($1) and " \
+                              "((start_time >= $2 and start_time <= $3) and (end_time >= $2 and end_time <= $3)) and " \
+                              "(start_time_dow = ANY ($4) and end_time_dow = ANY ($4)) " \
+                              "group by segment_id, start_time_dow;"
+          cursor.execute(prepare_statement)
+          sql_conn.commit()
+        except Exception as e:
+          raise Exception("Can't create prepare statements")
+
+      # id, hours, and dow query
+      cursor.execute("select exists(select name from pg_prepared_statements where name = 'q_ids_hours_dow');")
+      if cursor.fetchone()[0] == False:
+        try:
+          prepare_statement = "PREPARE q_ids_hours_dow AS SELECT segment_id, avg(speed) as average_speed, " \
+                              "start_time_dow as dow, start_time_hour as hour, count(segment_id) as observation_count " \
+                              "FROM segments where segment_id = ANY ($1) and " \
+                              "(start_time_hour = ANY ($2) and end_time_hour = ANY ($2)) and " \
+                              "(start_time_dow = ANY ($3) and end_time_dow = ANY ($3)) " \
+                              "group by segment_id, start_time_dow, start_time_hour;"
+          cursor.execute(prepare_statement)
+          sql_conn.commit()
+        except Exception as e:
+          raise Exception("Can't create prepare statements")
+
+      # id and date
+      cursor.execute("select exists(select name from pg_prepared_statements where name = 'q_ids_date');")
+      if cursor.fetchone()[0] == False:
+        try:
+          prepare_statement = "PREPARE q_ids_date AS SELECT segment_id, avg(speed) as average_speed " \
+                              "FROM segments where " \
+                              "segment_id = ANY ($1) and " \
+                              "((start_time >= $2 and start_time <= $3) and (end_time >= $2 and end_time <= $3)) " \
+                              "group by segment_id;"
+          cursor.execute(prepare_statement)
+          sql_conn.commit()
+        except Exception as e:
+          raise Exception("Can't create prepare statements")
+
+      # id and hours query
+      cursor.execute("select exists(select name from pg_prepared_statements where name = 'q_ids_hours');")
+      if cursor.fetchone()[0] == False:
+        try:
+          prepare_statement = "PREPARE q_ids_hours AS SELECT segment_id, avg(speed) as average_speed, " \
+                              "start_time_hour as hour FROM segments where " \
+                              "segment_id = ANY ($1) and " \
+                              "(start_time_hour = ANY ($2) and end_time_hour = ANY ($2)) " \
+                              "group by segment_id, start_time_hour;"
+          cursor.execute(prepare_statement)
+          sql_conn.commit()
+        except Exception as e:
+          raise Exception("Can't create prepare statements")
+
+      # id and dow query
+      cursor.execute("select exists(select name from pg_prepared_statements where name = 'q_ids_dow');")
+      if cursor.fetchone()[0] == False:
+        try:
+          prepare_statement = "PREPARE q_ids_dow AS SELECT segment_id, avg(speed) as average_speed, " \
+                              "start_time_dow as dow FROM segments where " \
+                              "segment_id = ANY ($1) and " \
+                              "(start_time_dow = ANY ($2) and end_time_dow = ANY ($2)) " \
+                              "group by segment_id, start_time_dow;"
           cursor.execute(prepare_statement)
           sql_conn.commit()
         except Exception as e:
@@ -136,10 +236,13 @@ class QueryHandler(BaseHTTPRequestHandler):
 
     try:   
       # get the kvs
-      ids = s_date_time = e_date_time = None
+      ids = s_date_time = e_date_time = hours = dow = None
       list_of_ids = params['segment_ids'] if 'segment_ids' in params else None
+      list_of_dow = params['dow'] if 'dow' in params else None
+      list_of_hours = params['hours'] if 'hours' in params else None
       start_date_time = params.get('start_date_time', None)
       end_date_time = params.get('end_date_time', None)
+      include_observation_counts = params.get('include_observation_counts', None)
       cursor = self.server.sql_conn.cursor()
 
       #ids will come in as csv string.  we must split and cast to list
@@ -161,17 +264,74 @@ class QueryHandler(BaseHTTPRequestHandler):
       if end_date_time:
         e_date_time = calendar.timegm(time.strptime(end_date_time[0],"%Y-%m-%dT%H:%M:%S"))
 
-      #id only query
-      if list_of_ids and all(parameters is None for parameters in (s_date_time, e_date_time)):
-        cursor.execute("execute query_by_id (%s)",(ids,))
+      if list_of_dow:
+        dow = [ int(i) for i in list_of_dow[0].split(',')]
+
+      if list_of_hours:
+        hours = [ int(i) for i in list_of_hours[0].split(',')]
+
+      #observation counts for authorized users.
+      try:
+        if include_observation_counts:
+          include_observation_counts = bool(strtobool(str(include_observation_counts[0])))
+        else:
+          include_observation_counts = False
+      #invalid value entered.
+      except:
+        include_observation_counts = False
+
+      columns = ['segment_id', 'average_speed']
+      # id only query
+      if all(parameters is None for parameters in (s_date_time, e_date_time, hours, dow)):
+        cursor.execute("execute q_ids (%s)",(ids,))
+
+      # id, date, hours, and dow query
+      elif all(parameters is not None for parameters in (s_date_time, e_date_time, hours, dow)):
+        cursor.execute("execute q_ids_date_hours_dow (%s, %s, %s, %s, %s)",
+                      ((ids,),s_date_time,e_date_time,(hours,),(dow,)))
+        if include_observation_counts:
+          columns = ['segment_id', 'average_speed', 'dow', 'hour', 'observation_count']
+        else:
+          columns = ['segment_id', 'average_speed', 'dow', 'hour']
+
+      # id, date, and hours query
+      elif all(parameters is not None for parameters in (s_date_time, e_date_time, hours)):
+        cursor.execute("execute q_ids_date_hours (%s, %s, %s, %s)",
+                      ((ids,),s_date_time,e_date_time,(hours,)))
+        columns = ['segment_id', 'average_speed', 'hour']
+
+      # id, date, and dow query
+      elif all(parameters is not None for parameters in (s_date_time, e_date_time, dow)):
+        cursor.execute("execute q_ids_date_dow (%s, %s, %s, %s)",
+                      ((ids,),s_date_time,e_date_time,(dow,)))
+        columns = ['segment_id', 'average_speed', 'dow']
+
+      # id, hours, and dow query
+      elif all(parameters is not None for parameters in (hours, dow)):
+        cursor.execute("execute q_ids_hours_dow (%s, %s, %s)",
+                      ((ids,),(hours,),(dow,)))
+        if include_observation_counts:
+          columns = ['segment_id', 'average_speed', 'dow', 'hour', 'observation_count']
+        else:
+          columns = ['segment_id', 'average_speed', 'dow', 'hour']
+
       # id and date query
-      elif all(parameters is not None for parameters in (list_of_ids, s_date_time, e_date_time)):
-        cursor.execute("execute query_by_range (%s, %s, %s, %s, %s)",
-                      ((ids,),s_date_time,e_date_time,s_date_time,e_date_time))
+      elif all(parameters is not None for parameters in (s_date_time, e_date_time)):
+        cursor.execute("execute q_ids_date (%s, %s, %s)",
+                      ((ids,),s_date_time,e_date_time))
+
+      # id and hours query
+      elif hours is not None:
+        cursor.execute("execute q_ids_hours (%s, %s)",((ids,),(hours,)))
+        columns = ['segment_id', 'average_speed', 'hour']
+
+      # id and dow query
+      elif dow is not None:
+        cursor.execute("execute q_ids_dow (%s, %s)",((ids,),(dow,)))
+        columns = ['segment_id', 'average_speed', 'dow']
 
       rows = cursor.fetchall()
       results = {'segments':[]}
-      columns = ['segment_id', 'average_speed']
       for row in rows:
         segment = dict(zip(columns, row))
         results['segments'].append(segment)
