@@ -18,10 +18,14 @@ from BaseHTTPServer import HTTPServer, BaseHTTPRequestHandler
 from SocketServer import ThreadingMixIn
 from cgi import urlparse
 import psycopg2
+from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
 import os
 import time
 
 actions = set(['store'])
+
+# this is where thread local storage lives
+thread_local = threading.local()
 
 #use a thread pool instead of just frittering off new threads for every request
 class ThreadPoolMixIn(ThreadingMixIn):
@@ -29,8 +33,9 @@ class ThreadPoolMixIn(ThreadingMixIn):
 
   def serve_forever(self):
     # set up the threadpool
-    self.requests = Queue(int(os.environ.get('THREAD_POOL_MULTIPLIER', 1)) * multiprocessing.cpu_count())
-    for x in range(multiprocessing.cpu_count()):
+    pool_size = int(os.environ.get('THREAD_POOL_MULTIPLIER', 1)) * multiprocessing.cpu_count()
+    self.requests = Queue(pool_size)
+    for x in range(pool_size):
       t = threading.Thread(target = self.process_request_thread)
       t.setDaemon(1)
       t.start()
@@ -40,35 +45,33 @@ class ThreadPoolMixIn(ThreadingMixIn):
     self.server_close()
 
   def make_thread_locals(self):
-    credentials = (os.environ['POSTGRES_DB'], os.environ['POSTGRES_USER'], os.environ['POSTGRES_HOST'], 
-                   os.environ['POSTGRES_PASSWORD'], os.environ['POSTGRES_PORT'])
+    # connect to the db
     try:
-      sql_conn = psycopg2.connect("dbname='%s' user='%s' host='%s' password='%s' port='%s'" % credentials)
-    except Exception as e:
-      raise Exception('Failed to connect to database')
-
-    sys.stdout.write("Connected to db\n")
-    sys.stdout.flush()
-
-    try:
-      # check and see if prepared statement exists...if not, create it
+      self.credentials = (os.environ['POSTGRES_DB'], os.environ['POSTGRES_USER'], os.environ['POSTGRES_HOST'], 
+                          os.environ['POSTGRES_PASSWORD'], os.environ['POSTGRES_PORT'])
+      sql_conn = psycopg2.connect("dbname='%s' user='%s' host='%s' password='%s' port='%s'" % self.credentials)
+      sql_conn.set_isolation_level(ISOLATION_LEVEL_AUTOCOMMIT)
+      setattr(thread_local, 'sql_conn', sql_conn)
       cursor = sql_conn.cursor()
-      cursor.execute("select exists(select name from pg_prepared_statements where name = 'report');")
-
-      if cursor.fetchone()[0] == False:
-        try:
-          prepare_statement = "PREPARE report AS INSERT INTO segments (segment_id,prev_segment_id,mode," \
-                              "start_time,start_time_dow,start_time_hour,end_time,end_time_dow,"\
-                              "end_time_hour,length,speed,provider) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12);"
-          cursor.execute(prepare_statement)
-          sql_conn.commit()
-          sys.stdout.write("Created prepare statement.\n")
-          sys.stdout.flush()
-        except Exception as e:
-          raise Exception("Can't create prepare statement")
     except Exception as e:
-      raise Exception("Can't check for prepare statement")
-    self.sql_conn = sql_conn
+      raise Exception('Failed to connect to database: ' + repr(e))
+    
+    #show some info
+    try:
+        cursor.execute('select pg_backend_pid();')
+        sys.stdout.write('init: %s(%d) connected has connection %s(%d)' % (threading.current_thread().getName(), id(threading.current_thread()), cursor.fetchone()[0], id(sql_conn)) + os.linesep)
+        sys.stdout.flush()
+    except Exception as e:
+      raise Exception('Failed to identify database connection: ' + repr(e))
+
+    # create prepared statement and see if its there
+    try:
+      prepare_statement = 'PREPARE report AS INSERT INTO segments (segment_id,prev_segment_id,mode,' \
+                          'start_time,start_time_dow,start_time_hour,end_time,end_time_dow,' \
+                          'end_time_hour,length,speed,provider) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12);'
+      cursor.execute(prepare_statement)
+    except Exception as e:
+      raise Exception('Could not create prepared statement: ' + repr(e))
 
   def process_request_thread(self):
     self.make_thread_locals()
@@ -130,8 +133,8 @@ class StoreHandler(BaseHTTPRequestHandler):
         segment_id = segment['segment_id']
         prev_segment_id = segment.get('prev_segment_id', None)
         start_time = segment['start_time']
-        start_time_dow = time.strftime("%w", time.gmtime(start_time))
-        start_time_hour = time.strftime("%H", time.gmtime(start_time))
+        start_time_dow = time.strftime('%w', time.gmtime(start_time))
+        start_time_hour = time.strftime('%H', time.gmtime(start_time))
         end_time = segment['end_time']
         end_time_dow = time.strftime("%w", time.gmtime(end_time))
         end_time_hour = time.strftime("%H", time.gmtime(end_time))
@@ -145,14 +148,11 @@ class StoreHandler(BaseHTTPRequestHandler):
           speed = round((length / (seconds * 1.0))*3.6,2)
 
         # send it to the cursor.
-        self.server.sql_conn.cursor().execute("execute report (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",
+        thread_local.sql_conn.cursor().execute("execute report (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",
           (segment_id, prev_segment_id, mode, start_time, start_time_dow, start_time_hour, 
            end_time, end_time_dow, end_time_hour, length, speed, provider))
 
-      # write all the data to the db.
-      self.server.sql_conn.commit()                
     except Exception as e:
-      self.server.sql_conn.commit()
       return 400, str(e)
 
     #hand it back
@@ -191,47 +191,33 @@ def initialize_db():
                  os.environ['POSTGRES_PASSWORD'], os.environ['POSTGRES_PORT'])
   while True:
     try:
-      sql_conn = psycopg2.connect("dbname='%s' user='%s' host='%s' password='%s' port='%s'" % credentials)
+      with psycopg2.connect("dbname='%s' user='%s' host='%s' password='%s' port='%s'" % credentials) as sql_conn:
+        # check and see if db exists.
+        # NOTE: this will have to change for redshift.
+        cursor = sql_conn.cursor()
+        cursor.execute("select exists(select relname from pg_class where relname = 'segments' and relkind='r');")
+        if cursor.fetchone()[0] == False:
+          sys.stdout.write('Creating tables.' + os.linesep)
+          sys.stdout.flush()
+          cursor.execute('CREATE TABLE segments(segment_id bigint, prev_segment_id bigint, ' \
+                         'mode text,start_time integer,start_time_dow smallint, start_time_hour smallint, ' \
+                         'end_time integer, end_time_dow smallint, end_time_hour smallint, length integer, ' \
+                         'speed float, provider text); ' \
+                         'CREATE INDEX index_ids ON segments (segment_id);' \
+                         'CREATE INDEX index_ids_dates ON segments (segment_id,start_time,end_time);' \
+                         'CREATE INDEX index_ids_dow ON segments (segment_id,start_time_dow,end_time_dow);' \
+                         'CREATE INDEX index_ids_hours ON segments (segment_id,start_time_hour,end_time_hour);' \
+                         'CREATE INDEX index_ids_hours_dow ON segments (segment_id,start_time_dow,start_time_hour,end_time_dow,end_time_hour);' \
+                         'CREATE INDEX index_ids_dates_hours ON segments (segment_id,start_time,start_time_hour,end_time,end_time_hour);' \
+                         'CREATE INDEX index_ids_dates_dow ON segments (segment_id,start_time,start_time_dow,end_time,end_time_dow);' \
+                         'CREATE INDEX index_ids_dates_hours_dow ON segments (segment_id,start_time,start_time_dow,start_time_hour,end_time,end_time_dow,end_time_hour);')
+          sys.stdout.write('Done.' + os.linesep)
+          sys.stdout.flush()
       break
     except Exception as e:
-      # repeat until you connect.
-      time.sleep(5)
-
-  # check and see if db exists.
-  cursor = sql_conn.cursor()
-  # this will have to change for redshift.
-  try:
-    cursor.execute("select exists(select relname from pg_class where relname = 'segments' and relkind='r');")
-
-    if cursor.fetchone()[0] == False:
-      sys.stdout.write("Creating tables.\n")
+      sys.stdout.write('Could not find or create table: ' + repr(e) + os.linesep)
       sys.stdout.flush()
-      try:
-        cursor.execute("CREATE TABLE segments(segment_id bigint, prev_segment_id bigint, " \
-                       "mode text,start_time integer,start_time_dow smallint, start_time_hour smallint, " \
-                       "end_time integer, end_time_dow smallint, end_time_hour smallint, length integer, " \
-                       "speed float, provider text); " \
-                       "CREATE INDEX index_ids ON segments (segment_id);" \
-                       "CREATE INDEX index_ids_dates ON segments (segment_id,start_time,end_time);" \
-                       "CREATE INDEX index_ids_dow ON segments (segment_id,start_time_dow,end_time_dow);" \
-                       "CREATE INDEX index_ids_hours ON segments (segment_id,start_time_hour,end_time_hour);" \
-                       "CREATE INDEX index_ids_hours_dow ON segments (segment_id,start_time_dow,start_time_hour,end_time_dow,end_time_hour);" \
-                       "CREATE INDEX index_ids_dates_hours ON segments (segment_id,start_time,start_time_hour,end_time,end_time_hour);" \
-                       "CREATE INDEX index_ids_dates_dow ON segments (segment_id,start_time,start_time_dow,end_time,end_time_dow);" \
-                       "CREATE INDEX index_ids_dates_hours_dow ON segments (segment_id,start_time,start_time_dow,start_time_hour,end_time,end_time_dow,end_time_hour);")
-        sql_conn.commit()
-        sys.stdout.write("Done.\n")
-        sys.stdout.flush()
-      except Exception as e:
-        sys.stdout.write("Can't create tables: {0}\n".format(e))
-        sys.stdout.flush()
-        sys.exit(1)
-  except Exception as e:
-    sys.stdout.write("Can't check for tables.: {0}\n".format(e))
-    sys.stdout.flush()
-    sys.exit(1)
-
-  sql_conn.close()
+      time.sleep(5)
 
 #program entry point
 if __name__ == '__main__':
