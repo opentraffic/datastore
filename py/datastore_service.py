@@ -32,7 +32,10 @@ class ThreadPoolMixIn(ThreadingMixIn):
 
   def serve_forever(self):
     # set up the threadpool
-    pool_size = int(os.environ.get('THREAD_POOL_MULTIPLIER', 1)) * multiprocessing.cpu_count()
+    if 'THREAD_POOL_COUNT' in os.environ:
+      pool_size = int(os.environ.get('THREAD_POOL_COUNT'))
+    else:
+      pool_size = int(os.environ.get('THREAD_POOL_MULTIPLIER', 1)) * multiprocessing.cpu_count()
     self.requests = Queue(pool_size)
     for x in range(pool_size):
       t = threading.Thread(target = self.process_request_thread)
@@ -226,8 +229,8 @@ def initialize_db():
           sys.stdout.write('Creating tables.' + os.linesep)
           sys.stdout.flush()
           cursor.execute('CREATE TABLE segments(segment_id bigint, prev_segment_id bigint, ' \
-                         'mode text,start_time integer,start_time_dow smallint, start_time_hour smallint, ' \
-                         'end_time integer, end_time_dow smallint, end_time_hour smallint, length integer, ' \
+                         'mode text,start_time double precision ,start_time_dow smallint, start_time_hour smallint, ' \
+                         'end_time double precision, end_time_dow smallint, end_time_hour smallint, length integer, ' \
                          'speed float, provider text); ' \
                          'CREATE INDEX index_ids ON segments (segment_id);' \
                          'CREATE INDEX index_ids_dates ON segments (segment_id,start_time,end_time);' \
