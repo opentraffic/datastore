@@ -157,7 +157,7 @@ class StoreHandler(BaseHTTPRequestHandler):
           speed = 0.0
         else:
           #kph
-          speed = round((length / (seconds * 1.0))*3.6,2)
+          speed = round((length / seconds) * 3.6, 2)
 
         # send it to the cursor.
         thread_local.sql_conn.cursor().execute("execute report (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",
