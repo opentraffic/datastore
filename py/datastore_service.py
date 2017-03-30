@@ -113,21 +113,42 @@ class StoreHandler(BaseHTTPRequestHandler):
         raise
     except:
       raise Exception('Try a valid action: ' + str([k for k in actions]))
+
+    #handle GET
+    json_req = None
+    params = urlparse.parse_qs(split.query)
+    if 'json' in params:
+      json_req = json.loads(params['json'][0])
+      del params['json']
+    
     #handle POST
     if post:
       body = self.rfile.read(int(self.headers['Content-Length'])).decode('utf-8')
-      return json.loads(body)
-    #handle GET
-    else:
-      params = urlparse.parse_qs(split.query)
-      if 'json' in params:      
-        return json.loads(params['json'][0])
-    raise Exception('No json provided')
+      json_req = json.loads(body)
+
+    #do we have something
+    if json_req is None:
+      raise Exception('No json provided')
+    
+    #mix in the query parameters
+    for k,v in params.iteritems():
+      if k in json_req:
+        continue
+      if len(v) == 1:
+        json_req[k] = v[0]
+      elif len(v) > 1:
+        json_req[k] = v
+
+    return json_req
 
   #parse the request because we dont get this for free!
   def handle_request(self, post):
     #get the reporter data
     segments = self.parse_segments(post)
+
+    #reject some queries
+    if os.environ.get('SECRET_KEY') != segments.get('secret_key'):
+      return 401, 'Unauthorized'
 
     try:   
       # get the provider. 
