@@ -1,19 +1,27 @@
 version: '2'
 
 services:
-  postgres:
-    image: postgres:9.6.1
+  zookeeper:
+    image: wurstmeister/zookeeper:latest
     networks:
       - opentraffic_datastore
     ports:
-      - "5432:5432"
-    volumes:
-      - ${PGDATA}:/data
+      - "2181:2181"
+
+  kafka:
+    image: wurstmeister/kafka:latest
+    networks:
+      - opentraffic_datastore
+    ports:
+      - "9092:9092"
     environment:
-      - POSTGRES_USER=opentraffic
-      - POSTGRES_DB=opentraffic
-      - POSTGRES_PASSWORD=changeme
-      - PGDATA=/data/postgres
+      KAFKA_ADVERTISED_HOST_NAME: 172.17.0.1
+      KAFKA_ADVERTISED_PORT: 9092
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      #these topics map directly to those in the kafka application
+      KAFKA_CREATE_TOPICS: "frontend:4:1"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
 
   datastore:
     image: opentraffic/datastore:latest
@@ -21,13 +29,8 @@ services:
       - opentraffic_datastore
     ports:
       - "8003:8003"
-    volumes:
-      - ${DATAPATH}:/data
-    environment:
-      - POSTGRES_USER=opentraffic
-      - POSTGRES_PASSWORD=changeme
-      - POSTGRES_DB=opentraffic
-      - POSTGRES_HOST=postgres
+    command:
+      bash -c "sleep 30 && /usr/local/bin/datastore-frontend-kafka -l :8003 -b 172.17.0.1:9092 -t frontend"
 
 networks:
   opentraffic_datastore:

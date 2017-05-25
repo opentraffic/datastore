@@ -6,18 +6,16 @@ ENV DEBIAN_FRONTEND noninteractive
 
 ENV STORE_BIND_ADDR ${STORE_BIND_ADDR:-"0.0.0.0"}
 ENV STORE_LISTEN_PORT ${STORE_LISTEN_PORT:-"8003"}
-
-ENV POSTGRES_USER ${POSTGRES_USER:-"opentraffic"}
-ENV POSTGRES_PASSWORD ${POSTGRES_PASSWORD:-"changeme"}
-ENV POSTGRES_DB ${POSTGRES_DB:-"opentraffic"}
-ENV POSTGRES_HOST ${POSTGRES_HOST:-"postgres"}
-ENV POSTGRES_PORT ${POSTGRES_PORT:-"5432"}
+ENV KAFKA_HOST ${KAFKA_HOST:-"0.0.0.0"}
+ENV KAFKA_PORT ${KAFKA_PORT:-"9092"}
 
 # install dependencies
-RUN apt-get update && apt-get install -y python python-psycopg2
+RUN apt-get update && apt-get install -y python python-pip
+RUN pip install kafka-python
 
 # install code
 ADD ./py /datastore
+RUN ln -s /datastore/datastore-frontend-kafka.py /usr/local/bin/datastore-frontend-kafka
 
 # cleanup
 RUN apt-get clean && \
@@ -26,4 +24,4 @@ RUN apt-get clean && \
 EXPOSE ${STORE_LISTEN_PORT}
 
 # start the datastore service
-CMD python -u /datastore/datastore_service.py ${STORE_BIND_ADDR}:${STORE_LISTEN_PORT}
+CMD python -u /usr/local/bin/datastore-frontend-kafka -l ${STORE_BIND_ADDR}:${STORE_LISTEN_PORT} -b ${KAFKA_HOST}:${KAFKA_PORT} -t ${FRONTEND_TOPIC}
