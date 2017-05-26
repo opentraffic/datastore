@@ -1,0 +1,69 @@
+package io.opentraffic.datastore;
+
+// Vehicle type.
+//
+// For the moment, only automobile is supported. Future values may include
+// vehicles with other access characteristics, such as (motor)bikes, trucks,
+// buses, etc...
+enum VehicleType {
+  AUTO = 0;
+}
+
+// Measurements are bucketed by quantized time ot be matched with other
+// measurements and averaged to provide a degree of privacy. It's not clear at
+// the time of writing whether buckets will be hourly or not, so this message
+// exists to be able to cope with changing it at a later date.
+message TimeBucket {
+  // At the moment, only support bucketing by hour.
+  enum Size {
+    HOURLY = 0;
+  }
+
+  // Allow for future expansion into different bucket sizes.
+  optional Size size = 1 [default=HOURLY];
+
+  // Number of `size` intervals which have elapsed since the epoch at
+  // 1970-01-01 00:00:00 Z.
+  optional int64 index = 2;
+}
+
+// The main message carrying information about segments which have been crossed
+// by people travelling.
+message Measurement {
+  // Vehicle type of the traveller.
+  optional VehicleType vehicle_type = 1 [default=AUTO];
+
+  // Segment ID that was travelled from start to end and has just been finished.
+  //
+  // Note that this is not actually optional - but marking fields as optional is
+  // recommended by the protocol buffers style guide. Messages with a missing
+  // segment ID will be ignored and dropped.
+  optional fixed64 segment_id = 2;
+
+  // Segment ID, if known, that the traveller turned onto from the end of the
+  // segment just finished. This can be omitted, if it is not known.
+  optional fixed64 next_segment_id = 3;
+
+  // Length of the segment just finished. Not actually optional.
+  optional uint32 length = 4;
+
+  // Time bucket during which the segment crossing _finished_, and the new
+  // segment began. Not actually optional.
+  optional TimeBucket time_bucket = 5;
+
+  // Time taken in seconds to cross from the start of the `segment_id` segment
+  // until the start of the `next_segment_id` segment. This may not be the same
+  // as the time at the end of the `segment_id` segment, if there is elided
+  // geometry between the end of one segment and the beginning of the next (e.g:
+  // turn channels) which contribute some penalty.
+  optional int32 duration = 6;
+
+  // Number of instances of the tuple with all the above values. The frontend
+  // will emit messages with count=1, but later stages may merge together
+  // measurements and increase their counts.
+  optional int32 count = 7 [default=1];
+
+  // The provider who provided this measurement. Note that this is optional and
+  // will be "averaged" away once count > 1.
+  optional string provider = 8;
+}
