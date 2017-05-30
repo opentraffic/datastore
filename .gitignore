@@ -3,5 +3,6 @@ postgres/
 
 # python temporaries and build results
 py/frontend/otdatastore.egg-info/
+py/frontend/build/
 *~
 *.pyc

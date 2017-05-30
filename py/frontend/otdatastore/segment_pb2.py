@@ -19,7 +19,7 @@ _sym_db = _symbol_database.Default()
 DESCRIPTOR = _descriptor.FileDescriptor(
   name='segment.proto',
   package='io.opentraffic.datastore',
-  serialized_pb=_b('\n\rsegment.proto\x12\x18io.opentraffic.datastore\"p\n\nTimeBucket\x12?\n\x04size\x18\x01 \x01(\x0e\x32).io.opentraffic.datastore.TimeBucket.Size:\x06HOURLY\x12\r\n\x05index\x18\x02 \x01(\x03\"\x12\n\x04Size\x12\n\n\x06HOURLY\x10\x00\"\xfe\x01\n\x0bMeasurement\x12\x41\n\x0cvehicle_type\x18\x01 \x01(\x0e\x32%.io.opentraffic.datastore.VehicleType:\x04\x41UTO\x12\x12\n\nsegment_id\x18\x02 \x01(\x06\x12\x17\n\x0fnext_segment_id\x18\x03 \x01(\x06\x12\x0e\n\x06length\x18\x04 \x01(\r\x12\x39\n\x0btime_bucket\x18\x05 \x01(\x0b\x32$.io.opentraffic.datastore.TimeBucket\x12\x10\n\x08\x64uration\x18\x06 \x01(\x05\x12\x10\n\x05\x63ount\x18\x07 \x01(\x05:\x01\x31\x12\x10\n\x08provider\x18\x08 \x01(\t*\x17\n\x0bVehicleType\x12\x08\n\x04\x41UTO\x10\x00')
+  serialized_pb=_b('\n\rsegment.proto\x12\x18io.opentraffic.datastore\"p\n\nTimeBucket\x12?\n\x04size\x18\x01 \x01(\x0e\x32).io.opentraffic.datastore.TimeBucket.Size:\x06HOURLY\x12\r\n\x05index\x18\x02 \x01(\x03\"\x12\n\x04Size\x12\n\n\x06HOURLY\x10\x00\"\x8d\x02\n\x0bMeasurement\x12\x41\n\x0cvehicle_type\x18\x01 \x01(\x0e\x32%.io.opentraffic.datastore.VehicleType:\x04\x41UTO\x12\x12\n\nsegment_id\x18\x02 \x01(\x06\x12&\n\x0fnext_segment_id\x18\x03 \x01(\x06:\r4398046511103\x12\x0e\n\x06length\x18\x04 \x01(\r\x12\x39\n\x0btime_bucket\x18\x05 \x01(\x0b\x32$.io.opentraffic.datastore.TimeBucket\x12\x10\n\x08\x64uration\x18\x06 \x01(\x05\x12\x10\n\x05\x63ount\x18\x07 \x01(\x05:\x01\x31\x12\x10\n\x08provider\x18\x08 \x01(\t*\x17\n\x0bVehicleType\x12\x08\n\x04\x41UTO\x10\x00')
 )
 _sym_db.RegisterFileDescriptor(DESCRIPTOR)
 
@@ -36,8 +36,8 @@ _VEHICLETYPE = _descriptor.EnumDescriptor(
   ],
   containing_type=None,
   options=None,
-  serialized_start=414,
-  serialized_end=437,
+  serialized_start=429,
+  serialized_end=452,
 )
 _sym_db.RegisterEnumDescriptor(_VEHICLETYPE)
 
@@ -126,7 +126,7 @@ _MEASUREMENT = _descriptor.Descriptor(
     _descriptor.FieldDescriptor(
       name='next_segment_id', full_name='io.opentraffic.datastore.Measurement.next_segment_id', index=2,
       number=3, type=6, cpp_type=4, label=1,
-      has_default_value=False, default_value=0,
+      has_default_value=True, default_value=4398046511103,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
@@ -177,7 +177,7 @@ _MEASUREMENT = _descriptor.Descriptor(
   oneofs=[
   ],
   serialized_start=158,
-  serialized_end=412,
+  serialized_end=427,
 )
 
 _TIMEBUCKET.fields_by_name['size'].enum_type = _TIMEBUCKET_SIZE

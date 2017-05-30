@@ -4,7 +4,7 @@ def parse_segments(segments):
     # pre-fetch value for hourly bucketing
     # TODO: make configurable.
     bucket_size = segment_pb2.TimeBucket.Size.Value('HOURLY')
-    bucket_length = 60
+    bucket_length = 3600
 
     # get the provider.
     provider = str(segments['provider'])

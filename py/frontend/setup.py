@@ -73,7 +73,7 @@ setup(
     license='LGPLv3',
     install_requires=REQUIREMENTS,
     keywords=['opentraffic'],
-    packages=find_packages(),
+    packages=find_packages(exclude='test'),
     entry_points={
         'console_scripts': [
             'opentraffic-datastore-frontend=otdatastore.frontend:main'
@@ -83,4 +83,5 @@ setup(
         'clean': clean,
         'build_py': build_py,
     },
+    test_suite='test',
 )
