@@ -1,2 +1,7 @@
 postgres/
 *.swp
+
+# python temporaries and build results
+py/frontend/otdatastore.egg-info/
+*~
+*.pyc

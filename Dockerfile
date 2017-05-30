@@ -15,7 +15,7 @@ RUN pip install kafka-python
 
 # install code
 ADD ./py /datastore
-RUN ln -s /datastore/datastore-frontend-kafka.py /usr/local/bin/datastore-frontend-kafka
+RUN cd /datastore/frontend && python setup.py install
 
 # cleanup
 RUN apt-get clean && \
