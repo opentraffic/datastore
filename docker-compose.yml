@@ -30,7 +30,7 @@ services:
     ports:
       - "8003:8003"
     command:
-      bash -c "sleep 30 && /usr/local/bin/datastore-frontend-kafka -l :8003 -b 172.17.0.1:9092 -t frontend"
+      bash -c "sleep 30 && /usr/local/bin/opentraffic-datastore-frontend -l :8003 -b 172.17.0.1:9092 -t frontend"
 
 networks:
   opentraffic_datastore:
