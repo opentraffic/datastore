@@ -42,7 +42,7 @@ message Measurement {
 
   // Segment ID, if known, that the traveller turned onto from the end of the
   // segment just finished. This can be omitted, if it is not known.
-  optional fixed64 next_segment_id = 3;
+  optional fixed64 next_segment_id = 3 [default = 0x3ffffffffff];
 
   // Length of the segment just finished. Not actually optional.
   optional uint32 length = 4;
