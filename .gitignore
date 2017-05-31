@@ -6,3 +6,9 @@ py/frontend/otdatastore.egg-info/
 py/frontend/build/
 *~
 *.pyc
+
+# java stuff: temporaries, build artefacts, etc...
+java/datastore_accumulator/.gradle/
+java/datastore_accumulator/.idea/
+java/datastore_accumulator/build/
+java/datastore_accumulator/gradle/
