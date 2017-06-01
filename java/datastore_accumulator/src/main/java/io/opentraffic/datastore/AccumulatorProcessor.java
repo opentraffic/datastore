@@ -157,7 +157,7 @@ public class AccumulatorProcessor implements Processor<String, Segment.Measureme
         }
     }
 
-    public final class Key implements Serializable {
+    public static final class Key implements Serializable, Comparable<Key> {
         public final Segment.VehicleType vtype;
         public final long segment_id;
         public final long next_segment_id;
@@ -169,9 +169,37 @@ public class AccumulatorProcessor implements Processor<String, Segment.Measureme
             this.next_segment_id = next_segment_id;
             this.length = length;
         }
+
+        @Override
+        public int compareTo(Key other) {
+            if (this.vtype != other.vtype) {
+                return this.vtype.compareTo(other.vtype);
+
+            } else if (this.segment_id != other.segment_id) {
+                return Long.compare(this.segment_id, other.segment_id);
+
+            } else if (this.next_segment_id != other.next_segment_id) {
+                return Long.compare(this.next_segment_id, other.next_segment_id);
+
+            } else {
+                return Integer.compare(this.length, other.length);
+            }
+        }
+
+        @Override
+        public String toString() {
+            StringBuilder b = new StringBuilder();
+            b.append("Key(");
+            b.append(this.vtype.toString()); b.append(", ");
+            b.append(this.segment_id); b.append(", ");
+            b.append(this.next_segment_id); b.append(", ");
+            b.append(this.length);
+            b.append(")");
+            return b.toString();
+        }
     }
 
-    public final class Value implements Serializable {
+    public static final class Value implements Serializable {
         public final long time_bucket;
         public final long duration;
         public final int count;
@@ -185,7 +213,7 @@ public class AccumulatorProcessor implements Processor<String, Segment.Measureme
         }
     }
 
-    public class Values implements Serializable {
+    public static class Values implements Serializable {
         ArrayList<Value> values;
     }
 
@@ -203,10 +231,12 @@ public class AccumulatorProcessor implements Processor<String, Segment.Measureme
     private ProcessorContext m_context;
     private KeyValueStore<Key, Values> m_store;
     private final long m_npriv;
+    private final boolean m_verbose;
     private long m_max_time_bucket;
 
-    public AccumulatorProcessor(long npriv) {
+    public AccumulatorProcessor(long npriv, boolean verbose) {
         this.m_npriv = npriv;
+        this.m_verbose = verbose;
         this.m_max_time_bucket = 0;
     }
 
@@ -257,12 +287,18 @@ public class AccumulatorProcessor implements Processor<String, Segment.Measureme
             Segment.Measurement sum = sumValues(key, values.values);
 
             // emit new measurement for this
+            if (this.m_verbose) {
+                System.out.println("OUTPUT: " + sum);
+            }
             this.m_context.forward(partitionKey, sum);
 
             // delete key
             this.m_store.delete(key);
 
         } else {
+            if (this.m_verbose) {
+                System.out.println("ACCUMULATE[" + values.values.size() + "/" + this.m_npriv + "]: " + key);
+            }
             // update the key with the additional value
             this.m_store.put(key, values);
         }
@@ -297,9 +333,15 @@ public class AccumulatorProcessor implements Processor<String, Segment.Measureme
 
         // build the protobuf message
         Segment.Measurement.Builder b = Segment.Measurement.newBuilder();
-        b.setVehicleType(k.vtype);
+        // only set vehicle type if it's different from the default
+        if (k.vtype != b.getVehicleType()) {
+            b.setVehicleType(k.vtype);
+        }
         b.setSegmentId(k.segment_id);
-        b.setNextSegmentId(k.next_segment_id);
+        // only set next segment ID if it's different from the default
+        if (k.next_segment_id != b.getNextSegmentId()) {
+            b.setNextSegmentId(k.next_segment_id);
+        }
         b.setLength(k.length);
 
         b.setTimeBucket(Segment.TimeBucket.newBuilder()

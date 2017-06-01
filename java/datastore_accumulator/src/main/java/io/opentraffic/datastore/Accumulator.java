@@ -4,6 +4,7 @@ import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.commons.cli.*;
 import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.common.serialization.StringDeserializer;
+import org.apache.kafka.common.serialization.StringSerializer;
 import org.apache.kafka.streams.KafkaStreams;
 import org.apache.kafka.streams.StreamsConfig;
 import org.apache.kafka.streams.processor.TopologyBuilder;
@@ -31,12 +32,16 @@ public class Accumulator {
         duration.setRequired(false);
         duration.setType(Long.class);
 
+        Option verbose = new Option("v", "verbose", false, "If this is set, then output a lot of debugging information.");
+        verbose.setRequired(false);
+
         Options options = new Options();
         options.addOption(bootstrap);
         options.addOption(input_topic);
         options.addOption(output_topic);
         options.addOption(npriv);
         options.addOption(duration);
+        options.addOption(verbose);
 
         CommandLineParser parser = new DefaultParser();
         HelpFormatter help = new HelpFormatter();
@@ -66,7 +71,7 @@ public class Accumulator {
         builder.addSource("InputSource", new StringDeserializer(), new MeasurementDeserializer(), cli.getOptionValue("input-topic"));
         builder.addProcessor("Accumulator", new AccumulatorSupplier(cli), "InputSource");
         builder.addStateStore(AccumulatorProcessor.createStore(), "Accumulator");
-        builder.addSink("OutputSink", cli.getOptionValue("output-topic"), "Accumulator");
+        builder.addSink("OutputSink", cli.getOptionValue("output-topic"), new StringSerializer(), new MeasurementSerializer(),"Accumulator");
 
         KafkaStreams streams = new KafkaStreams(builder, kafka_props);
         streams.start();
