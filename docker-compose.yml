@@ -19,7 +19,7 @@ services:
       KAFKA_ADVERTISED_PORT: 9092
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
       #these topics map directly to those in the kafka application
-      KAFKA_CREATE_TOPICS: "frontend:4:1,backend:4:1"
+      KAFKA_CREATE_TOPICS: "frontend:1:1,backend:1:1"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
 
@@ -37,7 +37,7 @@ services:
     networks:
       - opentraffic_datastore
     command:
-      bash -c "sleep 30 && java -cp /datastore/build/libs/datastore_accumulator-all-1.0-SNAPSHOT.jar io.opentraffic.datastore.Accumulator -b 172.17.0.1:9092 -i frontend -o backend"
+      bash -c "sleep 30 && java -cp /datastore/build/libs/datastore_accumulator-all-1.0-SNAPSHOT.jar io.opentraffic.datastore.Accumulator -b 172.17.0.1:9092 -i frontend -o backend --verbose"
 
 
 networks:
