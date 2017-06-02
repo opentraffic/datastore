@@ -16,6 +16,8 @@ import java.util.ArrayList;
 import java.util.Map;
 import java.util.function.Predicate;
 
+import io.opentraffic.datastore.internal.Datastore;
+
 /**
  * Created by matt on 31/05/17.
  */
@@ -23,141 +25,7 @@ public class AccumulatorProcessor implements Processor<String, Segment.Measureme
     public static final String NAME = "io.opentraffic.datastore.AccumulatorState";
     public static final Segment.TimeBucket.Size ONLY_SUPPORTED_BUCKET_SIZE = Segment.TimeBucket.Size.HOURLY;
 
-    private static class KeySerde implements Serde<Key> {
-        @Override
-        public void configure(Map<String, ?> configs, boolean isKey) {
-
-        }
-
-        @Override
-        public void close() {
-
-        }
-
-        @Override
-        public Serializer<Key> serializer() {
-            return new Serializer<Key>() {
-                @Override
-                public void configure(Map<String, ?> configs, boolean isKey) {
-                }
-
-                @Override
-                public byte[] serialize(String topic, Key data) {
-                    ByteArrayOutputStream bos = new ByteArrayOutputStream();
-                    ObjectOutput out = null;
-                    try {
-                        out = new ObjectOutputStream(bos);
-                        out.writeObject(data);
-                        out.flush();
-                        return bos.toByteArray();
-                    } catch (IOException ex) {
-                        throw new RuntimeException("Unable to serialize Key: ", ex);
-                    }
-                }
-
-                @Override
-                public void close() {
-                }
-            };
-        }
-
-        @Override
-        public Deserializer<Key> deserializer() {
-            return new Deserializer<Key>() {
-                @Override
-                public void configure(Map<String, ?> configs, boolean isKey) {
-                }
-
-                @Override
-                public Key deserialize(String topic, byte[] data) {
-                    ByteArrayInputStream bis = new ByteArrayInputStream(data);
-                    ObjectInput in = null;
-                    try {
-                        in = new ObjectInputStream(bis);
-                        Key k = (Key)in.readObject();
-                        return k;
-                    } catch (IOException ex) {
-                        throw new RuntimeException("Unable to deserialize Key: ", ex);
-                    } catch (ClassNotFoundException ex) {
-                        throw new RuntimeException("Unable to deserialize Key: ", ex);
-                    }
-                }
-
-                @Override
-                public void close() {
-                }
-            };
-        }
-    }
-
-    private static class ValuesSerde implements Serde<Values> {
-        @Override
-        public void configure(Map<String, ?> configs, boolean isKey) {
-
-        }
-
-        @Override
-        public void close() {
-
-        }
-
-        @Override
-        public Serializer<Values> serializer() {
-            return new Serializer<Values>() {
-                @Override
-                public void configure(Map<String, ?> configs, boolean isKey) {
-                }
-
-                @Override
-                public byte[] serialize(String topic, Values data) {
-                    ByteArrayOutputStream bos = new ByteArrayOutputStream();
-                    ObjectOutput out = null;
-                    try {
-                        out = new ObjectOutputStream(bos);
-                        out.writeObject(data);
-                        out.flush();
-                        return bos.toByteArray();
-                    } catch (IOException ex) {
-                        throw new RuntimeException("Unable to serialize Values: ", ex);
-                    }
-                }
-
-                @Override
-                public void close() {
-                }
-            };
-        }
-
-        @Override
-        public Deserializer<Values> deserializer() {
-            return new Deserializer<Values>() {
-                @Override
-                public void configure(Map<String, ?> configs, boolean isKey) {
-                }
-
-                @Override
-                public Values deserialize(String topic, byte[] data) {
-                    ByteArrayInputStream bis = new ByteArrayInputStream(data);
-                    ObjectInput in = null;
-                    try {
-                        in = new ObjectInputStream(bis);
-                        Values v = (Values)in.readObject();
-                        return v;
-                    } catch (IOException ex) {
-                        throw new RuntimeException("Unable to deserialize Key: ", ex);
-                    } catch (ClassNotFoundException ex) {
-                        throw new RuntimeException("Unable to deserialize Key: ", ex);
-                    }
-                }
-
-                @Override
-                public void close() {
-                }
-            };
-        }
-    }
-
-    public static final class Key implements Serializable, Comparable<Key> {
+    public static final class Key implements Comparable<Key> {
         public final Segment.VehicleType vtype;
         public final long segment_id;
         public final long next_segment_id;
@@ -199,13 +67,13 @@ public class AccumulatorProcessor implements Processor<String, Segment.Measureme
         }
     }
 
-    public static final class Value implements Serializable {
+    public static final class Value {
         public final long time_bucket;
-        public final long duration;
+        public final int duration;
         public final int count;
         public final String provider;
 
-        public Value(long time_bucket, long duration, int count, String provider) {
+        public Value(long time_bucket, int duration, int count, String provider) {
             this.time_bucket = time_bucket;
             this.duration = duration;
             this.count = count;
@@ -213,7 +81,7 @@ public class AccumulatorProcessor implements Processor<String, Segment.Measureme
         }
     }
 
-    public static class Values implements Serializable {
+    public static class Values {
         ArrayList<Value> values;
     }
 

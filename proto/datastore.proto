@@ -1,0 +1,52 @@
+package io.opentraffic.datastore.internal;
+
+import "segment.proto";
+
+// This set of messages exist to allow the Java Kafka processor to serialise and
+// deserialise Key and Value(s) items in an upgradeable and forward-compatible
+// manner.
+
+// The Key is used to aggregate measurements together for the same thing being
+// measured. In this case, we're interested in aggregating by the vehicle type,
+// segment and next segment. The length for a given segment and next-segment
+// pair should be the same, so it's also included here.
+//
+message Key {
+  // Vehicle type enum imported from segment.proto
+  optional VehicleType vtype = 1 [default=AUTO];
+
+  // Segment ID that was travelled from the start
+  optional fixed64 segment_id = 2;
+
+  // Segment ID that has been turned onto from `segment_id`. If this is not
+  // known, then the default is the invalid Valhalla GraphID.
+  optional fixed64 next_segment_id = 3 [default=0x3ffffffffff];
+
+  // Length in meters traveled from the start of the `segment_id` segment until
+  // the **start** of the `next_segment_id` segment, including any intermediate
+  // segments which do not have IDs.
+  optional uint32 length = 4;
+}
+
+// The Value contains variable measurements corresponding to the Key.
+message Value {
+  // The time bucket in which this measurement was taken.
+  optional TimeBucket time_bucket = 1;
+
+  // Time in seconds to cross from the start of `segment_id` until the start of
+  // `next_segment_id`.
+  optional int32 duration = 2;
+
+  // Number of measurements in the time bucket with the given duration.
+  optional int32 count = 3;
+
+  // The provider, if it is only one, which contributed all the measurements.
+  // If not set, then more than one provider provided these measurements.
+  optional string provider = 4;
+}
+
+// The Values contain several Value objects, buffered awaiting more data to
+// allow them to be averaged for privacy.
+message Values {
+  repeated Value values = 1;
+}

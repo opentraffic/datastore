@@ -44,7 +44,7 @@ message Measurement {
   // segment just finished. This can be omitted, if it is not known.
   optional fixed64 next_segment_id = 3 [default = 0x3ffffffffff];
 
-  // Length of the segment just finished. Not actually optional.
+  // Length in meters of the segment just finished. Not actually optional.
   optional uint32 length = 4;
 
   // Time bucket during which the segment crossing _finished_, and the new
