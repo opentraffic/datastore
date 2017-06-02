@@ -38,7 +38,7 @@ class ValuesSerde implements Serde<AccumulatorProcessor.Values> {
                         Datastore.Value.Builder builder = Datastore.Value.newBuilder();
                         builder.setTimeBucket(
                                 Segment.TimeBucket.newBuilder()
-                                        .setSize(AccumulatorProcessor.ONLY_SUPPORTED_BUCKET_SIZE)
+                                        .setSize(AccumulatorAlgorithm.ONLY_SUPPORTED_BUCKET_SIZE)
                                         .setIndex(value.time_bucket)
                                         .build());
                         builder.setDuration(value.duration);

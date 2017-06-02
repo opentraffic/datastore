@@ -23,19 +23,18 @@ import io.opentraffic.datastore.internal.Datastore;
  */
 public class AccumulatorProcessor implements Processor<String, Segment.Measurement> {
     public static final String NAME = "io.opentraffic.datastore.AccumulatorState";
-    public static final Segment.TimeBucket.Size ONLY_SUPPORTED_BUCKET_SIZE = Segment.TimeBucket.Size.HOURLY;
 
     public static final class Key implements Comparable<Key> {
-        public final Segment.VehicleType vtype;
+		public final Segment.VehicleType vtype;
         public final long segment_id;
         public final long next_segment_id;
         public final int length;
 
         public Key(Segment.VehicleType vtype, long segment_id, long next_segment_id, int length) {
-            this.vtype = vtype;
-            this.segment_id = segment_id;
-            this.next_segment_id = next_segment_id;
-            this.length = length;
+        	this.vtype = vtype;
+        	this.segment_id = segment_id;
+        	this.next_segment_id = next_segment_id;
+        	this.length = length;
         }
 
         @Override
@@ -65,6 +64,37 @@ public class AccumulatorProcessor implements Processor<String, Segment.Measureme
             b.append(")");
             return b.toString();
         }
+
+        @Override
+		public int hashCode() {
+			final int prime = 31;
+			int result = 1;
+			result = prime * result + length;
+			result = prime * result + (int) (next_segment_id ^ (next_segment_id >>> 32));
+			result = prime * result + (int) (segment_id ^ (segment_id >>> 32));
+			result = prime * result + ((vtype == null) ? 0 : vtype.hashCode());
+			return result;
+		}
+
+		@Override
+		public boolean equals(Object obj) {
+			if (this == obj)
+				return true;
+			if (obj == null)
+				return false;
+			if (getClass() != obj.getClass())
+				return false;
+			Key other = (Key) obj;
+			if (length != other.length)
+				return false;
+			if (next_segment_id != other.next_segment_id)
+				return false;
+			if (segment_id != other.segment_id)
+				return false;
+			if (vtype != other.vtype)
+				return false;
+			return true;
+		}
     }
 
     public static final class Value {
@@ -100,12 +130,12 @@ public class AccumulatorProcessor implements Processor<String, Segment.Measureme
     private KeyValueStore<Key, Values> m_store;
     private final long m_npriv;
     private final boolean m_verbose;
-    private long m_max_time_bucket;
+    private final AccumulatorAlgorithm m_algorithm;
 
     public AccumulatorProcessor(long npriv, boolean verbose) {
         this.m_npriv = npriv;
         this.m_verbose = verbose;
-        this.m_max_time_bucket = 0;
+        this.m_algorithm = new AccumulatorAlgorithm(npriv);
     }
 
     @Override
@@ -116,116 +146,21 @@ public class AccumulatorProcessor implements Processor<String, Segment.Measureme
 
     @Override
     public void process(String partitionKey, Segment.Measurement value) {
-        // check time bucket is okay
-        if (!timeBucketOkay(value.getTimeBucket())) {
-            // TODO: warn?
-            return;
-        }
+        Segment.Measurement measurement = this.m_algorithm.apply(value, this.m_store);
 
-        // extract information from measurement into local keys and values to be looked up in the store.
-        Key key = new Key(value.getVehicleType(), value.getSegmentId(), value.getNextSegmentId(), value.getLength());
-        final long time_bucket = getTimeBucketIndex(value.getTimeBucket());
-        Value val = new Value(time_bucket, value.getDuration(), value.getCount(), value.getProvider());
-
-        // keep the last-seen time bucket index. we will use that to clean out the data store periodically
-        if (time_bucket > this.m_max_time_bucket) {
-            this.m_max_time_bucket = time_bucket;
-        }
-
-        // fetch existing values and append this new one.
-        Values values = this.m_store.get(key);
-        if (values == null) {
-            values = new Values();
-        }
-        if (values.values == null) {
-            values.values = new ArrayList<>();
-        }
-        // clear out any values which were in a previous (now expired) time bucket
-        values.values.removeIf(new Predicate<Value>() {
-            @Override
-            public boolean test(Value value) {
-                return value.time_bucket < time_bucket;
-            }
-        });
-        values.values.add(val);
-
-        // check if we can emit a new measurement, clearing out this key
-        if (values.values.size() >= this.m_npriv) {
-            // sum over values
-            Segment.Measurement sum = sumValues(key, values.values);
-
+        if (measurement != null) {
             // emit new measurement for this
             if (this.m_verbose) {
-                System.out.println("OUTPUT: " + sum);
+                System.out.println("OUTPUT: " + measurement);
             }
-            this.m_context.forward(partitionKey, sum);
-
-            // delete key
-            this.m_store.delete(key);
+            this.m_context.forward(partitionKey, measurement);
 
         } else {
             if (this.m_verbose) {
-                System.out.println("ACCUMULATE[" + values.values.size() + "/" + this.m_npriv + "]: " + key);
-            }
-            // update the key with the additional value
-            this.m_store.put(key, values);
-        }
-    }
-
-    private boolean timeBucketOkay(Segment.TimeBucket timeBucket) {
-        return timeBucket.getSize() == ONLY_SUPPORTED_BUCKET_SIZE;
-    }
-
-    private Segment.Measurement sumValues(Key k, ArrayList<Value> values) {
-        // this shouldn't ever happen, as we've just added at least one Value to the array. however, just to be on the safe side...
-        if (values.isEmpty()) {
-            throw new RuntimeException("List of values is not allowed to be empty in sumValues.");
-        }
-
-        // check that all the time bucket values are the same - this should be ensured by the "removeIf" loop in the process code. but better to check!
-        long time_bucket = values.get(0).time_bucket;
-        int count = 0;
-        int duration_sum = 0;
-        String provider = values.get(0).provider;
-        for (Value v : values) {
-            if (v.time_bucket != time_bucket) {
-                throw new RuntimeException("Expected all time bucket indexes to be " + time_bucket + ", but got value with bucket index " + v.time_bucket);
-            }
-            count += v.count;
-            duration_sum += v.duration * v.count;
-            // we only keep provider if it's the same for all measurements.
-            if (v.provider != provider) {
-                provider = null;
+                System.out.println("ACCUMULATE: " + value);
             }
         }
 
-        // build the protobuf message
-        Segment.Measurement.Builder b = Segment.Measurement.newBuilder();
-        // only set vehicle type if it's different from the default
-        if (k.vtype != b.getVehicleType()) {
-            b.setVehicleType(k.vtype);
-        }
-        b.setSegmentId(k.segment_id);
-        // only set next segment ID if it's different from the default
-        if (k.next_segment_id != b.getNextSegmentId()) {
-            b.setNextSegmentId(k.next_segment_id);
-        }
-        b.setLength(k.length);
-
-        b.setTimeBucket(Segment.TimeBucket.newBuilder()
-                .setSize(ONLY_SUPPORTED_BUCKET_SIZE)
-                .setIndex(time_bucket)
-                .build());
-        b.setCount(count);
-        b.setDuration(duration_sum / count);
-        if (provider != null) {
-            b.setProvider(provider);
-        }
-        return b.build();
-    }
-
-    private long getTimeBucketIndex(Segment.TimeBucket timeBucket) {
-        return timeBucket.getIndex();
     }
 
     @Override
@@ -251,7 +186,7 @@ public class AccumulatorProcessor implements Processor<String, Segment.Measureme
                 // delete any key where all the time bucket values are in the past
                 boolean delete = true;
                 for (Value val : keyValue.value.values) {
-                    if (val.time_bucket >= this.m_max_time_bucket) {
+                    if (val.time_bucket >= this.m_algorithm.getMaxTimeBucket()) {
                         delete = false;
                         break;
                     }

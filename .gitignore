@@ -12,3 +12,8 @@ java/datastore_accumulator/.gradle/
 java/datastore_accumulator/.idea/
 java/datastore_accumulator/build/
 java/datastore_accumulator/gradle/
+java/datastore_accumulator/.classpath
+java/datastore_accumulator/.gitignore
+java/datastore_accumulator/.project
+java/datastore_accumulator/.settings/
+java/datastore_accumulator/datastore_accumulator.iml
