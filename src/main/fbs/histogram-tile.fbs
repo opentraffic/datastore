@@ -1,0 +1,44 @@
+namespace io.opentraffic.datastore.flatbuffer;
+
+enum VehicleType : byte {
+  Auto = 0,
+}
+
+struct Entry {
+  // day (0=Sunday,...,6=Saturday) * 24 + hour of day.
+  // note: could be 25 to account for the single 25th hour when DST changes?
+  day_hour:ubyte;
+
+  // index into the next_segment_ids array in the Segment.
+  // note: imposes a limit of 256 segments leaving any one segment.
+  next_segment_idx:ubyte;
+
+  // bucket in 5mph intervals.
+  // note: do we set a max speed bucket, e.g: 120mph?
+  speed_bucket:ubyte;
+
+  // number of entries in this bucket
+  count:uint;
+}
+
+table Segment {
+  // ID of this segment
+  segment_id:uint;
+
+  // array of next segment IDs to make their indexes compact
+  next_segment_ids:[uint];
+
+  // array of data entries sorted by day_hour, next_segment_idx, speed_bucket
+  entries:[Entry];
+}
+
+table Histogram {
+  // vehicle type: this is fixed for the whole file? or could perhaps be a top
+  // level element?
+  vehicle_type:VehicleType;
+
+  // array of segments indexed by segment ID
+  segments:[Segment];
+}
+
+root_type Histogram;
