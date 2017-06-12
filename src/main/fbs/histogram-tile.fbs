@@ -13,9 +13,17 @@ struct Entry {
   // note: imposes a limit of 256 segments leaving any one segment.
   next_segment_idx:ubyte;
 
-  // bucket in 5mph intervals.
-  // note: do we set a max speed bucket, e.g: 120mph?
-  speed_bucket:ubyte;
+  // duration in seconds to traverse from the start of `segment_id` to the
+  // start of `next_segment_id`, bucketed into variable-sized buckets with
+  // the top 2 bits indicating a multiplier of [1, 2, 5, 10] seconds each,
+  // and the bottom 6 bits indicating the count relative to the start of
+  // each multiplier.
+  //
+  // the multipliers do not overlap, so the value 64 (=> top 2 bits = 1,
+  // lower 6 bits = 0) indicates 64s, not 0s. likewise, a value of 129
+  // (=> top 2 bits = 2, lower 6 bits = 1) indicates 197s (192s to start
+  // plus 1 * 5 multiplier).
+  duration_bucket:ubyte;
 
   // number of entries in this bucket
   count:uint;

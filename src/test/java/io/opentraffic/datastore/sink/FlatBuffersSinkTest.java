@@ -65,7 +65,7 @@ public class FlatBuffersSinkTest {
         Entry e = s.entries(0);
         assertEquals(59, e.dayHour());
         assertEquals(0, e.nextSegmentIdx());
-        assertEquals(durationBucket, e.speedBucket());
+        assertEquals(durationBucket, e.durationBucket());
         assertEquals(count, e.count());
     }
 
@@ -107,7 +107,7 @@ public class FlatBuffersSinkTest {
                 Entry e0 = s.entries(0);
                 assertEquals(59, e0.dayHour());
                 assertEquals(0, e0.nextSegmentIdx());
-                assertEquals(60, e0.speedBucket());
+                assertEquals(60, e0.durationBucket());
                 assertEquals(2, e0.count());
             }
 
@@ -115,7 +115,7 @@ public class FlatBuffersSinkTest {
                 Entry e1 = s.entries(1);
                 assertEquals(59, e1.dayHour());
                 assertEquals(1, e1.nextSegmentIdx());
-                assertEquals(60, e1.speedBucket());
+                assertEquals(60, e1.durationBucket());
                 assertEquals(12, e1.count());
             }
         }
@@ -131,7 +131,7 @@ public class FlatBuffersSinkTest {
             Entry e = s.entries(0);
             assertEquals(59, e.dayHour());
             assertEquals(0, e.nextSegmentIdx());
-            assertEquals(65, e.speedBucket());
+            assertEquals(65, e.durationBucket());
             assertEquals(7, e.count());
         }
     }
