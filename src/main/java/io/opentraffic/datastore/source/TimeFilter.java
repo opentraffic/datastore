@@ -1,9 +1,9 @@
 package io.opentraffic.datastore.source;
 
+import java.util.Iterator;
+
 import io.opentraffic.datastore.Measurement;
 import io.opentraffic.datastore.TimeBucket;
-
-import java.util.Iterator;
 
 /**
  * Wrapper around a source of Measurements which filters by time. This is useful when the

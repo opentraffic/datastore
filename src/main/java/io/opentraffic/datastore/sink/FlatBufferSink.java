@@ -1,6 +1,14 @@
 package io.opentraffic.datastore.sink;
 
+import java.io.IOException;
+import java.io.OutputStream;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.SortedSet;
+import java.util.TreeSet;
+
 import com.google.flatbuffers.FlatBufferBuilder;
+
 import io.opentraffic.datastore.BucketSize;
 import io.opentraffic.datastore.Measurement;
 import io.opentraffic.datastore.TimeBucket;
@@ -9,22 +17,12 @@ import io.opentraffic.datastore.flatbuffer.Entry;
 import io.opentraffic.datastore.flatbuffer.Histogram;
 import io.opentraffic.datastore.flatbuffer.Segment;
 
-import java.io.IOException;
-import java.io.OutputStream;
-import java.util.*;
-
 /**
  * FlatBufferSink formats a set of measurements to an OutputStream using FlatBuffers.
  */
-public class FlatBufferSink implements FileSink {
-    private final OutputStream m_output;
-
-    public FlatBufferSink(OutputStream output) {
-        this.m_output = output;
-    }
-
-    @Override
-    public void write(ArrayList<Measurement> measurements) throws IOException {
+public class FlatBufferSink {
+  
+    public static void write(ArrayList<Measurement> measurements, OutputStream output) throws IOException {
         final int numMeasurements = measurements.size();
         if (numMeasurements > 0) {
             VehicleType firstVehicleType = measurements.get(0).vehicleType;
@@ -33,13 +31,11 @@ public class FlatBufferSink implements FileSink {
             assert (firstVehicleType == lastVehicleType);
             // which is okay, since only one type of vehicle is supported.
             assert (firstVehicleType == VehicleType.AUTO);
-
+  
             byte[] buffer = buildHistogram(firstVehicleType, measurements);
-
-            this.m_output.write(buffer);
+            output.write(buffer);
         }
-
-        this.m_output.close();
+        output.close();
     }
 
     private static byte[] buildHistogram(VehicleType vehicleType, ArrayList<Measurement> measurements) {

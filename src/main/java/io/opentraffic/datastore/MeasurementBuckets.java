@@ -1,10 +1,8 @@
 package io.opentraffic.datastore;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Map;
 import java.util.TreeMap;
-import java.util.function.BiFunction;
 
 /**
  * Created by matt on 07/06/17.
@@ -20,7 +18,7 @@ public class MeasurementBuckets {
             // strip count and provider, which we don't want to bucket by. keep the count so we
             // can add it back on later.
             Measurement bucketMeasurement = new Measurement(
-                    m.vehicleType, m.segmentId, m.nextSegmentId, m.length, m.timeBucket,
+                    m.vehicleType, m.segmentId, m.nextSegmentId, m.length, m.queueLength, m.timeBucket,
                     m.durationBucket, 0, null);
 
             buckets.merge(bucketMeasurement, m.count, (a, b) -> nullZero(a) + nullZero(b));
@@ -30,7 +28,7 @@ public class MeasurementBuckets {
         for (Map.Entry<Measurement, Integer> entry : buckets.entrySet()) {
             Measurement k = entry.getKey();
             this.m_measurements.add(new Measurement(
-                    k.vehicleType, k.segmentId, k.nextSegmentId, k.length, k.timeBucket,
+                    k.vehicleType, k.segmentId, k.nextSegmentId, k.length, k.queueLength, k.timeBucket,
                     k.durationBucket, nullZero(entry.getValue()), null));
         }
 

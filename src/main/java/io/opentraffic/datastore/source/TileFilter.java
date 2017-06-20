@@ -1,9 +1,8 @@
 package io.opentraffic.datastore.source;
 
-import io.opentraffic.datastore.Measurement;
-import io.opentraffic.datastore.TimeBucket;
-
 import java.util.Iterator;
+
+import io.opentraffic.datastore.Measurement;
 
 /**
  * Wrapper around a source of Measurements which filters by tile ID. This is useful if the
@@ -54,8 +53,8 @@ public class TileFilter implements Iterable<Measurement> {
                     final long newSegmentId =
                             (m.segmentId >> LEVEL_AND_TILEID_BITS) & SEGMENTID_MASK;
                     found = new Measurement(m.vehicleType, newSegmentId,
-                            m.nextSegmentId, m.length, m.timeBucket, m.durationBucket,
-                            m.count, m.provider);
+                            m.nextSegmentId, m.length, m.queueLength, m.timeBucket, m.durationBucket,
+                            m.count, m.source);
                     break;
                 }
             }

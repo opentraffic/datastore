@@ -1,15 +1,22 @@
     package io.opentraffic.datastore.source;
 
-    import io.opentraffic.datastore.*;
-    import org.apache.commons.csv.CSVParser;
-    import org.apache.commons.csv.CSVRecord;
+    import java.io.Closeable;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.Reader;
+import java.util.Date;
+import java.util.Iterator;
+import java.util.NoSuchElementException;
 
-    import java.io.*;
-    import java.text.ParseException;
-    import java.text.SimpleDateFormat;
-    import java.util.Date;
-    import java.util.Iterator;
-    import java.util.NoSuchElementException;
+import org.apache.commons.csv.CSVParser;
+import org.apache.commons.csv.CSVRecord;
+
+import io.opentraffic.datastore.BucketSize;
+import io.opentraffic.datastore.DurationBucket;
+import io.opentraffic.datastore.Measurement;
+import io.opentraffic.datastore.TimeBucket;
+import io.opentraffic.datastore.VehicleType;
 
     /**
      * Created by matt on 06/06/17.
@@ -52,16 +59,18 @@
             @Override
             public Measurement next() {
                 CSVRecord record = this.m_iterator.next();
-                VehicleType vtype = parseVehicleType(record, this.m_format.vehicleTypeColumn);
+                
                 long segmentId = parseLong(record, this.m_format.segmentIdColumn);
                 long nextSegmentId = parseLongOptional(record, this.m_format.nextSegmentIdColumn, Measurement.INVALID_NEXT_SEGMENT_ID);
-                int length = parseInt(record, this.m_format.lengthColumn);
-                TimeBucket timeBucket = parseTimeBucket(record, this.m_format.timestampColumn, this.m_format.timestampFormat);
                 int duration = parseInt(record, this.m_format.durationColumn);
                 byte durationBucket = DurationBucket.quantise(duration);
                 int count = parseInt(record, this.m_format.countColumn);
-                String provider = parseStringOptional(record, this.m_format.providerColumn, null);
-                return new Measurement(vtype, segmentId, nextSegmentId, length, timeBucket, durationBucket, count, provider);
+                int length = parseInt(record, this.m_format.lengthColumn);
+                int queueLength = parseInt(record, this.m_format.queueLengthColumn);
+                TimeBucket timeBucket = parseTimeBucket(record, this.m_format.minTimestampColumn);
+                String source = parseStringOptional(record, this.m_format.sourceColumn, null);
+                VehicleType vtype = parseVehicleType(record, this.m_format.vehicleTypeColumn);
+                return new Measurement(vtype, segmentId, nextSegmentId, length, queueLength, timeBucket, durationBucket, count, source);
             }
 
             private String parseStringOptional(CSVRecord record, int idx, String defaultValue) {
@@ -72,13 +81,13 @@
                 }
             }
 
-            private TimeBucket parseTimeBucket(CSVRecord record, int idx, SimpleDateFormat dateFormat) {
-                String timestamp = record.get(idx);
+            private TimeBucket parseTimeBucket(CSVRecord record, int idx) {
                 try {
-                    Date date = dateFormat.parse(timestamp);
+                    long timestamp = parseLong(record, idx);
+                    Date date = new Date(timestamp * 1000L);
                     long hour = date.getTime() / (1000L * 3600L);
                     return new TimeBucket(BucketSize.HOURLY, hour);
-                } catch (ParseException e) {
+                } catch (Exception e) {
                     throw new RuntimeException("Unable to parse timestamp", e);
                 }
             }

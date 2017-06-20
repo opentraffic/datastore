@@ -1,5 +1,5 @@
-postgres/
 *.swp
-
-# where maven stores its build stuff
-target/
+target
+.project
+.settings
+.classpath

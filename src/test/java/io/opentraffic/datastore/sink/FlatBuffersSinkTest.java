@@ -1,5 +1,15 @@
 package io.opentraffic.datastore.sink;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
+
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
+
+import org.junit.Test;
+
 import io.opentraffic.datastore.BucketSize;
 import io.opentraffic.datastore.Measurement;
 import io.opentraffic.datastore.TimeBucket;
@@ -7,14 +17,6 @@ import io.opentraffic.datastore.VehicleType;
 import io.opentraffic.datastore.flatbuffer.Entry;
 import io.opentraffic.datastore.flatbuffer.Histogram;
 import io.opentraffic.datastore.flatbuffer.Segment;
-import org.junit.Test;
-import static org.junit.Assert.fail;
-import static org.junit.Assert.assertEquals;
-
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.nio.*;
-import java.util.ArrayList;
 
 /**
  * Created by matt on 07/06/17.
@@ -25,11 +27,8 @@ public class FlatBuffersSinkTest {
     // in-memory buffer and read the result back as a Histogram object.
     private Histogram roundTrip(ArrayList<Measurement> measurements) {
         ByteArrayOutputStream bos = new ByteArrayOutputStream();
-        FlatBufferSink sink = new FlatBufferSink(bos);
-
         try {
-            sink.write(measurements);
-
+          FlatBufferSink.write(measurements, bos);
         } catch (IOException ex) {
             fail(ex.getLocalizedMessage());
         }
@@ -44,13 +43,14 @@ public class FlatBuffersSinkTest {
         final int segmentId = 1;
         final int nextSegmentId = 1235;
         final int length = 1000;
+        final int queue = 30;
         final byte durationBucket = 60;
         final TimeBucket timeBucket = new TimeBucket(BucketSize.HOURLY, 415787);
         final int count = 1;
 
         ArrayList<Measurement> measurements = new ArrayList<>();
         measurements.add(new Measurement(
-                VehicleType.AUTO, (long)segmentId, (long)nextSegmentId, length,
+                VehicleType.AUTO, (long)segmentId, (long)nextSegmentId, length, queue,
                 timeBucket, durationBucket, count, null));
 
         Histogram h = roundTrip(measurements);
@@ -76,13 +76,13 @@ public class FlatBuffersSinkTest {
         ArrayList<Measurement> measurements = new ArrayList<>();
 
         measurements.add(new Measurement(
-                VehicleType.AUTO, 3L, 1L, 990,
+                VehicleType.AUTO, 3L, 1L, 990, 50,
                 timeBucket, (byte)60, 2, null));
         measurements.add(new Measurement(
-                VehicleType.AUTO, 3L, 5L, 999,
+                VehicleType.AUTO, 3L, 5L, 999, 60,
                 timeBucket, (byte)60, 12, null));
         measurements.add(new Measurement(
-                VehicleType.AUTO, 5L, 3L, 1001,
+                VehicleType.AUTO, 5L, 3L, 1001, 71,
                 timeBucket, (byte)65, 7, null));
 
         Histogram h = roundTrip(measurements);

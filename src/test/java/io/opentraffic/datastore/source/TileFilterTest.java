@@ -1,14 +1,15 @@
 package io.opentraffic.datastore.source;
 
+import static org.junit.Assert.assertEquals;
+
+import java.util.ArrayList;
+
+import org.junit.Test;
+
 import io.opentraffic.datastore.BucketSize;
 import io.opentraffic.datastore.Measurement;
 import io.opentraffic.datastore.TimeBucket;
 import io.opentraffic.datastore.VehicleType;
-import org.junit.Test;
-
-import java.util.ArrayList;
-
-import static org.junit.Assert.assertEquals;
 
 public class TileFilterTest {
     @Test
@@ -20,10 +21,10 @@ public class TileFilterTest {
 
         ArrayList<Measurement> measurements = new ArrayList<>();
         measurements.add(new Measurement(
-                VehicleType.AUTO, segment_in_tile, 1, 1,
+                VehicleType.AUTO, segment_in_tile, 1, 1, 1,
                 new TimeBucket(BucketSize.HOURLY, 1), (byte)1, 1, null));
         measurements.add(new Measurement(
-                VehicleType.AUTO, segment_not_in_tile, 1, 1,
+                VehicleType.AUTO, segment_not_in_tile, 1, 1, 1,
                 new TimeBucket(BucketSize.HOURLY, 1), (byte)1, 1, null));
 
         Iterable<Measurement> iterable = new TileFilter(tile_id, measurements);

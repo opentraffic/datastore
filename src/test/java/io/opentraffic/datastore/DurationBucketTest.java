@@ -1,8 +1,8 @@
 package io.opentraffic.datastore;
 
-import org.junit.Test;
-
 import static org.junit.Assert.assertEquals;
+
+import org.junit.Test;
 
 /**
  * Created by matt on 06/06/17.

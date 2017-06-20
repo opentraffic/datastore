@@ -20,6 +20,11 @@ public final class Measurement implements Comparable<Measurement> {
     // start of `nextSegmentId`. Note that this may include some
     // stuff past the end of `segmentId`.
     public final int length;
+    
+    // Length, in metres, from the end of `segmentId` to the
+    // start of a queue. Note that this may include some
+    // stuff past the end of `segmentId`.
+    public final int queueLength;
 
     // Time bucket in which the measurement was taken.
     public final TimeBucket timeBucket;
@@ -30,21 +35,22 @@ public final class Measurement implements Comparable<Measurement> {
     // Number of measurements sharing this set of parameters.
     public final int count;
 
-    // Identifier of the provider (TNC) through which this
+    // Identifier of the source (TNC) through which this
     // measurement was processed. Note that this might be null
     // for composite measurements - always check it before
     // using it.
-    public final String provider;
+    public final String source;
 
-    public Measurement(VehicleType vehicleType, long segmentId, long nextSegmentId, int length, TimeBucket timeBucket, byte durationBucket, int count, String provider) {
+    public Measurement(VehicleType vehicleType, long segmentId, long nextSegmentId, int length, int queueLength, TimeBucket timeBucket, byte durationBucket, int count, String provider) {
         this.vehicleType = vehicleType;
         this.segmentId = segmentId;
         this.nextSegmentId = nextSegmentId;
         this.length = length;
+        this.queueLength = queueLength;
         this.timeBucket = timeBucket;
         this.durationBucket = durationBucket;
         this.count = count;
-        this.provider = provider;
+        this.source = provider;
     }
 
     @Override
@@ -61,7 +67,7 @@ public final class Measurement implements Comparable<Measurement> {
         if (count != that.count) return false;
         if (vehicleType != that.vehicleType) return false;
         if (timeBucket != null ? !timeBucket.equals(that.timeBucket) : that.timeBucket != null) return false;
-        return provider != null ? provider.equals(that.provider) : that.provider == null;
+        return source != null ? source.equals(that.source) : that.source == null;
     }
 
     @Override
@@ -73,13 +79,13 @@ public final class Measurement implements Comparable<Measurement> {
         result = 31 * result + (timeBucket != null ? timeBucket.hashCode() : 0);
         result = 31 * result + (int)durationBucket;
         result = 31 * result + count;
-        result = 31 * result + (provider != null ? provider.hashCode() : 0);
+        result = 31 * result + (source != null ? source.hashCode() : 0);
         return result;
     }
 
     @Override
     public String toString() {
-        String stringProvider = provider == null ? "null" : ("'" + provider + "'");
+        String stringProvider = source == null ? "null" : ("'" + source + "'");
         return "Measurement{" +
                 "vehicleType=" + vehicleType +
                 ", segmentId=" + segmentId +
@@ -117,17 +123,17 @@ public final class Measurement implements Comparable<Measurement> {
         cmp = Integer.compare(this.count, other.count);
         if (cmp != 0) { return cmp; }
 
-        if (this.provider == null) {
-            if (other.provider == null) {
+        if (this.source == null) {
+            if (other.source == null) {
                 cmp = 0;
             } else {
                 cmp = -1;
             }
         } else {
-            if (other.provider == null) {
+            if (other.source == null) {
                 cmp = 1;
             } else {
-                cmp = this.provider.compareTo(other.provider);
+                cmp = this.source.compareTo(other.source);
             }
         }
 

@@ -1,28 +1,36 @@
 package io.opentraffic.datastore.sink;
 
-import io.opentraffic.datastore.BucketSize;
-import io.opentraffic.datastore.DurationBucket;
-import io.opentraffic.datastore.Measurement;
-import io.opentraffic.datastore.TimeBucket;
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.*;
-import org.apache.hadoop.fs.permission.FsPermission;
-import org.apache.hadoop.hive.ql.exec.vector.LongColumnVector;
-import org.apache.hadoop.hive.ql.exec.vector.VectorizedRowBatch;
-import org.apache.hadoop.util.Progressable;
-import org.apache.orc.*;
-import org.apache.orc.Writer;
-import org.apache.orc.impl.PhysicalFsWriter;
-
-import java.io.*;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.OutputStream;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
 
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.FSDataInputStream;
+import org.apache.hadoop.fs.FSDataOutputStream;
+import org.apache.hadoop.fs.FileStatus;
+import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.fs.permission.FsPermission;
+import org.apache.hadoop.hive.ql.exec.vector.LongColumnVector;
+import org.apache.hadoop.hive.ql.exec.vector.VectorizedRowBatch;
+import org.apache.hadoop.util.Progressable;
+import org.apache.orc.OrcFile;
+import org.apache.orc.TypeDescription;
+import org.apache.orc.Writer;
+import org.apache.orc.impl.PhysicalFsWriter;
+
+import io.opentraffic.datastore.BucketSize;
+import io.opentraffic.datastore.DurationBucket;
+import io.opentraffic.datastore.Measurement;
+import io.opentraffic.datastore.TimeBucket;
+
 /**
  * Created by matt on 08/06/17.
  */
-public class ORCSink implements FileSink {
+public class ORCSink {
 
     public static final String SCHEMA_DEF = "struct<" +
             "vtype:tinyint," +
@@ -33,18 +41,11 @@ public class ORCSink implements FileSink {
             "count:int" +
             ">";
 
-    private final OutputStream m_output;
-
-    public ORCSink(OutputStream output) {
-        this.m_output = output;
-    }
-
-    @Override
-    public void write(ArrayList<Measurement> measurements) throws IOException {
+    public static void write(ArrayList<Measurement> measurements, OutputStream output) throws IOException {
 
         Path path = new Path("foo");
         Configuration conf = new Configuration();
-        FileSystem fs = new SingleOutputFileSystem(this.m_output);
+        FileSystem fs = new SingleOutputFileSystem(output);
 
         TypeDescription schema = TypeDescription.fromString(SCHEMA_DEF);
 
@@ -85,7 +86,7 @@ public class ORCSink implements FileSink {
             batch.reset();
         }
 
-        // this should end up calling close() on this.m_output, so we don't have to.
+        // this should end up calling close() on fos, so we don't have to.
         writer.close();
     }
 

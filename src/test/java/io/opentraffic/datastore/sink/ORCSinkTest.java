@@ -1,11 +1,24 @@
 package io.opentraffic.datastore.sink;
 
-import io.opentraffic.datastore.BucketSize;
-import io.opentraffic.datastore.Measurement;
-import io.opentraffic.datastore.TimeBucket;
-import io.opentraffic.datastore.VehicleType;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.net.URI;
+import java.util.ArrayList;
+
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.*;
+import org.apache.hadoop.fs.FSDataInputStream;
+import org.apache.hadoop.fs.FSDataOutputStream;
+import org.apache.hadoop.fs.FileStatus;
+import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.fs.PositionedReadable;
+import org.apache.hadoop.fs.Seekable;
 import org.apache.hadoop.fs.permission.FsPermission;
 import org.apache.hadoop.hive.ql.exec.vector.LongColumnVector;
 import org.apache.hadoop.hive.ql.exec.vector.VectorizedRowBatch;
@@ -16,13 +29,10 @@ import org.apache.orc.RecordReader;
 import org.apache.orc.TypeDescription;
 import org.junit.Test;
 
-import java.io.*;
-import java.net.URI;
-import java.util.ArrayList;
-
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import io.opentraffic.datastore.BucketSize;
+import io.opentraffic.datastore.Measurement;
+import io.opentraffic.datastore.TimeBucket;
+import io.opentraffic.datastore.VehicleType;
 
 /**
  * Round-trip ORC files to check that the serialisation and deserialisation is
@@ -35,14 +45,12 @@ public class ORCSinkTest {
         ArrayList<Measurement> measurements = new ArrayList<>();
 
         measurements.add(new Measurement(
-                VehicleType.AUTO, 3L, 1L, 990,
+                VehicleType.AUTO, 3L, 1L, 990, 50, 
                 timeBucket, (byte)60, 2, null));
 
         ByteArrayOutputStream output = new ByteArrayOutputStream();
-        ORCSink sink = new ORCSink(output);
-
         try {
-            sink.write(measurements);
+          ORCSink.write(measurements, output);
         } catch (IOException ex) {
             fail("Failed to write to sink: " + ex.getLocalizedMessage());
         }
