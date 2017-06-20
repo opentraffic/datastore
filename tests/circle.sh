@@ -3,9 +3,9 @@ set -e
 
 echo "Starting the datastore container..."
 docker run \
-  -d \
-  --name datastore
-  datastore:latest
+  --name datastore \
+  datastore:latest \
+  echo
 
 # basic json validation
 echo "Validating json request data..."
