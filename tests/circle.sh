@@ -7,8 +7,4 @@ docker run \
   datastore:latest \
   echo
 
-# basic json validation
-echo "Validating json request data..."
-jq "." tests/datastore_request.json >/dev/null
-
 echo "Done!"
