@@ -4,7 +4,6 @@ set -e
 echo "Starting the datastore container..."
 docker run \
   -d \
-  -p ${datastore_port}:${datastore_port} \
   --name datastore
   datastore:latest
 
