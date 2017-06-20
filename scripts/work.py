@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+import os
 import boto3
 import argparse
 
@@ -19,21 +20,33 @@ keys_array = args.reporter_s3_keys.split(',')
 # keep a list of all the files we iterate over to delete later in a bulk operation
 delete_array = []
 
+# download stuff
 s3 = boto3.resource('s3')
 for key in keys_array:
     object_id = key.rsplit('/', 1)[-1]
     s3.Object(args.s3_reporter_bucket, key).download_file(object_id)
     delete_array.append( { 'Key': key } ) 	   
 
-    # run some java thing here on each key
 
-    # upload the result to s3_datastore_bucket
+# run our java thingy: the Docker container workdir will have already put us
+#   in the right place to, ummm, do work
+
+# TODO: program -f flatbuffer_file -o orc_file *
+
+# TODO: upload the result to s3_datastore_bucket
+for upload_file in os.listdir('.'):
+    client = boto3.client('s3')
+    response = client.put_object(
+                Bucket = args.s3_datastore_bucket,
+                Key = upload_file,
+                ContentType = 'binary/octet-stream'
+                )
 
 # delete the original keys from the s3_reporter_bucket
-client = boto3.client('s3')
-
 print 'Deleting source objects from bucket ' + args.s3_reporter_bucket
+
+client = boto3.client('s3')
 response = client.delete_objects(
     Bucket = args.s3_reporter_bucket,
     Delete = { 'Objects': delete_array }
-)
+    )

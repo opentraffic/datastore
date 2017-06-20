@@ -8,6 +8,9 @@ ENV DEBIAN_FRONTEND noninteractive
 RUN apt-get update && apt-get install -y python python-pip
 RUN pip install boto3 argparse
 
+RUN mkdir /work
+WORKDIR /work
+
 # install code
 ADD ./scripts /scripts
 
