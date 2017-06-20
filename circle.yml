@@ -1,6 +1,8 @@
 machine:
   services:
     - docker
+  environment:
+    ecr_prefix: 056357055360.dkr.ecr.us-east-1.amazonaws.com/opentraffic/datastore-
 
 dependencies:
   pre:
@@ -19,17 +21,17 @@ deployment:
     branch: master
     commands:
       - eval $(aws ecr get-login --region us-east-1)
-      - docker tag datastore:latest 056357055360.dkr.ecr.us-east-1.amazonaws.com/opentraffic/datastore-prod:$CIRCLE_SHA1
-      - docker push 056357055360.dkr.ecr.us-east-1.amazonaws.com/opentraffic/datastore-prod:$CIRCLE_SHA1
-      - docker tag datastore:latest 056357055360.dkr.ecr.us-east-1.amazonaws.com/opentraffic/datastore-prod:latest
-      - docker push 056357055360.dkr.ecr.us-east-1.amazonaws.com/opentraffic/datastore-prod:latest
+      - docker tag datastore:latest ${ecr_prefix}-prod:${CIRCLE_SHA1}
+      - docker push ${ecr_prefix}-prod:$CIRCLE_SHA1
+      - docker tag datastore:latest ${ecr_prefix}-prod:latest
+      - docker push ${ecr_prefix}-prod:latest
       - hub-deploy/bin/deploy.sh datastore
 
   dev:
     branch: dev
     commands:
       - eval $(aws ecr get-login --region us-east-1)
-      - docker tag datastore:latest 056357055360.dkr.ecr.us-east-1.amazonaws.com/opentraffic/datastore-dev:$CIRCLE_SHA1
-      - docker push 056357055360.dkr.ecr.us-east-1.amazonaws.com/opentraffic/datastore-dev:$CIRCLE_SHA1
-      - docker tag datastore:latest 056357055360.dkr.ecr.us-east-1.amazonaws.com/opentraffic/datastore-dev:latest
-      - docker push 056357055360.dkr.ecr.us-east-1.amazonaws.com/opentraffic/datastore-dev:latest
+      - docker tag datastore:latest ${ecr_prefix}-dev:${CIRCLE_SHA1}
+      - docker push ${ecr_prefix}-dev:$CIRCLE_SHA1
+      - docker tag datastore:latest ${ecr_prefix}-dev:latest
+      - docker push ${ecr_prefix}-dev:latest
