@@ -3,6 +3,7 @@
 import os
 import boto3
 import argparse
+from subprocess import call
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -31,7 +32,8 @@ for key in keys_array:
 # run our java thingy: the Docker container workdir will have already put us
 #   in the right place to, ummm, do work
 
-# TODO: program -f flatbuffer_file -o orc_file *
+# TODO: error handling?
+call('program -f flatbuffer_file -o orc_file ./*')
 
 # TODO: upload the result to s3_datastore_bucket
 for upload_file in os.listdir('.'):
