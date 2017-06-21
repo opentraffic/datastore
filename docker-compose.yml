@@ -2,7 +2,8 @@ version: '2'
 
 services:
   datastore:
-    image: opentraffic/datastore:latest
+    build: .
+    #image: opentraffic/datastore:latest
     networks:
       - opentraffic_datastore
 
