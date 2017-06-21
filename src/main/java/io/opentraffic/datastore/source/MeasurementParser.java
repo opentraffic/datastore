@@ -51,8 +51,8 @@ public class MeasurementParser implements Iterable<Measurement>, Closeable {
     queueLengthColumn = Integer.parseInt(cmd.getOptionValue("queue-length-column", "5"));
     minTimestampColumn = Integer.parseInt(cmd.getOptionValue("min-timestamp-column", "6"));
     maxTimestampColumn = Integer.parseInt(cmd.getOptionValue("max-timestamp-column", "7"));
-    sourceColumn = Integer.parseInt(cmd.getOptionValue("source-column", "-1"));
-    vehicleTypeColumn = Integer.parseInt(cmd.getOptionValue("mode-column", "-1"));
+    sourceColumn = Integer.parseInt(cmd.getOptionValue("source-column", "8"));
+    vehicleTypeColumn = Integer.parseInt(cmd.getOptionValue("mode-column", "9"));
   }
   
   public MeasurementParser(CommandLine cmd, String rawCSV, TimeBucket timeBucket, long tileId) throws IOException {
@@ -69,8 +69,8 @@ public class MeasurementParser implements Iterable<Measurement>, Closeable {
     queueLengthColumn = Integer.parseInt(cmd.getOptionValue("queue-length-column", "5"));
     minTimestampColumn = Integer.parseInt(cmd.getOptionValue("min-timestamp-column", "6"));
     maxTimestampColumn = Integer.parseInt(cmd.getOptionValue("max-timestamp-column", "7"));
-    sourceColumn = Integer.parseInt(cmd.getOptionValue("source-column", "-1"));
-    vehicleTypeColumn = Integer.parseInt(cmd.getOptionValue("mode-column", "-1"));
+    sourceColumn = Integer.parseInt(cmd.getOptionValue("source-column", "8"));
+    vehicleTypeColumn = Integer.parseInt(cmd.getOptionValue("mode-column", "9"));
   }
 
   @Override

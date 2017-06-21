@@ -50,14 +50,6 @@ public final class Measurement   {
     }
 
     @Override
-    public String toString() {
-      String stringProvider = source == null ? "null" : ("'" + source + "'");
-      return "Measurement{" + "vehicleType=" + vehicleType + ", segmentId=" + segmentId + ", nextSegmentId="
-          + nextSegmentId + ", length=" + length + ", duration=" + ((int) duration) + ", count=" + count
-          + ", provider=" + stringProvider + '}';
-    }
-
-    @Override
     public int compareTo(Key other) {
       int cmp = 0;
 
@@ -147,5 +139,13 @@ public final class Measurement   {
   
   public long getTileRelative() {
     return (key.segmentId >> LEVEL_AND_TILEID_BITS) & SEGMENTID_MASK;
+  }
+
+  @Override
+  public String toString() {
+    String stringProvider = source == null ? "null" : ("'" + source + "'");
+    return "Measurement{" + "vehicleType=" + key.vehicleType + ", segmentIndex=" + getTileRelative() + ", segmentId=" + key.segmentId + ", nextSegmentId="
+        + key.nextSegmentId + ", length=" + length + ", queue_length=" + queueLength + ", duration=" + duration
+        + ", count=" + count + ", provider=" + stringProvider + '}';
   }
 }

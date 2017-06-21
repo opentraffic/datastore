@@ -14,6 +14,7 @@ import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
+import org.apache.log4j.Logger;
 
 import io.opentraffic.datastore.sink.FlatBufferSink;
 import io.opentraffic.datastore.sink.ORCSink;
@@ -24,6 +25,8 @@ import io.opentraffic.datastore.source.MeasurementParser;
  * Created by matt on 06/06/17.
  */
 public class Main {
+  
+  private final static Logger logger = Logger.getLogger(Main.class);
 
   public static void main(String[] args) throws Exception {
 
@@ -53,14 +56,17 @@ public class Main {
     TreeMap<Measurement.Key, Measurement> measurements = new TreeMap<>();
     for (String fileName : fileNames) {
       try {
-        MeasurementParser parser = new MeasurementParser(cmd, fileName, timeBucket, tileId);
+        File file = new File(fileName);
+        MeasurementParser parser = new MeasurementParser(cmd, file, timeBucket, tileId);
         for (Measurement m : parser) {
-          Measurement measurement = measurements.get(m.key);
-          measurement.combine(m);
+          if(!measurements.containsKey(m.key))
+            measurements.put(m.key, m);
+          else
+            measurements.get(m.key).combine(m);
         }
         parser.close();
       } catch (Exception e) {
-        //TODO: log this
+        logger.error("Failed to parse measurements from file: " + fileName);
       }
     }
     ArrayList<Measurement> sorted = new ArrayList<Measurement>(measurements.values());
@@ -97,16 +103,16 @@ public class Main {
 
   public static Options createOptions() {
     Options options = new Options();
-    options.addOption(Option.builder("b").longOpt("time-bucket").required(true).type(Long.class)
+    options.addOption(Option.builder("b").longOpt("time-bucket").hasArg().required(true).type(Long.class)
         .desc("The timebucket to target when creating this tile. This is which sequential hour starting from the epoch").build());
-    options.addOption(Option.builder("t").longOpt("tile").required(true).type(Long.class)
+    options.addOption(Option.builder("t").longOpt("tile").hasArg().required(true).type(Long.class)
         .desc("The tile and level to target when creating this tile. Note that the level is the first 3 bits followed by the tile "
             + "index which is the next 22 bits").build());
     
-    options.addOption(Option.builder("f").longOpt("output-flatbuffers").required(false)
+    options.addOption(Option.builder("f").longOpt("output-flatbuffers").hasArg().required(false)
         .desc("If present, the location to output a FlatBuffers file to. "
             + "If the file already exists it will merged with into the rest of the output").build());
-    options.addOption(Option.builder("o").longOpt("output-orc").required(false)
+    options.addOption(Option.builder("o").longOpt("output-orc").hasArg().required(false)
         .desc("If present, the location to output an ORC file to. "
             + "If the file already exists it will merged with into the rest of the output").build());
     options.addOption(Option.builder("v").longOpt("verbose").required(false)
