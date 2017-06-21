@@ -11,10 +11,11 @@ RUN pip install boto3 argparse
 
 # install code
 ADD ./scripts /scripts
-ADD ./java /java
+ADD ./pom.xml /pom.xml
+ADD ./src /src
 
 # compile java
-RUN cd /java && mvn install
+RUN cd / && mvn install
 
 # set working dir
 RUN mkdir /work
