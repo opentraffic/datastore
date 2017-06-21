@@ -35,7 +35,7 @@ for key in keys_array:
 
 # TODO: error handling?
 print '[INFO] running conversion process'
-call('program -f flatbuffer_file -o orc_file ./*')
+call('datastore-histogram-tile-writer -f flatbuffer_file -o orc_file ./*')
 
 # TODO: upload the result to s3_datastore_bucket
 for upload_file in os.listdir('.'):

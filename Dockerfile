@@ -9,13 +9,17 @@ RUN apt-get update && apt-get install -y default-jdk python python-pip maven
 RUN pip install --upgrade pip
 RUN pip install boto3 argparse
 
-# install code
+# install scripts
 ADD ./scripts /scripts
-ADD ./pom.xml /pom.xml
-ADD ./src /src
+
+# install java code
+ADD ./src /datastore/src
+ADD ./pom.xml /datastore/pom.xml
 
 # compile java
-RUN cd / && mvn install
+RUN cd /datastore && mvn install
+RUN ln -s /datastore/target/datastore-histogram-tile-writer \
+      /usr/local/bin/datastore-histogram-tile-writer
 
 # set working dir
 RUN mkdir /work
