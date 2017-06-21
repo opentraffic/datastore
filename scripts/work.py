@@ -24,10 +24,10 @@ delete_array = []
 # download stuff
 print '[INFO] downloading data from s3'
 
-s3 = boto3.resource('s3')
+s3_resource = boto3.resource('s3')
 for key in keys_array:
     object_id = key.rsplit('/', 1)[-1]
-    s3.Object(args.s3_reporter_bucket, key).download_file(object_id)
+    s3_resource.Object(args.s3_reporter_bucket, key).download_file(object_id)
     delete_array.append( { 'Key': key } ) 	   
 
 # run our java thingy: the Docker container workdir will have already put us
@@ -38,9 +38,9 @@ print '[INFO] running conversion process'
 call('datastore-histogram-tile-writer -f flatbuffer_file -o orc_file ./*')
 
 # TODO: upload the result to s3_datastore_bucket
+s3_client = boto3.client('s3')
 for upload_file in os.listdir('.'):
-    client = boto3.client('s3')
-    response = client.put_object(
+    response = s3_client.put_object(
                 Bucket = args.s3_datastore_bucket,
                 Key = upload_file,
                 ContentType = 'binary/octet-stream'
@@ -48,9 +48,7 @@ for upload_file in os.listdir('.'):
 
 # delete the original keys from the s3_reporter_bucket
 print '[INFO] deleting source objects from bucket ' + args.s3_reporter_bucket
-
-client = boto3.client('s3')
-response = client.delete_objects(
+response = s3_client.delete_objects(
     Bucket = args.s3_reporter_bucket,
     Delete = { 'Objects': delete_array }
     )
