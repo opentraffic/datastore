@@ -1,11 +1,11 @@
-FROM python:2.7.13
+FROM ubuntu:16.04
 MAINTAINER Grant Heffernan <grant@mapzen.com>
 
 # env
 ENV DEBIAN_FRONTEND noninteractive
 
 # install dependencies
-RUN apt-get update && apt-get install -y openjdk-7-jre
+RUN apt-get update && apt-get install -y default-jre python python-pip
 RUN pip install boto3 argparse
 
 RUN mkdir /work
