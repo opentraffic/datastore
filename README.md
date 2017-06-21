@@ -13,9 +13,9 @@ locally:
 
     sudo docker build -t opentraffic/datastore .
 
-#### Docker Compose
+#### Using the image
 
-    sudo -E docker-compose up
+The image is available via DockerHub: `docker pull opentraffic/datastore:latest`.
 
 #### Building with Maven
 

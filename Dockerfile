@@ -17,7 +17,7 @@ ADD ./src /datastore/src
 ADD ./pom.xml /datastore/pom.xml
 
 # compile java
-RUN cd /datastore && mvn install
+RUN cd /datastore && mvn clean package
 RUN ln -s /datastore/target/datastore-histogram-tile-writer \
       /usr/local/bin/datastore-histogram-tile-writer
 
