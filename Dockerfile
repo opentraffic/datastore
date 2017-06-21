@@ -5,15 +5,20 @@ MAINTAINER Grant Heffernan <grant@mapzen.com>
 ENV DEBIAN_FRONTEND noninteractive
 
 # install dependencies
-RUN apt-get update && apt-get install -y default-jre python python-pip
+RUN apt-get update && apt-get install -y default-jdk python python-pip maven
 RUN pip install --upgrade pip
 RUN pip install boto3 argparse
 
-RUN mkdir /work
-WORKDIR /work
-
 # install code
 ADD ./scripts /scripts
+ADD ./java /java
+
+# compile java
+RUN cd /java && mvn install
+
+# set working dir
+RUN mkdir /work
+WORKDIR /work
 
 # cleanup
 RUN apt-get clean && \
