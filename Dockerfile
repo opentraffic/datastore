@@ -4,26 +4,27 @@ MAINTAINER Grant Heffernan <grant@mapzen.com>
 # env
 ENV DEBIAN_FRONTEND noninteractive
 
-ENV STORE_BIND_ADDR ${STORE_BIND_ADDR:-"0.0.0.0"}
-ENV STORE_LISTEN_PORT ${STORE_LISTEN_PORT:-"8003"}
-
-ENV POSTGRES_USER ${POSTGRES_USER:-"opentraffic"}
-ENV POSTGRES_PASSWORD ${POSTGRES_PASSWORD:-"changeme"}
-ENV POSTGRES_DB ${POSTGRES_DB:-"opentraffic"}
-ENV POSTGRES_HOST ${POSTGRES_HOST:-"postgres"}
-ENV POSTGRES_PORT ${POSTGRES_PORT:-"5432"}
-
 # install dependencies
-RUN apt-get update && apt-get install -y python python-psycopg2
+RUN apt-get update && apt-get install -y default-jdk python python-pip maven
+RUN pip install --upgrade pip
+RUN pip install boto3 argparse
 
-# install code
-ADD ./py /datastore
+# install scripts
+ADD ./scripts /scripts
+
+# install java code
+ADD ./src /datastore/src
+ADD ./pom.xml /datastore/pom.xml
+
+# compile java
+RUN cd /datastore && mvn clean package
+RUN ln -s /datastore/target/datastore-histogram-tile-writer \
+      /usr/local/bin/datastore-histogram-tile-writer
+
+# set working dir
+RUN mkdir /work
+WORKDIR /work
 
 # cleanup
 RUN apt-get clean && \
       rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
-
-EXPOSE ${STORE_LISTEN_PORT}
-
-# start the datastore service
-CMD python -u /datastore/datastore_service.py ${STORE_BIND_ADDR}:${STORE_LISTEN_PORT}
