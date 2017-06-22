@@ -11,40 +11,40 @@ import java.util.List;
  */
 public class FileSource {
 
-    private final List<String> m_files;
+  private final List<String> m_files;
 
-    public FileSource(List<String> files) {
-        this.m_files = files;
+  public FileSource(List<String> files) {
+    this.m_files = files;
+  }
+
+  public Iterator<InputStream> iterator() {
+    return new LocalFileSourceIterator(m_files.iterator());
+  }
+
+  private static class LocalFileSourceIterator implements Iterator<InputStream> {
+    private final Iterator<String> m_iterator;
+
+    public LocalFileSourceIterator(Iterator<String> iterator) {
+      this.m_iterator = iterator;
     }
 
-    public Iterator<InputStream> iterator() {
-        return new LocalFileSourceIterator(m_files.iterator());
+    @Override
+    public boolean hasNext() {
+      return this.m_iterator.hasNext();
     }
 
-    private static class LocalFileSourceIterator implements Iterator<InputStream> {
-        private final Iterator<String> m_iterator;
-
-        public LocalFileSourceIterator(Iterator<String> iterator) {
-            this.m_iterator = iterator;
+    @Override
+    public InputStream next() {
+      String s = this.m_iterator.next();
+      if (s != null) {
+        try {
+          FileInputStream fis = new FileInputStream(s);
+          return fis;
+        } catch (FileNotFoundException ex) {
+          throw new RuntimeException("Unable to open file \"" + s + "\"", ex);
         }
-
-        @Override
-        public boolean hasNext() {
-            return this.m_iterator.hasNext();
-        }
-
-        @Override
-        public InputStream next() {
-            String s = this.m_iterator.next();
-            if (s != null) {
-                try {
-                    FileInputStream fis = new FileInputStream(s);
-                    return fis;
-                } catch (FileNotFoundException ex) {
-                    throw new RuntimeException("Unable to open file \"" + s + "\"", ex);
-                }
-            }
-            return null;
-        }
+      }
+      return null;
     }
+  }
 }
