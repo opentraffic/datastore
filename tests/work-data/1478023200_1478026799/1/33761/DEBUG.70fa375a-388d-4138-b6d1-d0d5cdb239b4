@@ -1,2 +1,0 @@
-segment_id,next_segment_id,duration,count,length,queue_length,minimum_timestamp,maximum_timestamp,source,vehicle_type
-251859836681,911103509216,3,1,38,0,1478024509,1478024514,DEBUG,AUTO
