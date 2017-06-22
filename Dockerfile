@@ -21,7 +21,8 @@ RUN cd /datastore && mvn install 2>&1 1>/dev/null && mvn clean package
 RUN ln -s /datastore/target/datastore-histogram-tile-writer \
       /usr/local/bin/datastore-histogram-tile-writer
 
-# set working dir
+# create output dir and set working dir
+RUN mkdir /output
 RUN mkdir /work
 WORKDIR /work
 
