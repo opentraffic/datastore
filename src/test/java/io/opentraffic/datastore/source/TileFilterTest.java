@@ -1,39 +1,45 @@
 package io.opentraffic.datastore.source;
 
+import static org.junit.Assert.assertEquals;
+
+import java.io.IOException;
+
+import org.apache.commons.cli.CommandLine;
+import org.apache.commons.cli.CommandLineParser;
+import org.apache.commons.cli.DefaultParser;
+import org.apache.commons.cli.Options;
+import org.apache.commons.cli.ParseException;
+import org.junit.Test;
+
 import io.opentraffic.datastore.BucketSize;
 import io.opentraffic.datastore.Measurement;
 import io.opentraffic.datastore.TimeBucket;
-import io.opentraffic.datastore.VehicleType;
-import org.junit.Test;
-
-import java.util.ArrayList;
-
-import static org.junit.Assert.assertEquals;
 
 public class TileFilterTest {
-    @Test
-    public void testTileFilter() {
-        final long segment_id = 13L;
-        final long tile_id = (1234L << 3L) | 1L;
-        final long segment_in_tile = (segment_id << 25) | tile_id;
-        final long segment_not_in_tile = segment_in_tile + (1L << 3L);
+  @Test
+  public void testTileFilter() throws ParseException, IOException {
+    final long segment_id = 13L;
+    final long tile_id = (1234L << 3L) | 1L;
+    final long segment_in_tile = (segment_id << 25) | tile_id;
+    final long segment_not_in_tile = segment_in_tile + (1L << 3L);
 
-        ArrayList<Measurement> measurements = new ArrayList<>();
-        measurements.add(new Measurement(
-                VehicleType.AUTO, segment_in_tile, 1, 1,
-                new TimeBucket(BucketSize.HOURLY, 1), (byte)1, 1, null));
-        measurements.add(new Measurement(
-                VehicleType.AUTO, segment_not_in_tile, 1, 1,
-                new TimeBucket(BucketSize.HOURLY, 1), (byte)1, 1, null));
+    StringBuilder measurements = new StringBuilder();
+    measurements.append("segment_id,next_segment_id,duration,count,length,queue_length,minimum_timestamp,maximum_timestamp,source,vehicle_type\n");
+    measurements.append(Long.toString(segment_in_tile) + ",1,1,1,1,1,1,1,foo,AUTO\n");
+    measurements.append(Long.toString(segment_not_in_tile) + ",1,1,1,1,1,1,1,foo,AUTO\n");
 
-        Iterable<Measurement> iterable = new TileFilter(tile_id, measurements);
-
-        int count = 0;
-        for (Measurement m : iterable) {
-            // check that it stripped off the tile ID and level from the segment ID
-            assertEquals(segment_id, m.segmentId & ((1L << 25L) - 1L));
-            count++;
-        }
-        assertEquals(1, count);
+    Options options = new Options();
+    MeasurementParser.AddOptions(options);
+    CommandLineParser cliParser = new DefaultParser();
+    CommandLine cmd = cliParser.parse(options, new String[0]);
+    
+    MeasurementParser parser = new MeasurementParser(cmd, measurements.toString(), new TimeBucket(BucketSize.HOURLY, 0), tile_id);
+    int count = 0;
+    for (Measurement m : parser) {
+      assertEquals(segment_in_tile, m.key.segmentId);
+      count++;
     }
+    parser.close();
+    assertEquals(1, count);
+  }
 }
