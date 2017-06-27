@@ -34,6 +34,7 @@ print '[INFO] downloading data from s3'
 # an object of k,v
 s3_resource = boto3.resource('s3')
 for key in keys_array:
+    print '[INFO] Downloading ' + key
     object_id = key.rsplit('/', 1)[-1]
     s3_resource.Object(args.s3_reporter_bucket, key).download_file(object_id)
     delete_array.append( { 'Key': key } ) 	   
