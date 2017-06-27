@@ -21,6 +21,7 @@ print '[INFO] tile: ' + str(args.tile_id)
 
 # parse our key list
 keys_array = args.s3_reporter_keys.split(',')
+print keys_array
 
 # keep a list of all the files we iterate over to delete later in a bulk operation
 delete_array = []
@@ -32,9 +33,12 @@ print '[INFO] downloading data from s3'
 # need to maintain the S3 path as a local filesystem
 # path to preserve everything... or preserve them in
 # an object of k,v
+client = boto3.client('s3')
+response = client.list_objects_v2(Bucket=args.s3_reporter_bucket)
+print response
+
 s3_resource = boto3.resource('s3')
 for key in keys_array:
-    print '[INFO] Downloading ' + key
     object_id = key.rsplit('/', 1)[-1]
     s3_resource.Object(args.s3_reporter_bucket, key).download_file(object_id)
     delete_array.append( { 'Key': key } ) 	   
@@ -44,7 +48,8 @@ for key in keys_array:
 
 # TODO: error handling?
 print '[INFO] running conversion process'
-call('datastore-histogram-tile-writer --time-bucket time_bucket --tile tile_id -f flatbuffer_file -o orc_file ./*')
+call_cmd = '/usr/local/bin/datastore-histogram-tile-writer --time-bucket ' + str(args.time_bucket) + ' --tile ' + str(args.tile_id) + ' -f flatbuffer_file -o orc_file ./*'
+call(call_cmd)
 
 # TODO: upload the result to s3_datastore_bucket
 s3_client = boto3.client('s3')
