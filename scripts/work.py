@@ -17,7 +17,7 @@ if __name__ == '__main__':
 print '[INFO] reporter intput bucket: ' + args.s3_reporter_bucket
 print '[INFO] datastore output bucket: ' + args.s3_datastore_bucket
 print '[INFO] time bucket: ' + str(args.time_bucket)
-print '[INFO] tile: ' + str(args.tile)
+print '[INFO] tile: ' + str(args.tile_id)
 
 # parse our key list
 keys_array = args.s3_reporter_keys.split(',')
