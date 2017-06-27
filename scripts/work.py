@@ -10,14 +10,14 @@ if __name__ == '__main__':
     parser.add_argument('s3_reporter_bucket', type=str, help='Bucket (e.g. reporter-drop-prod) in which the data we wish to process is located')
     parser.add_argument('s3_datastore_bucket', type=str, help='Bucket (e.g. datastore-output-prod) into which we will place transformed data')
     parser.add_argument('s3_reporter_keys', type=str, help='S3 object keys which we will operate on, found in the s3_reporter_bucket')
-    parser.add_argument('time_bucket', type=str, help='The time bucket')
-    parser.add_argument('tile_id', type=str, help='The tile ID')
+    parser.add_argument('time_bucket', type=int, help='The time bucket')
+    parser.add_argument('tile_id', type=int, help='The tile ID')
     args = parser.parse_args()
 
 print '[INFO] reporter intput bucket: ' + args.s3_reporter_bucket
 print '[INFO] datastore output bucket: ' + args.s3_datastore_bucket
-print '[INFO] time bucket: ' + args.time_bucket
-print '[INFO] tile: ' + args.tile
+print '[INFO] time bucket: ' + str(args.time_bucket)
+print '[INFO] tile: ' + str(args.tile)
 
 # parse our key list
 keys_array = args.s3_reporter_keys.split(',')
@@ -28,6 +28,10 @@ delete_array = []
 # download stuff
 print '[INFO] downloading data from s3'
 
+# this obviously isn't gonna really work... we'll
+# need to maintain the S3 path as a local filesystem
+# path to preserve everything... or preserve them in
+# an object of k,v
 s3_resource = boto3.resource('s3')
 for key in keys_array:
     object_id = key.rsplit('/', 1)[-1]
