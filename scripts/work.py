@@ -48,26 +48,24 @@ for key in keys_array:
 
 # TODO: error handling?
 print '[INFO] running conversion process'
-#call(['datastore-histogram-tile-writer', '--time-bucket', str(args.time_bucket), '--tile', str(args.tile_id), '-f', 'flatbuffer_file', '-o', 'orc_file', './*'])
-call(['touch', 'YAY_IT_WORKED'])
+call(['datastore-histogram-tile-writer', '--time-bucket', str(args.time_bucket), '--tile', str(args.tile_id), '-f', 'flatbuffer_file', '-o', 'orc_file', './*'])
 
 # TODO: upload the result to s3_datastore_bucket
 s3_client = boto3.client('s3')
-for upload_file in os.listdir('.'):
+
+uploads = ['flatbuffer_file', 'orc_file']
+for file in uploads:
     response = s3_client.put_object(
         Bucket = args.s3_datastore_bucket,
-        Key = upload_file,
+        Key = file
         ContentType = 'binary/octet-stream'
         )
 
-    # remove the local file after successful upload
-    os.remove(upload_file)
-
 # delete the original keys from the s3_reporter_bucket
-print '[INFO] deleting source objects from bucket ' + args.s3_reporter_bucket
-response = s3_client.delete_objects(
-    Bucket = args.s3_reporter_bucket,
-    Delete = { 'Objects': delete_array }
-    )
+#print '[INFO] deleting source objects from bucket ' + args.s3_reporter_bucket
+#response = s3_client.delete_objects(
+#    Bucket = args.s3_reporter_bucket,
+#    Delete = { 'Objects': delete_array }
+#    )
 
 print '[INFO] run complete'
