@@ -60,8 +60,8 @@ for upload_file in os.listdir('.'):
         ContentType = 'binary/octet-stream'
         )
 
-# cleanup
-# TODO: have to remove local output when done
+    # remove the local file after successful upload
+    os.remove(upload_file)
 
 # delete the original keys from the s3_reporter_bucket
 print '[INFO] deleting source objects from bucket ' + args.s3_reporter_bucket
