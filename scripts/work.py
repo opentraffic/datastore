@@ -41,10 +41,10 @@ call('datastore-histogram-tile-writer -f flatbuffer_file -o orc_file ./*')
 s3_client = boto3.client('s3')
 for upload_file in os.listdir('.'):
     response = s3_client.put_object(
-                Bucket = args.s3_datastore_bucket,
-                Key = upload_file,
-                ContentType = 'binary/octet-stream'
-                )
+        Bucket = args.s3_datastore_bucket,
+        Key = upload_file,
+        ContentType = 'binary/octet-stream'
+        )
 
 # delete the original keys from the s3_reporter_bucket
 print '[INFO] deleting source objects from bucket ' + args.s3_reporter_bucket
