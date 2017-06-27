@@ -9,14 +9,18 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('s3_reporter_bucket', type=str, help='Bucket (e.g. reporter-drop-prod) in which the data we wish to process is located')
     parser.add_argument('s3_datastore_bucket', type=str, help='Bucket (e.g. datastore-output-prod) into which we will place transformed data')
-    parser.add_argument('reporter_s3_keys', type=str, help='S3 object keys which we will operate on, found in the s3_reporter_bucket')
+    parser.add_argument('s3_reporter_keys', type=str, help='S3 object keys which we will operate on, found in the s3_reporter_bucket')
+    parser.add_argument('time_bucket', type=str, help='The time bucket')
+    parser.add_argument('tile_id', type=str, help='The tile ID')
     args = parser.parse_args()
 
 print '[INFO] reporter intput bucket: ' + args.s3_reporter_bucket
 print '[INFO] datastore output bucket: ' + args.s3_datastore_bucket
+print '[INFO] time bucket: ' + args.time_bucket
+print '[INFO] tile: ' + args.tile
 
 # parse our key list
-keys_array = args.reporter_s3_keys.split(',')
+keys_array = args.s3_reporter_keys.split(',')
 
 # keep a list of all the files we iterate over to delete later in a bulk operation
 delete_array = []
@@ -35,7 +39,7 @@ for key in keys_array:
 
 # TODO: error handling?
 print '[INFO] running conversion process'
-call('datastore-histogram-tile-writer -f flatbuffer_file -o orc_file ./*')
+call('datastore-histogram-tile-writer --time-bucket time_bucket --tile tile_id -f flatbuffer_file -o orc_file ./*')
 
 # TODO: upload the result to s3_datastore_bucket
 s3_client = boto3.client('s3')
