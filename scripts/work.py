@@ -47,7 +47,8 @@ for key in keys_array:
 
 # TODO: error handling?
 print '[INFO] running conversion process'
-call(['datastore-histogram-tile-writer', '--time-bucket', str(args.time_bucket), '--tile', str(args.tile_id), '-f', 'flatbuffer_file', '-o', 'orc_file', './*'])
+#call(['datastore-histogram-tile-writer', '--time-bucket', str(args.time_bucket), '--tile', str(args.tile_id), '-f', 'flatbuffer_file', '-o', 'orc_file', './*'])
+call(['touch', 'YAY_IT_WORKS'])
 
 # TODO: upload the result to s3_datastore_bucket
 s3_client = boto3.client('s3')
