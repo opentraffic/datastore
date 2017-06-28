@@ -39,9 +39,6 @@ def convert(keys_array):
     print('[INFO] Finished running conversion')
 
 def download(keys_array):
-    # download stuff
-    print('[INFO] downloading data from s3')
-
     # this obviously isn't gonna really work... we'll
     # need to maintain the S3 path as a local filesystem
     # path to preserve everything... or preserve them in
