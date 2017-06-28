@@ -9,7 +9,7 @@ import subprocess
 def cleanup():
     pass
     # delete the original keys from the s3_reporter_bucket
-    #print '[INFO] deleting source objects from bucket ' + args.s3_reporter_bucket
+    #print('[INFO] deleting source objects from bucket ' + args.s3_reporter_bucket)
     #response = s3_client.delete_objects(
     #    Bucket = args.s3_reporter_bucket,
     #    Delete = { 'Objects': delete_array }
@@ -31,11 +31,11 @@ def convert():
 
     sys.stdout.flush()
     process = subprocess.check_output(cmd, shell=True, stderr=subprocess.STDOUT, timeout=300, universal_newlines=True)
-    print '[INFO] Finished running conversion'
+    print('[INFO] Finished running conversion')
 
 def download(keys_array):
     # download stuff
-    print '[INFO] downloading data from s3'
+    print('[INFO] downloading data from s3')
 
     # this obviously isn't gonna really work... we'll
     # need to maintain the S3 path as a local filesystem
@@ -48,7 +48,7 @@ def download(keys_array):
     s3_resource = boto3.resource('s3')
     for key in keys_array:
         object_id = key.rsplit('/', 1)[-1]
-        print '[INFO] Downloading ' + object_id + ' from s3'
+        print('[INFO] Downloading ' + object_id + ' from s3')
 
         s3_resource.Object(args.s3_reporter_bucket, key).download_file(object_id)
         delete_array.append( { 'Key': key } )
@@ -63,25 +63,25 @@ if __name__ == "__main__":
     parser.add_argument('tile_id', type=int, help='The tile ID')
     args = parser.parse_args()
 
-    print '[INFO] reporter intput bucket: ' + args.s3_reporter_bucket
-    print '[INFO] datastore output bucket: ' + args.s3_datastore_bucket
-    print '[INFO] time bucket: ' + str(args.time_bucket)
-    print '[INFO] tile: ' + str(args.tile_id)
+    print('[INFO] reporter intput bucket: ' + args.s3_reporter_bucket)
+    print('[INFO] datastore output bucket: ' + args.s3_datastore_bucket)
+    print('[INFO] time bucket: ' + str(args.time_bucket))
+    print('[INFO] tile: ' + str(args.tile_id))
 
     # download stuff
-    print '[INFO] downloading data from s3'
+    print('[INFO] downloading data from s3')
     download(args.s3_reporter_keys.split(','))
 
     # convert stuff
-    print '[INFO] running conversion process'
+    print('[INFO] running conversion process')
     convert()
 
     # TODO: upload the result to s3_datastore_bucket
-    print '[INFO] uploading resulting files'
+    print('[INFO] uploading resulting files')
     upload()
     
     # TODO: cleanup stuff
-    print '[INFO] deleting source objects from bucket ' + args.s3_reporter_bucket
+    print('[INFO] deleting source objects from bucket ' + args.s3_reporter_bucket)
     cleanup()
 
-    print '[INFO] run complete'
+    print('[INFO] run complete')
