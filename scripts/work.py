@@ -30,9 +30,8 @@ def convert():
     #cmd = 'echo WHAT_IS_GOING_ON'
 
     sys.stdout.flush()
-    process = subprocess.check_output(cmd, shell=True, timeout=300)
-    process.wait()
-    print '[INFO] Finished running conversion, return code: ' + str(process.returncode)
+    process = subprocess.check_output(cmd, shell=True, timeout=300, stderr=subprocess.STDOUT, universal_newlines=True)
+    print '[INFO] Finished running conversion'
 
 def download(keys_array):
     # download stuff
