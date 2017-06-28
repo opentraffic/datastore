@@ -21,10 +21,7 @@ print '[INFO] tile: ' + str(args.tile_id)
 
 # parse our key list
 keys_array = args.s3_reporter_keys.split(',')
-print keys_array
-
-# keep a list of all the files we iterate over to delete later in a bulk operation
-delete_array = []
+#print keys_array
 
 # download stuff
 print '[INFO] downloading data from s3'
@@ -35,11 +32,13 @@ print '[INFO] downloading data from s3'
 # an object of k,v
 client = boto3.client('s3')
 response = client.list_objects_v2(Bucket=args.s3_reporter_bucket)
-print response
 
+delete_array = []
 s3_resource = boto3.resource('s3')
 for key in keys_array:
     object_id = key.rsplit('/', 1)[-1]
+    print '[INFO] Downloading ' + object_id + ' from s3'
+
     s3_resource.Object(args.s3_reporter_bucket, key).download_file(object_id)
     delete_array.append( { 'Key': key } ) 	   
 
