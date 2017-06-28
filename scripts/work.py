@@ -27,7 +27,7 @@ def convert():
     sys.stdout.flush()
 
     cmd = 'datastore-histogram-tile-writer -v -b ' + str(args.time_bucket) + ' -t ' + str(args.tile_id) + ' -f /work/flatbuffer_file ' + '-o /work/orc_file /work/*'
-    proc = subprocess.run(cmd, timeout=300, universal_newlines=True, stderr=subprocess.STDOUT, shell=True)
+    proc = subprocess.run(cmd, timeout=300, universal_newlines=True, stderr=subprocess.STDOUT, shell=True, check=True)
 
     print('[INFO] Finished running conversion')
 
