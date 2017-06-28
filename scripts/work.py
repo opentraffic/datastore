@@ -71,7 +71,7 @@ cmd = 'datastore-histogram-tile-writer --time-bucket' + ' ' + str(args.time_buck
 
 process = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
 process.wait()
-print '[INFO] Finished running conversion, return code: ' + process.returncode
+print '[INFO] Finished running conversion, return code: ' + str(process.returncode)
 
 # TODO: upload the result to s3_datastore_bucket
 s3_client = boto3.client('s3')
