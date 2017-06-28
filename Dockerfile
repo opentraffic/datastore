@@ -1,4 +1,4 @@
-FROM ubuntu:16.04
+FROM ubuntu:16.10
 MAINTAINER Grant Heffernan <grant@mapzen.com>
 
 # env
