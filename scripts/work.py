@@ -65,7 +65,7 @@ if __name__ == "__main__":
 
     # convert stuff
     print('[INFO] running conversion process')
-    convert(args.s3_reporter_keys.split(','))
+    convert()
 
     # TODO: upload the result to s3_datastore_bucket
     print('[INFO] uploading resulting files')
