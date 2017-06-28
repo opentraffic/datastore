@@ -24,7 +24,9 @@ def upload():
 def convert():
     # TODO: error handling?
     sys.stdout.flush()
-    process = subprocess.run(['datastore-histogram-tile-writer', '-b', str(args.time_bucket), '-t', str(args.tile_id), '-v', '-f', '/work/flatbuffer_file', '-o', '/work/orc_file', '/work/*'], timeout=300, universal_newlines=True, stderr=subprocess.STDOUT, shell=True)
+    #process = subprocess.run(['datastore-histogram-tile-writer', '-b', str(args.time_bucket), '-t', str(args.tile_id), '-v', '-f', '/work/flatbuffer_file', '-o', '/work/orc_file', '/work/*'], timeout=300, universal_newlines=True, stderr=subprocess.STDOUT)
+    cmd = 'datastore-histogram-tile-writer' + ' ' + '-b' + ' ' + str(args.time_bucket) + ' ' + '-t' + ' ' + (args.tile_id) + ' ' + '-v' + ' ' + '-f' + ' ' + '/work/flatbuffer_file' + ' ' + '-o' + ' ' + '/work/orc_file' + ' ' + '/work/*'
+    process = subprocess.run(cmd, timeout=300, universal_newlines=True, stderr=subprocess.STDOUT, shell=True)
     print('[INFO] Finished running conversion')
 
 def download(keys_array):
