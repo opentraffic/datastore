@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -e
 
-mkdir output
+mkdir /output
 
 echo "Starting the datastore container..."
 docker run \
