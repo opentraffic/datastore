@@ -30,7 +30,7 @@ def convert(keys_array):
 
     # TODO: error handling?
     sys.stdout.flush()
-    process = subprocess.run(['datastore-histogram-tile-writer', '--time-bucket', str(args.time_bucket), '--tile', str(args.tile_id), '-f', 'flatbuffer_file', '-o', 'orc_file', file_list], timeout=300, check=True)
+    process = subprocess.run(['datastore-histogram-tile-writer', '-v', '--time-bucket', str(args.time_bucket), '--tile', str(args.tile_id), '-f', 'flatbuffer_file', '-o', 'orc_file', file_list], timeout=300, check=True)
     print('[INFO] Finished running conversion')
 
 def download(keys_array):
