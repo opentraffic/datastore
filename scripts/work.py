@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import os
+import sys
 import boto3
 import argparse
 import subprocess
@@ -28,6 +29,7 @@ def convert():
     cmd = 'datastore-histogram-tile-writer --time-bucket' + ' ' + str(args.time_bucket) + ' ' + '--tile ' + str(args.tile_id) + ' ' + '-f flatbuffer_file -o orc_file ./*'
     #cmd = 'echo WHAT_IS_GOING_ON'
 
+    sys.stdout.flush()
     process = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
     process.wait()
     print '[INFO] Finished running conversion, return code: ' + str(process.returncode)
