@@ -6,6 +6,7 @@ import argparse
 import subprocess
 
 def cleanup():
+    pass
     # delete the original keys from the s3_reporter_bucket
     #print '[INFO] deleting source objects from bucket ' + args.s3_reporter_bucket
     #response = s3_client.delete_objects(
