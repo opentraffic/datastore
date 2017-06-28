@@ -47,7 +47,7 @@ for key in keys_array:
 
 # TODO: error handling?
 print '[INFO] running conversion process'
-cmd = 'datastore-histogram-tile-writer --time-bucket' + str(args.time_bucket) + '--tile' + str(args.tile_id) + '-f flatbuffer_file -o orc_file ./*'
+cmd = 'datastore-histogram-tile-writer --time-bucket' + ' ' + str(args.time_bucket) + ' ' + ' --tile ' + str(args.tile_id) + ' ' + '-f flatbuffer_file -o orc_file ./*'
 call(cmd, shell = True)
 #call(['touch', 'YAY_IT_WORKS'])
 
