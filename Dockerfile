@@ -14,6 +14,7 @@ ADD ./scripts /scripts
 
 # install java code
 ADD ./src /datastore/src
+ADD ./tests /datastore/tests
 ADD ./pom.xml /datastore/pom.xml
 
 # compile java
