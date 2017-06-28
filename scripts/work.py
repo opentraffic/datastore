@@ -47,7 +47,8 @@ for key in keys_array:
 
 # TODO: error handling?
 print '[INFO] running conversion process'
-cmd = 'datastore-histogram-tile-writer --time-bucket' + ' ' + str(args.time_bucket) + ' ' + '--tile ' + str(args.tile_id) + ' ' + '-f flatbuffer_file -o orc_file ./*'
+#cmd = 'datastore-histogram-tile-writer --time-bucket' + ' ' + str(args.time_bucket) + ' ' + '--tile ' + str(args.tile_id) + ' ' + '-f flatbuffer_file -o orc_file ./*'
+cmd = 'echo WHAT_IS_GOING_ON'
 
 process = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
 process.wait()
