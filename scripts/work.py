@@ -32,7 +32,8 @@ def convert(keys_array):
     # TODO: error handling?
     sys.stdout.flush()
 
-    process = subprocess.run(['datastore-histogram-tile-writer', '-b', str(args.time_bucket), '-t', str(args.tile_id), '-v', '-f', 'flatbuffer_file', '-o', 'orc_file', file_list], timeout=300, universal_newlines=True, stderr=subprocess.STDOUT)
+    #process = subprocess.run(['datastore-histogram-tile-writer', '-b', str(args.time_bucket), '-t', str(args.tile_id), '-v', '-f', 'flatbuffer_file', '-o', 'orc_file', file_list], timeout=300, universal_newlines=True, stderr=subprocess.STDOUT)
+    process = subprocess.run(['datastore-histogram-tile-writer', '-b', str(args.time_bucket), '-t', str(args.tile_id), '-v', '-f', 'flatbuffer_file', '-o', 'orc_file', 'opentraffic.2c45aa7a-9171-4e4a-9ddc-f6128293450f'], timeout=300, universal_newlines=True, stderr=subprocess.STDOUT)
 
     print('[INFO] Finished running conversion')
 
