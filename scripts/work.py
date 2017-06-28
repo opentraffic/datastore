@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import os
+import sys
 import boto3
 import argparse
 import subprocess
@@ -28,6 +29,7 @@ def convert():
     cmd = 'datastore-histogram-tile-writer --time-bucket' + ' ' + str(args.time_bucket) + ' ' + '--tile ' + str(args.tile_id) + ' ' + '-f flatbuffer_file -o orc_file ./*'
     #cmd = 'echo WHAT_IS_GOING_ON'
 
+    sys.stdout.flush()
     process = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
     process.wait()
     print '[INFO] Finished running conversion, return code: ' + str(process.returncode)
@@ -57,7 +59,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('s3_reporter_bucket', type=str,help='Bucket (e.g. reporter-drop-prod) in which the data we wish to process is located')
     parser.add_argument('s3_datastore_bucket', type=str, help='Bucket (e.g. datastore-output-prod) into which we will place transformed data')
-    parser.add_argument('s3_reporter_keys', type=str, help='S3 object keys which we will operate on, found in the s3_reporter_bucket'
+    parser.add_argument('s3_reporter_keys', type=str, help='S3 object keys which we will operate on, found in the s3_reporter_bucket')
     parser.add_argument('time_bucket', type=int, help='The time bucket')
     parser.add_argument('tile_id', type=int, help='The tile ID')
     args = parser.parse_args()
