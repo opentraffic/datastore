@@ -21,16 +21,10 @@ def upload():
     for file in uploads:
         response = s3_client.put_object(Bucket = args.s3_datastore_bucket, Key = file, ContentType = 'binary/octet-stream')
 
-def convert(keys_array):
-    id_array = []
-    for key in keys_array:
-        id_array.append(key.rsplit('/', 1)[-1])
-
-    file_list = ' '.join(id_array)
-
+def convert():
     # TODO: error handling?
     sys.stdout.flush()
-    process = subprocess.run(['datastore-histogram-tile-writer', '-b', str(args.time_bucket), '-t', str(args.tile_id), '-v', '-f', 'flatbuffer_file', '-o', 'orc_file', file_list], timeout=300, cwd='/work', universal_newlines=True, stderr=subprocess.STDOUT)
+    process = subprocess.run(['datastore-histogram-tile-writer', '-b', str(args.time_bucket), '-t', str(args.tile_id), '-v', '-f', '/work/flatbuffer_file', '-o', '/work/orc_file', '/work/*'], timeout=300, universal_newlines=True, stderr=subprocess.STDOUT)
     print('[INFO] Finished running conversion')
 
 def download(keys_array):
