@@ -3,7 +3,7 @@
 import os
 import boto3
 import argparse
-from subprocess import call
+import subprocess
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -48,8 +48,10 @@ for key in keys_array:
 # TODO: error handling?
 print '[INFO] running conversion process'
 cmd = 'datastore-histogram-tile-writer --time-bucket' + ' ' + str(args.time_bucket) + ' ' + '--tile ' + str(args.tile_id) + ' ' + '-f flatbuffer_file -o orc_file ./*'
-call(cmd, shell = True)
-#call(['touch', 'YAY_IT_WORKS'])
+
+process = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
+process.wait()
+print '[INFO] Finished running conversion, return code: ' + process.returncode
 
 # TODO: upload the result to s3_datastore_bucket
 s3_client = boto3.client('s3')
