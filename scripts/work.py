@@ -21,12 +21,12 @@ def upload():
     for file in uploads:
         response = s3_client.put_object(Bucket = args.s3_datastore_bucket, Key = file, ContentType = 'binary/octet-stream')
 
-def convert():
-    # run our java thingy: the Docker container workdir will have already put us
-    #   in the right place to, ummm, do work
+def convert(keys_array):
+    file_list = ' '.join(keys_array)
 
     # TODO: error handling?
-    cmd = 'datastore-histogram-tile-writer --time-bucket' + ' ' + str(args.time_bucket) + ' ' + '--tile ' + str(args.tile_id) + ' ' + '-f flatbuffer_file -o orc_file ./*'
+    cmd = 'datastore-histogram-tile-writer --time-bucket' + ' ' + str(args.time_bucket) + ' ' + '--tile ' + str(args.tile_id) + ' ' + '-f flatbuffer_file -o orc_file' + ' ' + file_list
+    print('[INFO] Running the following conversion cmd: ' + cmd)
     #cmd = 'echo WHAT_IS_GOING_ON'
 
     sys.stdout.flush()
@@ -74,7 +74,7 @@ if __name__ == "__main__":
 
     # convert stuff
     print('[INFO] running conversion process')
-    convert()
+    convert(args.s3_reporter_keys.split(','))
 
     # TODO: upload the result to s3_datastore_bucket
     print('[INFO] uploading resulting files')
