@@ -24,12 +24,12 @@ def convert():
     #   in the right place to, ummm, do work
 
     # TODO: error handling?
-    #cmd = 'datastore-histogram-tile-writer --time-bucket' + ' ' + str(args.time_bucket) + ' ' + '--tile ' + str(args.tile_id) + ' ' + '-f flatbuffer_file -o orc_file ./*'
-    cmd = 'echo WHAT_IS_GOING_ON'
+    cmd = 'datastore-histogram-tile-writer --time-bucket' + ' ' + str(args.time_bucket) + ' ' + '--tile ' + str(args.tile_id) + ' ' + '-f flatbuffer_file -o orc_file ./*'
+    #cmd = 'echo WHAT_IS_GOING_ON'
 
     process = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
     process.wait()
-    print '[INFO] Finished running conversion, return code: ' + process.returncode
+    print '[INFO] Finished running conversion, return code: ' + str(process.returncode)
 
 def download(keys_array):
     # download stuff
