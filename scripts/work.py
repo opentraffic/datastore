@@ -5,14 +5,34 @@ import boto3
 import argparse
 import subprocess
 
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser()
-    parser.add_argument('s3_reporter_bucket', type=str, help='Bucket (e.g. reporter-drop-prod) in which the data we wish to process is located')
-    parser.add_argument('s3_datastore_bucket', type=str, help='Bucket (e.g. datastore-output-prod) into which we will place transformed data')
-    parser.add_argument('s3_reporter_keys', type=str, help='S3 object keys which we will operate on, found in the s3_reporter_bucket')
-    parser.add_argument('time_bucket', type=int, help='The time bucket')
-    parser.add_argument('tile_id', type=int, help='The tile ID')
-    args = parser.parse_args()
+# build args
+parser = argparse.ArgumentParser()
+parser.add_argument(
+    's3_reporter_bucket',
+    type=str,
+    help='Bucket (e.g. reporter-drop-prod) in which the data we wish to process is located'
+    )
+parser.add_argument(
+    's3_datastore_bucket',
+    type=str,
+    help='Bucket (e.g. datastore-output-prod) into which we will place transformed data'
+    )
+parser.add_argument(
+    's3_reporter_keys',
+    type=str,
+    help='S3 object keys which we will operate on, found in the s3_reporter_bucket'
+    )
+parser.add_argument(
+    'time_bucket',
+    type=int,
+    help='The time bucket'
+    )
+parser.add_argument(
+    'tile_id',
+    type=int,
+    help='The tile ID'
+    )
+args = parser.parse_args()
 
 print '[INFO] reporter intput bucket: ' + args.s3_reporter_bucket
 print '[INFO] datastore output bucket: ' + args.s3_datastore_bucket
@@ -21,7 +41,6 @@ print '[INFO] tile: ' + str(args.tile_id)
 
 # parse our key list
 keys_array = args.s3_reporter_keys.split(',')
-#print keys_array
 
 # download stuff
 print '[INFO] downloading data from s3'
