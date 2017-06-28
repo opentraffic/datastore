@@ -26,8 +26,11 @@ def convert():
     # TODO: error handling?
     sys.stdout.flush()
 
-    process = subprocess.run(['datastore-histogram-tile-writer', '-b', str(args.time_bucket), '-t', str(args.tile_id), '-v', '-f', '/work/flatbuffer_file', '-o', '/work/orc_file', '/work/*'], timeout=300, universal_newlines=True, stderr=subprocess.STDOUT)
-    process.terminate()
+    cmd = 'datastore-histogram-tile-writer -v -b ' + str(args.time_bucket) + '-t ' + str(args.tile_id) + ' -f /work/flatbuffer_file ' + '-o /work/orc_file /work/*'
+    proc = subprocess.run(cmd, timeout=300, universal_newlines=True, stderr=subprocess.STDOUT, shell=True)
+    out,err = proc.communicate()
+    print out
+    print err
 
     print('[INFO] Finished running conversion')
 
