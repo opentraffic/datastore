@@ -22,15 +22,20 @@ def upload():
         response = s3_client.put_object(Bucket = args.s3_datastore_bucket, Key = file, ContentType = 'binary/octet-stream')
 
 def convert(keys_array):
-    file_list = ' '.join(keys_array)
+    id_array = []
+    for key in keys_array:
+        id_array.append(key.rsplit('/', 1)[-1])
+
+    file_list = ' '.join(id_array)
 
     # TODO: error handling?
-    cmd = 'datastore-histogram-tile-writer --time-bucket' + ' ' + str(args.time_bucket) + ' ' + '--tile ' + str(args.tile_id) + ' ' + '-f flatbuffer_file -o orc_file' + ' ' + file_list
-    print('[INFO] Running the following conversion cmd: ' + cmd)
+    #cmd = 'datastore-histogram-tile-writer --time-bucket' + ' ' + str(args.time_bucket) + ' ' + '--tile ' + str(args.tile_id) + ' ' + '-f flatbuffer_file -o orc_file' + ' ' + file_list
+    #print('[INFO] Running the following conversion cmd: ' + cmd)
     #cmd = 'echo WHAT_IS_GOING_ON'
 
     sys.stdout.flush()
-    process = subprocess.check_output(cmd, shell=True, stderr=subprocess.STDOUT, timeout=300, universal_newlines=True)
+    #process = subprocess.check_output(cmd, shell=True, stderr=subprocess.STDOUT, timeout=300, universal_newlines=True)
+    process = subprocess.check_output(['datastore-histogram-tile-writer', '--time-bucket', str(args.time_bucket), '--tile', str(args.tile_id), '-f', 'flatbuffer_file', '-o', 'orc_file', file_list], stderr=subprocess.STDOUT, timeout=300, universal_newlines=True)
     print('[INFO] Finished running conversion')
 
 def download(keys_array):
