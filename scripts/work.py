@@ -30,7 +30,7 @@ def convert():
     #cmd = 'echo WHAT_IS_GOING_ON'
 
     sys.stdout.flush()
-    process = subprocess.run(cmd, shell=True, timeout=300, check=True, stdout=PIPE, stderr=PIPE)
+    process = subprocess.check_output(cmd, shell=True, timeout=300)
     process.wait()
     print '[INFO] Finished running conversion, return code: ' + str(process.returncode)
 
