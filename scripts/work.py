@@ -56,7 +56,7 @@ uploads = ['flatbuffer_file', 'orc_file']
 for file in uploads:
     response = s3_client.put_object(
         Bucket = args.s3_datastore_bucket,
-        Key = file
+        Key = file,
         ContentType = 'binary/octet-stream'
         )
 
