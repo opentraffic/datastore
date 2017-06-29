@@ -26,7 +26,7 @@ def upload():
     for file_extension in uploads:
         # ex path key: year/month/day/hour/tile_level/tile_index.fb
         to_time = time.gmtime(args.time_bucket * 3600)
-        time_key = str(to_time[0]) + '/' + str(to_time[1]) + '/' + str(to_time[2]) + '/' + str(to_time[3]) + str(args.tile_level) + '/' + str(args.tile_index) + file_extension
+        time_key = str(to_time[0]) + '/' + str(to_time[1]) + '/' + str(to_time[2]) + '/' + str(to_time[3]) + '/' + str(args.tile_level) + '/' + str(args.tile_index) + file_extension
 
         data = open(str(args.tile_index) + file_extension, 'rb')
         response = s3_client.put_object(Bucket = args.s3_datastore_bucket, ContentType = 'binary/octet-stream', Body = data, Key = time_key)
