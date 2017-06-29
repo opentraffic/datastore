@@ -22,6 +22,7 @@ def upload():
     for file in uploads:
         data = open(file, 'rb')
         response = s3_client.put_object(Bucket = args.s3_datastore_bucket, Key = file, ContentType = 'binary/octet-stream', Body = data)
+        data.close()
 
 def convert():
     # TODO: error handling?
