@@ -21,11 +21,11 @@ def cleanup(delete_array):
 def upload():
     print('[INFO] uploading data')
     s3_client = boto3.client('s3')
+    to_time = time.gmtime(args.time_bucket * 3600)
 
     uploads = ['.fb', '.orc']
     for file_extension in uploads:
-        # ex path key: year/month/day/hour/tile_level/tile_index.fb
-        to_time = time.gmtime(args.time_bucket * 3600)
+        # path key: year/month/day/hour/tile_level/tile_index.fb
         time_key = str(to_time[0]) + '/' + str(to_time[1]) + '/' + str(to_time[2]) + '/' + str(to_time[3]) + '/' + str(args.tile_level) + '/' + str(args.tile_index) + file_extension
 
         data = open(str(args.tile_index) + file_extension, 'rb')
@@ -91,6 +91,6 @@ if __name__ == "__main__":
     delete_list = download(args.s3_reporter_keys.split(','))
     convert()
     upload()
-    cleanup(delete_list)
+    cleanup(delete_list) # TODO: untested
 
     print('[INFO] run complete')
