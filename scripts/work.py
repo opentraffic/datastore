@@ -4,7 +4,6 @@ import os
 import sys
 import glob
 import boto3
-import signal
 import argparse
 import subprocess
 
