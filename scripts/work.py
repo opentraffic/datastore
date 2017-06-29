@@ -26,10 +26,16 @@ def upload():
     time_path = str(to_time[0]) + '/' + str(to_time[1]) + '/' + str(to_time[2]) + '/' + str(to_time[3]) + str(args.tile_level) + '/'
 
     s3_client = boto3.client('s3')
-    uploads = [str(args.tile_index) + '.fb ', str(args.tile_index) + '.orc']
-    for file in uploads:
+
+    # glob our upload data
+    local_types = ('*.fb', '*.orc')
+    files_grabbed = []
+    for f in local_types:
+        files_grabbed.extend(glob.glob(f))
+
+    for file in files_grabbed:
         data = open(file, 'rb')
-        response = s3_client.put_object(Bucket = args.s3_datastore_bucket, ContentType = 'binary/octet-stream', Body = data, Key = time_path + file)
+        response = s3_client.put_object(Bucket = args.s3_datastore_bucket, ContentType = 'binary/octet-stream', Body = data, Key = time_path + str(args.tile_index))
         data.close()
 
 def convert():
