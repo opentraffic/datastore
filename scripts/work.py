@@ -9,6 +9,7 @@ import argparse
 import subprocess
 
 def cleanup():
+    # print('[INFO] deleting source objects from bucket ' + args.s3_reporter_bucket)
     pass
     # delete the original keys from the s3_reporter_bucket
     #print('[INFO] deleting source objects from bucket ' + args.s3_reporter_bucket)
@@ -17,7 +18,9 @@ def cleanup():
     #    Delete = { 'Objects': delete_array }
     #    )
 
-def upload(time):
+def upload():
+    print('[INFO] uploading resulting files')
+
     # ex path key: year/month/day/hour/tile_level/tile_index.fb
     to_time = time.gmtime(args.time_bucket * 3600)
     time_path = str(to_time[0]) + '/' + str(to_time[1]) + '/' + str(to_time[2]) + '/' + str(to_time[3]) + str(args.tile_level) + '/'
@@ -30,6 +33,7 @@ def upload(time):
         data.close()
 
 def convert():
+    print('[INFO] running conversion process')
     sys.stdout.flush()
 
     fb_out_file = str(args.tile_index) + '.fb'
@@ -55,7 +59,7 @@ def download(keys_array):
     s3_resource = boto3.resource('s3')
     for key in keys_array:
         object_id = key.rsplit('/', 1)[-1]
-        print('[INFO] Downloading ' + object_id + ' from s3')
+        print('[INFO] downloading ' + object_id + ' from s3')
 
         s3_resource.Object(args.s3_reporter_bucket, key).download_file(object_id)
         delete_array.append( { 'Key': key } )
@@ -79,20 +83,10 @@ if __name__ == "__main__":
     print('[INFO] tile level: ' + str(args.tile_level))
     print('[INFO] tile index: ' + str(args.tile_index))
 
-    # download stuff
-    print('[INFO] downloading data from s3')
+    # do work
     download(args.s3_reporter_keys.split(','))
-
-    # convert stuff
-    print('[INFO] running conversion process')
     convert()
-
-    # TODO: upload the result to s3_datastore_bucket
-    print('[INFO] uploading resulting files')
     upload()
-    
-    # TODO: cleanup stuff
-    print('[INFO] deleting source objects from bucket ' + args.s3_reporter_bucket)
     cleanup()
 
     print('[INFO] run complete')
