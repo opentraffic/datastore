@@ -18,7 +18,7 @@ def cleanup():
 
 def upload():
     s3_client = boto3.client('s3')
-    uploads = ['flatbuffer_file', 'orc_file']
+    uploads = glob.glob('*.fb')
     for file in uploads:
         response = s3_client.put_object(Bucket = args.s3_datastore_bucket, Key = file, ContentType = 'binary/octet-stream')
 
@@ -26,7 +26,8 @@ def convert():
     # TODO: error handling?
     sys.stdout.flush()
 
-    process = subprocess.check_output(['datastore-histogram-tile-writer', '-b', str(args.time_bucket), '-t', str(args.tile_id), '-v', '-f', 'flatbuffer_file', '-o', 'orc_file'] + glob.glob('*'), timeout=180, universal_newlines=True, stderr=subprocess.STDOUT)
+    fb_out_file = 'flatbuffer_' + str(args.tile_id) + '.fb'
+    process = subprocess.check_output(['datastore-histogram-tile-writer', '-b', str(args.time_bucket), '-t', str(args.tile_id), '-v', '-f', fb_out_file] + glob.glob('*'), timeout=180, universal_newlines=True, stderr=subprocess.STDOUT)
 
     print('[INFO] Finished running conversion')
 
