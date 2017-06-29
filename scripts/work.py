@@ -20,7 +20,7 @@ def upload():
     s3_client = boto3.client('s3')
     uploads = glob.glob('*.fb')
     for file in uploads:
-        response = s3_client.upload_file(Bucket = args.s3_datastore_bucket, Key = file, ContentType = 'binary/octet-stream')
+        response = s3_client.put_object(Bucket = args.s3_datastore_bucket, Key = file, ContentType = 'binary/octet-stream')
 
 def convert():
     # TODO: error handling?
