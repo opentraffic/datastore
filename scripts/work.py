@@ -71,7 +71,7 @@ def download(keys_array):
 if __name__ == "__main__":
     # build args
     parser = argparse.ArgumentParser()
-    parser.add_argument('s3_reporter_bucket', type=str,help='Bucket (e.g. reporter-drop-prod) in which the data we wish to process is located')
+    parser.add_argument('s3_reporter_bucket', type=str,help='Bucket (e.g. reporter-work-prod) in which the data we wish to process is located')
     parser.add_argument('s3_datastore_bucket', type=str, help='Bucket (e.g. datastore-output-prod) into which we will place transformed data')
     parser.add_argument('s3_reporter_keys', type=str, help='S3 object keys which we will operate on, found in the s3_reporter_bucket')
     parser.add_argument('time_bucket', type=int, help='The time bucket')
