@@ -17,6 +17,7 @@ def cleanup():
     #    )
 
 def upload():
+    # TODO: upload pathing?
     s3_client = boto3.client('s3')
     uploads = glob.glob('*.fb')
     for file in uploads:
@@ -25,11 +26,16 @@ def upload():
         data.close()
 
 def convert():
-    # TODO: error handling?
     sys.stdout.flush()
 
+    # TODO: still not getting any 
     fb_out_file = 'flatbuffer_' + str(args.tile_id) + '.fb'
-    process = subprocess.check_output(['datastore-histogram-tile-writer', '-b', str(args.time_bucket), '-t', str(args.tile_id), '-v', '-f', fb_out_file] + glob.glob('*'), timeout=180, universal_newlines=True, stderr=subprocess.STDOUT)
+
+    try:
+        process = subprocess.check_output(['datastore-histogram-tile-writer', '-b', str(args.time_bucket), '-t', str(args.tile_id), '-v', '-f', fb_out_file] + glob.glob('*'), timeout=180, universal_newlines=True, stderr=subprocess.STDOUT)
+    except subprocess.CalledProcessError as tilewriter:
+        print('[ERROR] Failed running datastore-histogram-tile-writer:', tilewriter.returncode, tilewriter.output)
+        sys.exit([tilewriter.returncode])
 
     print('[INFO] Finished running conversion')
 
