@@ -27,7 +27,7 @@ def convert():
     # TODO: error handling?
     sys.stdout.flush()
 
-    process = subprocess.check_output(['datastore-histogram-tile-writer', '-b', str(args.time_bucket), '-t', str(args.tile_id), '-v', '-f', 'flatbuffer_file', '-o', 'orc_file'] + glob.glob('*'), timeout=300, universal_newlines=True)
+    process = subprocess.check_output(['datastore-histogram-tile-writer', '-b', str(args.time_bucket), '-t', str(args.tile_id), '-v', '-f', 'flatbuffer_file', '-o', 'orc_file'] + glob.glob('*'), timeout=300, universal_newlines=True, stderr=subprocess.STDOUT)
 
     print('[INFO] Finished running conversion')
 
