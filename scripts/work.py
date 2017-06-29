@@ -8,7 +8,7 @@ import boto3
 import argparse
 import subprocess
 
-def cleanup():
+def cleanup(delete_array):
     # print('[INFO] deleting source objects from bucket ' + args.s3_reporter_bucket)
     pass
     # delete the original keys from the s3_reporter_bucket
@@ -39,6 +39,7 @@ def convert():
     fb_out_file = str(args.tile_index) + '.fb'
     orc_out_file = str(args.tile_index) + '.orc'
 
+    # TODO: no idea if the exception handling works
     try:
         process = subprocess.check_output(['datastore-histogram-tile-writer', '-b', str(args.time_bucket), '-t', str(args.tile_id), '-v', '-f', fb_out_file, '-o', orc_out_file] + glob.glob('*'), timeout=180, universal_newlines=True, stderr=subprocess.STDOUT)
     except subprocess.CalledProcessError as tilewriter:
@@ -64,6 +65,9 @@ def download(keys_array):
         s3_resource.Object(args.s3_reporter_bucket, key).download_file(object_id)
         delete_array.append( { 'Key': key } )
 
+    # TODO: untested
+    return delete_array
+
 if __name__ == "__main__":
     # build args
     parser = argparse.ArgumentParser()
@@ -84,9 +88,9 @@ if __name__ == "__main__":
     print('[INFO] tile index: ' + str(args.tile_index))
 
     # do work
-    download(args.s3_reporter_keys.split(','))
+    delete_list = download(args.s3_reporter_keys.split(','))
     convert()
     upload()
-    cleanup()
+    cleanup(delete_list)
 
     print('[INFO] run complete')
