@@ -2,6 +2,7 @@
 
 import os
 import sys
+import glob
 import boto3
 import signal
 import argparse
@@ -22,18 +23,11 @@ def upload():
     for file in uploads:
         response = s3_client.put_object(Bucket = args.s3_datastore_bucket, Key = file, ContentType = 'binary/octet-stream')
 
-def convert(keys_array):
-    id_array = []
-    for key in keys_array:
-        id_array.append(key.rsplit('/', 1)[-1])
-
-    file_list = ' '.join(id_array)
-
+def convert():
     # TODO: error handling?
     sys.stdout.flush()
 
-    #process = subprocess.run(['datastore-histogram-tile-writer', '-b', str(args.time_bucket), '-t', str(args.tile_id), '-v', '-f', 'flatbuffer_file', '-o', 'orc_file', file_list], timeout=300, universal_newlines=True, stderr=subprocess.STDOUT)
-    process = subprocess.run(['datastore-histogram-tile-writer', '-b', str(args.time_bucket), '-t', str(args.tile_id), '-v', '-f', 'flatbuffer_file', '-o', 'orc_file', 'opentraffic.2c45aa7a-9171-4e4a-9ddc-f6128293450f'], timeout=300, universal_newlines=True, stderr=subprocess.STDOUT)
+    process = subprocess.run(['datastore-histogram-tile-writer', '-b', str(args.time_bucket), '-t', str(args.tile_id), '-v', '-f', 'flatbuffer_file', '-o', 'orc_file'] + glob.glob('*'), timeout=300, universal_newlines=True, stderr=subprocess.STDOUT)
 
     print('[INFO] Finished running conversion')
 
@@ -75,7 +69,7 @@ if __name__ == "__main__":
 
     # convert stuff
     print('[INFO] running conversion process')
-    convert(args.s3_reporter_keys.split(','))
+    convert()
 
     # TODO: upload the result to s3_datastore_bucket
     print('[INFO] uploading resulting files')
