@@ -1,13 +1,13 @@
-FROM ubuntu:16.04
+FROM ubuntu:17.04
 MAINTAINER Grant Heffernan <grant@mapzen.com>
 
 # env
 ENV DEBIAN_FRONTEND noninteractive
 
 # install dependencies
-RUN apt-get update && apt-get install -y default-jdk python python-pip maven
-RUN pip install --upgrade pip
-RUN pip install boto3 argparse
+RUN apt-get update && apt-get install -y default-jdk python3 python3-pip maven
+RUN pip3 install --upgrade pip
+RUN pip3 install boto3 argparse
 
 # install scripts
 ADD ./scripts /scripts
