@@ -18,30 +18,30 @@ def cleanup(delete_array):
     #    Delete = { 'Objects': delete_array }
     #    )
 
-def upload():
+def upload(time_bucket, tile_level, tile_index, s3_datastore_bucket):
     print('[INFO] uploading data')
     s3_client = boto3.client('s3')
-    to_time = time.gmtime(args.time_bucket * 3600)
+    to_time = time.gmtime(time_bucket * 3600)
 
     uploads = ['.fb', '.orc']
     for file_extension in uploads:
         # path key: year/month/day/hour/tile_level/tile_index.fb
-        time_key = str(to_time[0]) + '/' + str(to_time[1]) + '/' + str(to_time[2]) + '/' + str(to_time[3]) + '/' + str(args.tile_level) + '/' + str(args.tile_index) + file_extension
+        time_key = str(to_time[0]) + '/' + str(to_time[1]) + '/' + str(to_time[2]) + '/' + str(to_time[3]) + '/' + str(tile_level) + '/' + str(tile_index) + file_extension
 
-        data = open(str(args.tile_index) + file_extension, 'rb')
-        response = s3_client.put_object(Bucket = args.s3_datastore_bucket, ContentType = 'binary/octet-stream', Body = data, Key = time_key)
+        data = open(str(tile_index) + file_extension, 'rb')
+        response = s3_client.put_object(Bucket = s3_datastore_bucket, ContentType = 'binary/octet-stream', Body = data, Key = time_key)
         data.close()
 
-def convert():
+def convert(tile_index, time_bucket, tile_id):
     print('[INFO] running conversion process')
     sys.stdout.flush()
 
-    fb_out_file = str(args.tile_index) + '.fb'
-    orc_out_file = str(args.tile_index) + '.orc'
+    fb_out_file = str(tile_index) + '.fb'
+    orc_out_file = str(tile_index) + '.orc'
 
     # TODO: no idea if the exception handling works
     try:
-        process = subprocess.check_output(['datastore-histogram-tile-writer', '-b', str(args.time_bucket), '-t', str(args.tile_id), '-v', '-f', fb_out_file, '-o', orc_out_file] + glob.glob('*'), timeout=180, universal_newlines=True, stderr=subprocess.STDOUT)
+        process = subprocess.check_output(['datastore-histogram-tile-writer', '-b', str(time_bucket), '-t', str(tile_id), '-v', '-f', fb_out_file, '-o', orc_out_file] + glob.glob('*'), timeout=180, universal_newlines=True, stderr=subprocess.STDOUT)
     except subprocess.CalledProcessError as tilewriter:
         print('[ERROR] Failed running datastore-histogram-tile-writer:', tilewriter.returncode, tilewriter.output)
         sys.exit([tilewriter.returncode])
@@ -89,8 +89,8 @@ if __name__ == "__main__":
 
     # do work
     delete_list = download(args.s3_reporter_keys.split(','))
-    convert()
-    upload()
+    convert(args.tile_index, args.time_bucket, args.tile_id)
+    upload(args.time_bucket, args.tile_level, args.tile_index, args.s3_datastore_bucket)
     cleanup(delete_list) # TODO: untested
 
     print('[INFO] run complete')
