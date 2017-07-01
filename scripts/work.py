@@ -8,13 +8,13 @@ import boto3
 import argparse
 import subprocess
 
-def cleanup(delete_array):
-    # print('[INFO] deleting source objects from bucket ' + args.s3_reporter_bucket)
+def cleanup(delete_array, s3_reporter_bucket):
+    # print('[INFO] deleting source objects from bucket ' + s3_reporter_bucket)
     pass
     # delete the original keys from the s3_reporter_bucket
-    #print('[INFO] deleting source objects from bucket ' + args.s3_reporter_bucket)
+    #print('[INFO] deleting source objects from bucket ' + s3_reporter_bucket)
     #response = s3_client.delete_objects(
-    #    Bucket = args.s3_reporter_bucket,
+    #    Bucket = s3_reporter_bucket,
     #    Delete = { 'Objects': delete_array }
     #    )
 
@@ -48,13 +48,13 @@ def convert(tile_index, time_bucket, tile_id):
 
     print('[INFO] Finished running conversion')
 
-def download(keys_array):
+def download(keys_array, s3_reporter_bucket):
     # this obviously isn't gonna really work... we'll
     # need to maintain the S3 path as a local filesystem
     # path to preserve everything... or preserve them in
     # an object of k,v
     client = boto3.client('s3')
-    response = client.list_objects_v2(Bucket=args.s3_reporter_bucket)
+    response = client.list_objects_v2(Bucket=s3_reporter_bucket)
 
     delete_array = []
     s3_resource = boto3.resource('s3')
@@ -62,7 +62,7 @@ def download(keys_array):
         object_id = key.rsplit('/', 1)[-1]
         print('[INFO] downloading ' + object_id + ' from s3')
 
-        s3_resource.Object(args.s3_reporter_bucket, key).download_file(object_id)
+        s3_resource.Object(s3_reporter_bucket, key).download_file(object_id)
         delete_array.append( { 'Key': key } )
 
     # TODO: untested
@@ -88,9 +88,9 @@ if __name__ == "__main__":
     print('[INFO] tile index: ' + str(args.tile_index))
 
     # do work
-    delete_list = download(args.s3_reporter_keys.split(','))
+    delete_list = download(args.s3_reporter_keys.split(','), args.s3_reporter_bucket)
     convert(args.tile_index, args.time_bucket, args.tile_id)
     upload(args.time_bucket, args.tile_level, args.tile_index, args.s3_datastore_bucket)
-    cleanup(delete_list) # TODO: untested
+    cleanup(delete_list, args.s3_reporter_bucket) # TODO: untested
 
     print('[INFO] run complete')
