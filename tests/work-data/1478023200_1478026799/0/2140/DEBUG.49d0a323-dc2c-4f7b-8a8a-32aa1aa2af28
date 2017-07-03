@@ -1,0 +1,2 @@
+segment_id,next_segment_id,duration,count,length,queue_length,minimum_timestamp,maximum_timestamp,source,vehicle_type
+282796770016,289037894368,17,1,253,0,1478023986,1478024004,DEBUG,AUTO

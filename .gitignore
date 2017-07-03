@@ -1,2 +1,5 @@
-postgres/
 *.swp
+target
+.project
+.settings
+.classpath

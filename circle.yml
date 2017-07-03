@@ -1,11 +1,12 @@
 machine:
   services:
     - docker
+  environment:
+    ecr_prefix: 056357055360.dkr.ecr.us-east-1.amazonaws.com/opentraffic/datastore-
 
 dependencies:
   pre:
-    - sudo apt-get update; sudo apt-get install jq git
-    - git clone git@github.com:opentraffic/ecs-deploy
+    - sudo apt-get update; sudo apt-get install git
     - git clone git@github.com:opentraffic/hub-deploy
   override:
     - docker info
@@ -19,10 +20,18 @@ deployment:
   prod:
     branch: master
     commands:
-      - ecs-deploy/bin/deploy.sh --env prod --region us-east-1 --project datastore
+      - eval $(aws ecr get-login --region us-east-1)
+      - docker tag datastore:latest ${ecr_prefix}-prod:${CIRCLE_SHA1}
+      - docker push ${ecr_prefix}-prod:$CIRCLE_SHA1
+      - docker tag datastore:latest ${ecr_prefix}-prod:latest
+      - docker push ${ecr_prefix}-prod:latest
       - hub-deploy/bin/deploy.sh datastore
 
   dev:
     branch: dev
     commands:
-      - ecs-deploy/bin/deploy.sh --env dev --region us-east-1 --project datastore
+      - eval $(aws ecr get-login --region us-east-1)
+      - docker tag datastore:latest ${ecr_prefix}-dev:${CIRCLE_SHA1}
+      - docker push ${ecr_prefix}-dev:$CIRCLE_SHA1
+      - docker tag datastore:latest ${ecr_prefix}-dev:latest
+      - docker push ${ecr_prefix}-dev:latest
