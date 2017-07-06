@@ -69,7 +69,7 @@ if __name__ == "__main__":
     print('[INFO] tile index: ' + str(args.tile_index))
 
     # do work
-    delete_list = download(args.s3_reporter_keys.split(','), args.s3_reporter_bucket)
+    download(args.s3_reporter_keys.split(','), args.s3_reporter_bucket)
     convert(args.tile_index, args.time_bucket, args.tile_id)
     upload(args.time_bucket, args.tile_level, args.tile_index, args.s3_datastore_bucket)
 
