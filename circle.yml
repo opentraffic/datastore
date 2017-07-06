@@ -2,7 +2,7 @@ machine:
   services:
     - docker
   environment:
-    ecr_prefix: 056357055360.dkr.ecr.us-east-1.amazonaws.com/opentraffic/datastore-
+    ecr_prefix: 056357055360.dkr.ecr.us-east-1.amazonaws.com/opentraffic/datastore
 
 dependencies:
   pre:
