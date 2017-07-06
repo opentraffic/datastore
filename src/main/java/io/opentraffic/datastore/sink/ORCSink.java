@@ -23,7 +23,6 @@ import org.apache.orc.Writer;
 import org.apache.orc.impl.PhysicalFsWriter;
 
 import io.opentraffic.datastore.BucketSize;
-import io.opentraffic.datastore.DurationBucket;
 import io.opentraffic.datastore.Measurement;
 import io.opentraffic.datastore.TimeBucket;
 
@@ -32,8 +31,8 @@ import io.opentraffic.datastore.TimeBucket;
  */
 public class ORCSink {
 
-  public static final String SCHEMA_DEF = "struct<" + "vtype:tinyint," + "segment_id:int," + "day_hour:tinyint,"
-      + "next_segment_id:int," + "duration:int," + "count:int" + ">";
+  public static final String SCHEMA_DEF = "struct<" + "vtype:tinyint," + "segment_id:int," + "epoch_hour:int," +
+      "next_segment_id:int," + "duration:int," + "queue:tinyint," + "count:int" + ">";
 
   public static void write(ArrayList<Measurement> measurements, OutputStream output, TimeBucket bucket) throws IOException {
 
@@ -52,19 +51,21 @@ public class ORCSink {
 
     LongColumnVector vType = (LongColumnVector) batch.cols[0];
     LongColumnVector segmentId = (LongColumnVector) batch.cols[1];
-    LongColumnVector dayHour = (LongColumnVector) batch.cols[2];
+    LongColumnVector epochHour = (LongColumnVector) batch.cols[2];
     LongColumnVector nextSegmentId = (LongColumnVector) batch.cols[3];
     LongColumnVector duration = (LongColumnVector) batch.cols[4];
-    LongColumnVector count = (LongColumnVector) batch.cols[5];
+    LongColumnVector queue = (LongColumnVector) batch.cols[5];
+    LongColumnVector count = (LongColumnVector) batch.cols[6];
 
     for (Measurement m : measurements) {
       int row = batch.size++;
 
       vType.vector[row] = m.key.vehicleType.ordinal();
       segmentId.vector[row] = m.getTileRelative();
-      dayHour.vector[row] = convertTimeBucketToWeek(bucket);
+      epochHour.vector[row] = bucket.index;
       nextSegmentId.vector[row] = m.key.nextSegmentId;
       duration.vector[row] = m.duration;
+      queue.vector[row] = quantiseQueue(m.queue);
       count.vector[row] = m.count;
 
       if (batch.size == batch.getMaxSize()) {
@@ -81,13 +82,20 @@ public class ORCSink {
     // this should end up calling close() on fos, so we don't have to.
     writer.close();
   }
-
+  
+  private static int quantiseQueue(float queue) {
+    return Math.min(255, (int)Math.round(255.0 * queue));
+  }
+  
   private static int convertTimeBucketToWeek(TimeBucket timeBucket) {
+    return (int)(((timeBucket.index - 4L * 24L) / (24L * 7L)) % 53L);
+  }
+
+  private static int convertTimeBucketToDayHour(TimeBucket timeBucket) {
     assert (timeBucket.size == BucketSize.HOURLY);
     // guaranteed the result will be smaller than 24*7, so narrowing conversion
-    // to
-    // int is not a problem.
-    return (int) ((timeBucket.index - 96L) % (24L * 7L));
+    // to int is not a problem.
+    return (int) ((timeBucket.index - 4L * 24L) % (24L * 7L));
   }
 
   private static class SingleOutputFileSystem extends FileSystem {

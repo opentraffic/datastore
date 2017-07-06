@@ -69,7 +69,7 @@ public class FlatBufferSink {
       final int endIndex = findSegmentIdRange(index, measurements);
       final int numEntries = endIndex - index;
 
-      int[] nextSegmentIds = gatherNextSegmentIds(index, endIndex, measurements);
+      long[] nextSegmentIds = gatherNextSegmentIds(index, endIndex, measurements);
       // can only handle 256 next segments
       assert (nextSegmentIds.length < 256);
       final int nextSegmentsOffset = Segment.createNextSegmentIdsVector(builder, nextSegmentIds);
@@ -80,9 +80,9 @@ public class FlatBufferSink {
       // these arrays in the same order, then we need to iterate in reverse.
       for (int i = endIndex - 1; i >= index; i--) {
         Measurement m = measurements.get(i);
-        int dayHour = convertTimeBucketToWeek(bucket);
         int nextSegmentIdx = Arrays.binarySearch(nextSegmentIds, (int) m.key.nextSegmentId);
-        Entry.createEntry(builder, dayHour, nextSegmentIdx, DurationBucket.quantise(m.duration), m.count);
+        int queue = quantiseQueue(m.queue);
+        Entry.createEntry(builder, bucket.index, nextSegmentIdx, DurationBucket.quantise(m.duration), m.count, queue);
       }
       final int entriesOffset = builder.endVector();
 
@@ -118,13 +118,20 @@ public class FlatBufferSink {
 
     return builder.sizedByteArray();
   }
-
+  
+  private static int quantiseQueue(float queue) {
+    return Math.min(255, (int)Math.round(255.0 * queue));
+  }
+  
   private static int convertTimeBucketToWeek(TimeBucket timeBucket) {
+    return (int)(((timeBucket.index - 4L * 24L) / (24L * 7L)) % 53L);
+  }
+
+  private static int convertTimeBucketToDayHour(TimeBucket timeBucket) {
     assert (timeBucket.size == BucketSize.HOURLY);
     // guaranteed the result will be smaller than 24*7, so narrowing conversion
-    // to
-    // int is not a problem.
-    return (int) ((timeBucket.index - 96L) % (24L * 7L));
+    // to int is not a problem. subtract 4 days because epoch was a thursday
+    return (int) ((timeBucket.index - 4L * 24L) % (24L * 7L));
   }
 
   // find the end index such that for measurements[i] where i = index; i < end
@@ -144,21 +151,18 @@ public class FlatBufferSink {
   }
 
   // return the (sorted) array list of next segment IDs in the range from
-  // beginIndex to
-  // endIndex (not inclusive).
-  private static int[] gatherNextSegmentIds(int beginIndex, int endIndex, ArrayList<Measurement> measurements) {
+  // beginIndex to endIndex (not inclusive).
+  private static long[] gatherNextSegmentIds(int beginIndex, int endIndex, ArrayList<Measurement> measurements) {
     SortedSet<Long> idSet = new TreeSet<>();
 
     for (int i = beginIndex; i < endIndex; i++) {
       idSet.add(measurements.get(i).key.nextSegmentId);
     }
 
-    int[] ids = new int[idSet.size()];
+    long[] ids = new long[idSet.size()];
     int i = 0;
     for (Long l : idSet) {
-      long id = l.longValue();
-      assert (id < (long) Integer.MAX_VALUE);
-      ids[i] = (int) id;
+      ids[i] = l.longValue();
       i++;
     }
     return ids;

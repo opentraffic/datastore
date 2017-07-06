@@ -14,7 +14,6 @@ import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
 
 import io.opentraffic.datastore.BucketSize;
-import io.opentraffic.datastore.DurationBucket;
 import io.opentraffic.datastore.Measurement;
 import io.opentraffic.datastore.TimeBucket;
 import io.opentraffic.datastore.VehicleType;
@@ -22,7 +21,7 @@ import io.opentraffic.datastore.VehicleType;
 /**
  * Created by matt on 06/06/17.
  */
-public class MeasurementParser implements Iterable<Measurement>, Closeable {
+public class MeasurementSource implements Iterable<Measurement>, Closeable {
   private final int segmentIdColumn;
   private final int nextSegmentIdColumn;
   private final int durationColumn;
@@ -37,7 +36,7 @@ public class MeasurementParser implements Iterable<Measurement>, Closeable {
   private final long tile;
   private final CSVParser parser;
 
-  public MeasurementParser(CommandLine cmd, File file, TimeBucket timeBucket, long tileId) throws IOException {
+  public MeasurementSource(CommandLine cmd, File file, TimeBucket timeBucket, long tileId) throws IOException {
     bucket = timeBucket;
     tile = tileId;
     parser = CSVParser.parse(file, Charset.forName("UTF-8"),
@@ -55,7 +54,7 @@ public class MeasurementParser implements Iterable<Measurement>, Closeable {
     vehicleTypeColumn = Integer.parseInt(cmd.getOptionValue("mode-column", "9"));
   }
   
-  public MeasurementParser(CommandLine cmd, String rawCSV, TimeBucket timeBucket, long tileId) throws IOException {
+  public MeasurementSource(CommandLine cmd, String rawCSV, TimeBucket timeBucket, long tileId) throws IOException {
     bucket = timeBucket;
     tile = tileId;
     parser = CSVParser.parse(rawCSV,

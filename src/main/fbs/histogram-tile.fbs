@@ -5,9 +5,8 @@ enum VehicleType : byte {
 }
 
 struct Entry {
-  // day (0=Sunday,...,6=Saturday) * 24 + hour of day.
-  // note: could be 25 to account for the single 25th hour when DST changes?
-  day_hour:ubyte;
+  // ordinal hour since epoch
+  epoch_hour:uint;
 
   // index into the next_segment_ids array in the Segment.
   // note: imposes a limit of 256 segments leaving any one segment.
@@ -27,14 +26,17 @@ struct Entry {
 
   // number of entries in this bucket
   count:uint;
+  
+  // length of the queue in percentage of the length of the edge
+  queue:ubyte;
 }
 
 table Segment {
-  // ID of this segment
+  // ID of this segment relative to this tile
   segment_id:uint;
 
   // array of next segment IDs to make their indexes compact
-  next_segment_ids:[uint];
+  next_segment_ids:[ulong];
 
   // array of data entries sorted by day_hour, next_segment_idx, speed_bucket
   entries:[Entry];
@@ -44,6 +46,9 @@ table Histogram {
   // vehicle type: this is fixed for the whole file? or could perhaps be a top
   // level element?
   vehicle_type:VehicleType;
+  
+  // the tile id that these segments occur in
+  tile_id:ulong;
 
   // array of segments indexed by segment ID
   segments:[Segment];

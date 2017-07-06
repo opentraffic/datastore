@@ -73,15 +73,8 @@ public final class Measurement   {
   }
   public final Key key;
 
-  // Length, in metres, from the start of `segmentId` to the
-  // start of `nextSegmentId`. Note that this may include some
-  // stuff past the end of `segmentId`.
-  public int length;
-
-  // Length, in metres, from the end of `segmentId` to the
-  // start of a queue. Note that this may include some
-  // stuff past the end of `segmentId`.
-  public int queueLength;
+  // Ratio of the segments entire length
+  public float queue;
 
   // Duration in seconds
   public int duration;
@@ -104,8 +97,7 @@ public final class Measurement   {
   public Measurement(VehicleType vehicleType, long segmentId, long nextSegmentId, int length, 
       int queueLength, int duration, int count, String provider, long min, long max) {
     this.key = new Key(vehicleType, segmentId, nextSegmentId);
-    this.length = length;
-    this.queueLength = queueLength;
+    this.queue = (float)queueLength / (float)length;
     this.duration = duration;
     this.count = count;
     this.source = provider;
@@ -116,8 +108,7 @@ public final class Measurement   {
   public void combine(Measurement m) {
     double a = count / (double)(count + m.count);
     double b = m.count / (double)(count + m.count);
-    length = (int)Math.round(length * a + m.length * b);
-    queueLength = (int)Math.round(queueLength * a + m.queueLength * b);
+    queue = (int)Math.round(queue * a + m.queue * b);
     duration = (int)Math.round(duration * a + m.duration * b);
     count += m.count;
     if(m.source != null) {
@@ -145,7 +136,6 @@ public final class Measurement   {
   public String toString() {
     String stringProvider = source == null ? "null" : ("'" + source + "'");
     return "Measurement{" + "vehicleType=" + key.vehicleType + ", segmentIndex=" + getTileRelative() + ", segmentId=" + key.segmentId + ", nextSegmentId="
-        + key.nextSegmentId + ", length=" + length + ", queue_length=" + queueLength + ", duration=" + duration
-        + ", count=" + count + ", provider=" + stringProvider + '}';
+        + key.nextSegmentId + ", queue=" + queue + ", duration=" + duration + ", count=" + count + ", provider=" + stringProvider + '}';
   }
 }

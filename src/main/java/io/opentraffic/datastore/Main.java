@@ -19,7 +19,7 @@ import org.apache.log4j.Logger;
 import io.opentraffic.datastore.sink.FlatBufferSink;
 import io.opentraffic.datastore.sink.ORCSink;
 import io.opentraffic.datastore.sink.PrintSink;
-import io.opentraffic.datastore.source.MeasurementParser;
+import io.opentraffic.datastore.source.MeasurementSource;
 
 /**
  * Created by matt on 06/06/17.
@@ -57,7 +57,7 @@ public class Main {
     for (String fileName : fileNames) {
       try {
         File file = new File(fileName);
-        MeasurementParser parser = new MeasurementParser(cmd, file, timeBucket, tileId);
+        MeasurementSource parser = new MeasurementSource(cmd, file, timeBucket, tileId);
         for (Measurement m : parser) {
           if(!measurements.containsKey(m.key))
             measurements.put(m.key, m);
@@ -65,8 +65,12 @@ public class Main {
             measurements.get(m.key).combine(m);
         }
         parser.close();
-      } catch (Exception e) {
-        logger.error("Failed to parse measurements from file: " + fileName);
+      }// wasn't something csv could parse try with flatbuffer
+      catch(IOException ioe) {
+        
+      }// failed for some other reason
+      catch (Exception e) {      
+        logger.error("Failed to parse measurements from file: " + fileName + " - " + e.getMessage());
       }
     }
     ArrayList<Measurement> sorted = new ArrayList<Measurement>(measurements.values());
@@ -118,7 +122,7 @@ public class Main {
     options.addOption(Option.builder("v").longOpt("verbose").required(false)
         .desc("If present, the textual representation of the histogram will be written to stdout.").build());
 
-    MeasurementParser.AddOptions(options);
+    MeasurementSource.AddOptions(options);
 
     return options;
   }
