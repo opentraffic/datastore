@@ -22,7 +22,6 @@ import org.apache.orc.TypeDescription;
 import org.apache.orc.Writer;
 import org.apache.orc.impl.PhysicalFsWriter;
 
-import io.opentraffic.datastore.BucketSize;
 import io.opentraffic.datastore.Measurement;
 import io.opentraffic.datastore.TimeBucket;
 
@@ -60,10 +59,10 @@ public class ORCSink {
     for (Measurement m : measurements) {
       int row = batch.size++;
 
-      vType.vector[row] = m.key.vehicleType.ordinal();
+      vType.vector[row] = m.vehicleType.ordinal();
       segmentId.vector[row] = m.getTileRelative();
       epochHour.vector[row] = bucket.index;
-      nextSegmentId.vector[row] = m.key.nextSegmentId;
+      nextSegmentId.vector[row] = m.nextSegmentId;
       duration.vector[row] = m.duration;
       queue.vector[row] = quantiseQueue(m.queue);
       count.vector[row] = m.count;
@@ -85,17 +84,6 @@ public class ORCSink {
   
   private static int quantiseQueue(float queue) {
     return Math.min(255, (int)Math.round(255.0 * queue));
-  }
-  
-  private static int convertTimeBucketToWeek(TimeBucket timeBucket) {
-    return (int)(((timeBucket.index - 4L * 24L) / (24L * 7L)) % 53L);
-  }
-
-  private static int convertTimeBucketToDayHour(TimeBucket timeBucket) {
-    assert (timeBucket.size == BucketSize.HOURLY);
-    // guaranteed the result will be smaller than 24*7, so narrowing conversion
-    // to int is not a problem.
-    return (int) ((timeBucket.index - 4L * 24L) % (24L * 7L));
   }
 
   private static class SingleOutputFileSystem extends FileSystem {

@@ -4,8 +4,8 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
-import java.util.TreeMap;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
@@ -19,7 +19,9 @@ import org.apache.log4j.Logger;
 import io.opentraffic.datastore.sink.FlatBufferSink;
 import io.opentraffic.datastore.sink.ORCSink;
 import io.opentraffic.datastore.sink.PrintSink;
+import io.opentraffic.datastore.source.FlatBufferSource;
 import io.opentraffic.datastore.source.MeasurementSource;
+import io.opentraffic.datastore.source.Source;
 
 /**
  * Created by matt on 06/06/17.
@@ -53,27 +55,29 @@ public class Main {
     long tileId = Long.parseLong(cmd.getOptionValue("tile"));
 
     // parse all the input into measurement buckets
-    TreeMap<Measurement.Key, Measurement> measurements = new TreeMap<>();
+    ArrayList<Measurement> measurements = new ArrayList<Measurement>();
     for (String fileName : fileNames) {
       try {
         File file = new File(fileName);
-        MeasurementSource parser = new MeasurementSource(cmd, file, timeBucket, tileId);
-        for (Measurement m : parser) {
-          if(!measurements.containsKey(m.key))
-            measurements.put(m.key, m);
-          else
-            measurements.get(m.key).combine(m);
+        Source source = null;
+        try {
+          source = new MeasurementSource(cmd, file, timeBucket, tileId);
+          source.iterator();
+        }// wasn't something csv could parse try with flatbuffer
+        catch(Exception e) {
+          source = new FlatBufferSource(file, timeBucket, tileId);
         }
-        parser.close();
-      }// wasn't something csv could parse try with flatbuffer
-      catch(IOException ioe) {
-        
+        //get the measurements
+        for (Measurement measurement : source)
+          measurements.add(measurement);
+        source.close();
       }// failed for some other reason
       catch (Exception e) {      
         logger.error("Failed to parse measurements from file: " + fileName + " - " + e.getMessage());
       }
     }
-    ArrayList<Measurement> sorted = new ArrayList<Measurement>(measurements.values());
+    //TODO: sort them
+    Collections.sort(measurements);
 
     // flatbuffer
     final String fbFile = cmd.getOptionValue("output-flatbuffers");
@@ -81,7 +85,7 @@ public class Main {
       try {
         File f = new File(fbFile);
         FileOutputStream fos = new FileOutputStream(f);
-        FlatBufferSink.write(sorted, fos, timeBucket);
+        FlatBufferSink.write(measurements, fos, timeBucket);
       } catch (IOException ex) {
         throw new RuntimeException("Error writing to sink", ex);
       }
@@ -93,7 +97,7 @@ public class Main {
       try {
         File f = new File(orcFile);
         FileOutputStream fos = new FileOutputStream(f);
-        ORCSink.write(sorted, fos, timeBucket);
+        ORCSink.write(measurements, fos, timeBucket);
       } catch (IOException ex) {
         throw new RuntimeException("Error writing to sink", ex);
       }
@@ -101,7 +105,7 @@ public class Main {
 
     // stdout
     if (cmd.hasOption("verbose")) {
-      PrintSink.write(sorted);
+      PrintSink.write(measurements);
     }
   }
 

@@ -16,36 +16,36 @@ import io.opentraffic.datastore.flatbuffer.Entry;
 import io.opentraffic.datastore.flatbuffer.Histogram;
 import io.opentraffic.datastore.flatbuffer.Segment;
 
-public class FlatbufferSource implements Iterable<Measurement> {
+public class FlatBufferSource extends Source {
   private final TimeBucket bucket;
   private final long tile;
   private final Histogram histogram;
-  private int index;
   ArrayList<Measurement> measurements;
   
-  FlatbufferSource(File file, TimeBucket timeBucket, long tileId) throws IOException {
+  public FlatBufferSource(File file, TimeBucket timeBucket, long tileId) throws IOException {
     bucket = timeBucket;
     tile = tileId;
     histogram = Histogram.getRootAsHistogram(ByteBuffer.wrap(IOUtils.toByteArray(file.toURI())));
-    index = 0;
     measurements = new ArrayList<Measurement>();
   }
 
   @Override
   public Iterator<Measurement> iterator() {
     return new Iterator<Measurement>() {
-
+      private int index = 0;
       @Override
       public boolean hasNext() {
         //go get more measurements (note that a segment can have zero entries, so it's best to loop here until data is available)
-        while (index < histogram.segmentsLength() && measurements.size() == 0) {
+        while (histogram.tileId() == tile && index < histogram.segmentsLength() && measurements.size() == 0) {
           Segment segment = histogram.segments(index);
           index += 1;
           //convert segment into a Measurement object
-          long segmentId = segment.segmentId();
+          long segmentId = (segment.segmentId() << (3 + 22)) & histogram.tileId();
           VehicleType vtype = VehicleType.values()[histogram.vehicleType()];
           for (int i = 0; i < segment.entriesLength(); i++) {
             Entry e = segment.entries(i);
+            if(!bucket.intersects(e.epochHour()))
+              continue;
             long nextSegmentId = segment.nextSegmentIds(e.nextSegmentIdx());
             int duration = DurationBucket.unquantise((byte)e.durationBucket());
             int count = (int)e.count();
@@ -65,6 +65,12 @@ public class FlatbufferSource implements Iterable<Measurement> {
       }
       
     };
+  }
+
+  @Override
+  public void close() throws IOException {
+    // TODO Auto-generated method stub
+    
   }
 
 }

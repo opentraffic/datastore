@@ -36,7 +36,7 @@ public class TileFilterTest {
     MeasurementSource parser = new MeasurementSource(cmd, measurements.toString(), new TimeBucket(BucketSize.HOURLY, 0), tile_id);
     int count = 0;
     for (Measurement m : parser) {
-      assertEquals(segment_in_tile, m.key.segmentId);
+      assertEquals(segment_in_tile, m.segmentId);
       count++;
     }
     parser.close();

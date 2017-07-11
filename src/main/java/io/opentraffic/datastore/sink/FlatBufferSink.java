@@ -9,7 +9,6 @@ import java.util.TreeSet;
 
 import com.google.flatbuffers.FlatBufferBuilder;
 
-import io.opentraffic.datastore.BucketSize;
 import io.opentraffic.datastore.DurationBucket;
 import io.opentraffic.datastore.Measurement;
 import io.opentraffic.datastore.TimeBucket;
@@ -27,20 +26,32 @@ public class FlatBufferSink {
   public static void write(ArrayList<Measurement> measurements, OutputStream output, TimeBucket bucket) throws IOException {
     final int numMeasurements = measurements.size();
     if (numMeasurements > 0) {
-      VehicleType firstVehicleType = measurements.get(0).key.vehicleType;
-      VehicleType lastVehicleType = measurements.get(numMeasurements - 1).key.vehicleType;
+      VehicleType firstVehicleType = measurements.get(0).vehicleType;
+      VehicleType lastVehicleType = measurements.get(numMeasurements - 1).vehicleType;
       // at this point, a histogram file contains only one type of vehicle
       assert (firstVehicleType == lastVehicleType);
       // which is okay, since only one type of vehicle is supported.
       assert (firstVehicleType == VehicleType.AUTO);
-
-      byte[] buffer = buildHistogram(firstVehicleType, measurements, bucket);
+      // get the tile
+      long tileId = getTileId(measurements);
+      
+      byte[] buffer = buildHistogram(firstVehicleType, measurements, bucket, tileId);
       output.write(buffer);
     }
     output.close();
   }
+  
+  private static long getTileId(ArrayList<Measurement> measurements) {
+    long tileId = -1;
+    for(Measurement m : measurements) {
+      if(tileId == -1)
+        tileId = m.getTile();
+      assert (tileId == m.getTile());
+    }
+    return tileId;
+  }
 
-  private static byte[] buildHistogram(VehicleType vehicleType, ArrayList<Measurement> measurements, TimeBucket bucket) {
+  private static byte[] buildHistogram(VehicleType vehicleType, ArrayList<Measurement> measurements, TimeBucket bucket, long tileId) {
     final int numMeasurements = measurements.size();
     final long maxSegmentId = measurements.get(numMeasurements - 1).getTileRelative();
     // make sure segment IDs can fit into integers
@@ -80,7 +91,7 @@ public class FlatBufferSink {
       // these arrays in the same order, then we need to iterate in reverse.
       for (int i = endIndex - 1; i >= index; i--) {
         Measurement m = measurements.get(i);
-        int nextSegmentIdx = Arrays.binarySearch(nextSegmentIds, (int) m.key.nextSegmentId);
+        int nextSegmentIdx = Arrays.binarySearch(nextSegmentIds, (int) m.nextSegmentId);
         int queue = quantiseQueue(m.queue);
         Entry.createEntry(builder, bucket.index, nextSegmentIdx, DurationBucket.quantise(m.duration), m.count, queue);
       }
@@ -111,6 +122,7 @@ public class FlatBufferSink {
 
     Histogram.startHistogram(builder);
     Histogram.addVehicleType(builder, (byte) vehicleType.ordinal());
+    Histogram.addTileId(builder, tileId);
     Histogram.addSegments(builder, segmentsOffset);
     int histogramOffset = Histogram.endHistogram(builder);
 
@@ -121,17 +133,6 @@ public class FlatBufferSink {
   
   private static int quantiseQueue(float queue) {
     return Math.min(255, (int)Math.round(255.0 * queue));
-  }
-  
-  private static int convertTimeBucketToWeek(TimeBucket timeBucket) {
-    return (int)(((timeBucket.index - 4L * 24L) / (24L * 7L)) % 53L);
-  }
-
-  private static int convertTimeBucketToDayHour(TimeBucket timeBucket) {
-    assert (timeBucket.size == BucketSize.HOURLY);
-    // guaranteed the result will be smaller than 24*7, so narrowing conversion
-    // to int is not a problem. subtract 4 days because epoch was a thursday
-    return (int) ((timeBucket.index - 4L * 24L) % (24L * 7L));
   }
 
   // find the end index such that for measurements[i] where i = index; i < end
@@ -156,7 +157,7 @@ public class FlatBufferSink {
     SortedSet<Long> idSet = new TreeSet<>();
 
     for (int i = beginIndex; i < endIndex; i++) {
-      idSet.add(measurements.get(i).key.nextSegmentId);
+      idSet.add(measurements.get(i).nextSegmentId);
     }
 
     long[] ids = new long[idSet.size()];
