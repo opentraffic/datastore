@@ -6,16 +6,23 @@ import glob
 import argparse
 import subprocess
 import boto3
+from botocore.exceptions import ClientError
 
-def upload(time_bucket, tile_level, tile_index, s3_datastore_bucket):
+def set_time_key(time_bucket, tile_level, tile_index):
+    # path key: year/month/day/hour/tile_level/tile_index
+    to_time = time.gmtime(time_bucket * 3600)
+
+    time_key = str(to_time[0]) + '/' + str(to_time[1]) + '/' + str(to_time[2]) + '/' + str(to_time[3]) + '/' + str(tile_level) + '/' + str(tile_index)
+
+    return time_key
+
+def upload(time_key, s3_datastore_bucket):
     print('[INFO] uploading data')
     s3_client = boto3.client('s3')
-    to_time = time.gmtime(time_bucket * 3600)
 
     uploads = ['.fb', '.orc']
     for file_extension in uploads:
-        # path key: year/month/day/hour/tile_level/tile_index.fb
-        time_key = str(to_time[0]) + '/' + str(to_time[1]) + '/' + str(to_time[2]) + '/' + str(to_time[3]) + '/' + str(tile_level) + '/' + str(tile_index) + file_extension
+        time_key = time_key + file_extension
 
         data = open(str(tile_index) + file_extension, 'rb')
         s3_client.put_object(
@@ -26,7 +33,7 @@ def upload(time_bucket, tile_level, tile_index, s3_datastore_bucket):
             )
         data.close()
 
-def convert(tile_index, time_bucket, tile_id):
+def convert(tile_index, time_bucket, tile_id, existing_files):
     print('[INFO] running conversion process')
     sys.stdout.flush()
 
@@ -34,6 +41,7 @@ def convert(tile_index, time_bucket, tile_id):
     orc_out_file = str(tile_index) + '.orc'
 
     # TODO: no idea if the exception handling works
+    # TODO: block to deal with existing_files array
     try:
         subprocess.check_output(['datastore-histogram-tile-writer', '-b', str(time_bucket), '-t', str(tile_id), '-v', '-f', fb_out_file, '-o', orc_out_file] + glob.glob('*'), timeout=180, universal_newlines=True, stderr=subprocess.STDOUT)
     except subprocess.CalledProcessError as tilewriter:
@@ -42,16 +50,36 @@ def convert(tile_index, time_bucket, tile_id):
 
     print('[INFO] Finished running conversion')
 
-def download(keys_array, s3_reporter_bucket):
+def download_data(keys_array, s3_reporter_bucket, s3_datastore_bucket, time_key):
     client = boto3.client('s3')
-    client.list_objects_v2(Bucket=s3_reporter_bucket)
-
     s3_resource = boto3.resource('s3')
-    for key in keys_array:
-        object_id = key.rsplit('/', 1)[-1]
-        print('[INFO] downloading ' + object_id + ' from s3')
 
+    for key in keys_array:
+        # download the new reporter data
+        object_id = key.rsplit('/', 1)[-1]
+        print('[INFO] operating on key' + object_id)
+
+        print('[INFO] downloading ' + object_id + ' from s3 bucket: ' + s3_reporter_bucket)
         s3_resource.Object(s3_reporter_bucket, key).download_file(object_id)
+
+        # download any existing datastore data, save the object as
+        #   key + extension + '.current', e.g. some_file.fb.current
+        # TODO: verify
+        existing_files = []
+        exts = ['.fb', '.orc']
+        for extension in exts:
+            existing_key_id = key.rsplit('/', 1)[-1] + extension + '.current'
+            try:
+                print('[INFO] checking for existing datastore data for key: ' + existing_key_id + ' in s3 bucket: ' + s3_datastore_bucket
+
+                s3_resource.Object(s3_datastore_bucket, key).download_file(existing_key_id)
+                existing_files.append(existing_key_id)
+
+                print('[INFO] saved existing datastore object as ' + existing_key_id)
+            except ClientError as e:
+                print('[WARN] found no existing data or other error: %s' % e)
+        
+    return existing_files
 
 if __name__ == "__main__":
     # build args
@@ -73,8 +101,14 @@ if __name__ == "__main__":
     print('[INFO] tile index: ' + str(args.tile_index))
 
     # do work
-    download(args.s3_reporter_keys.split(','), args.s3_reporter_bucket)
-    convert(args.tile_index, args.time_bucket, args.tile_id)
-    upload(args.time_bucket, args.tile_level, args.tile_index, args.s3_datastore_bucket)
+    time_key = set_time_key(args.time_bucket, args.tile_level, args.tile_index)
+
+    existing_files = download_data(
+        args.s3_reporter_keys.split(','),
+        args.s3_reporter_bucket,
+        args.s3_datastore_bucket,
+        time_key)
+    convert(args.tile_index, args.time_bucket, args.tile_id, existing_files)
+    upload(time_key, args.s3_datastore_bucket)
 
     print('[INFO] run complete')
