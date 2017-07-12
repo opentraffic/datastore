@@ -29,7 +29,7 @@ docker run \
   datastore:latest \
   sh -c 'datastore-histogram-tile-writer -b $((1478023200/3600)) -t $(((2140 << 3) | 0)) -v flatbuffer.fb /work/1478023200_1478026799/0/2140/* 1>verbose2.txt'
 doubled=$(grep -cF Measurement ${PWD}/tests/work-data/verbose2.txt)
-if [[ ${counted2} != $((counted*2)) ]]; then
+if [[ ${doubled} != $((counted*2)) ]]; then
   echo "Failed to garner the right number of measurements after folding"
   exit 1
 fi
