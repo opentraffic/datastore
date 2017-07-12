@@ -40,7 +40,7 @@ public class FlatBufferSource extends Source {
           Segment segment = histogram.segments(index);
           index += 1;
           //convert segment into a Measurement object
-          long segmentId = (segment.segmentId() << (3 + 22)) & histogram.tileId();
+          long segmentId = (segment.segmentId() << (3L + 22L)) | histogram.tileId();
           VehicleType vtype = VehicleType.values()[histogram.vehicleType()];
           for (int i = 0; i < segment.entriesLength(); i++) {
             Entry e = segment.entries(i);
@@ -50,7 +50,7 @@ public class FlatBufferSource extends Source {
             int duration = DurationBucket.unquantise((byte)e.durationBucket());
             int count = (int)e.count();
             Measurement m = new Measurement(vtype, segmentId, nextSegmentId, 255, e.queue(), duration, count,
-                null, e.epochHour() * 3600, (e.epochHour()  + 1) * 3600);
+                null, e.epochHour() * 3600, (e.epochHour()  + 1) * 3600 - 1);
             measurements.add(m);
           }
         }

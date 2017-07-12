@@ -91,9 +91,8 @@ public class FlatBufferSink {
       // these arrays in the same order, then we need to iterate in reverse.
       for (int i = endIndex - 1; i >= index; i--) {
         Measurement m = measurements.get(i);
-        int nextSegmentIdx = Arrays.binarySearch(nextSegmentIds, (int) m.nextSegmentId);
-        int queue = quantiseQueue(m.queue);
-        Entry.createEntry(builder, bucket.index, nextSegmentIdx, DurationBucket.quantise(m.duration), m.count, queue);
+        int nextSegmentIdx = Arrays.binarySearch(nextSegmentIds, m.nextSegmentId);        
+        Entry.createEntry(builder, bucket.index, nextSegmentIdx, DurationBucket.quantise(m.duration), m.count, quantiseQueue(m.queue));
       }
       final int entriesOffset = builder.endVector();
 

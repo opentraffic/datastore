@@ -59,14 +59,9 @@ public class Main {
     for (String fileName : fileNames) {
       try {
         File file = new File(fileName);
-        Source source = null;
-        try {
-          source = new MeasurementSource(cmd, file, timeBucket, tileId);
-          source.iterator();
-        }// wasn't something csv could parse try with flatbuffer
-        catch(Exception e) {
-          source = new FlatBufferSource(file, timeBucket, tileId);
-        }
+        Source source = fileName.endsWith(".fb") ? 
+            new FlatBufferSource(file, timeBucket, tileId) :
+            new MeasurementSource(cmd, file, timeBucket, tileId);
         //get the measurements
         for (Measurement measurement : source)
           measurements.add(measurement);

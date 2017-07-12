@@ -66,6 +66,14 @@ public final class Measurement implements Comparable<Measurement> {
     maxTimestamp = Math.max(maxTimestamp, m.maxTimestamp);
   }
   
+  /*segment ids are defined as little endian:
+   struct Fields {
+     uint64_t level  : 3;   // Hierarchy level
+     uint64_t tileid : 22;  // Tile Id within the hierarchy level
+     uint64_t id     : 21;  // Id of the element within the tile
+     uint64_t spare  : 18;
+   } fields;
+   */
   private static final long LEVEL_AND_TILEID_MASK = 0x1FFFFFFL;
   private static final long LEVEL_AND_TILEID_BITS = 25L;
   private static final long SEGMENTID_MASK = 0x1FFFFFL;
