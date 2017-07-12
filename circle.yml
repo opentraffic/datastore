@@ -6,7 +6,7 @@ machine:
 
 dependencies:
   pre:
-    - sudo apt-get update; sudo apt-get install git python-pip
+    - sudo apt-get update; sudo apt-get install git python python-pip
     - sudo pip install pylint
     - git clone git@github.com:opentraffic/hub-deploy
   override:
