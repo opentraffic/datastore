@@ -1,10 +1,8 @@
 package io.opentraffic.datastore.source;
 
-import java.io.Closeable;
 import java.io.File;
 import java.io.IOException;
 import java.nio.charset.Charset;
-import java.util.Date;
 import java.util.Iterator;
 
 import org.apache.commons.cli.CommandLine;
@@ -13,8 +11,6 @@ import org.apache.commons.cli.Options;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
 
-import io.opentraffic.datastore.BucketSize;
-import io.opentraffic.datastore.DurationBucket;
 import io.opentraffic.datastore.Measurement;
 import io.opentraffic.datastore.TimeBucket;
 import io.opentraffic.datastore.VehicleType;
@@ -22,7 +18,7 @@ import io.opentraffic.datastore.VehicleType;
 /**
  * Created by matt on 06/06/17.
  */
-public class MeasurementParser implements Iterable<Measurement>, Closeable {
+public class MeasurementSource extends Source {
   private final int segmentIdColumn;
   private final int nextSegmentIdColumn;
   private final int durationColumn;
@@ -37,7 +33,7 @@ public class MeasurementParser implements Iterable<Measurement>, Closeable {
   private final long tile;
   private final CSVParser parser;
 
-  public MeasurementParser(CommandLine cmd, File file, TimeBucket timeBucket, long tileId) throws IOException {
+  public MeasurementSource(CommandLine cmd, File file, TimeBucket timeBucket, long tileId) throws IOException {
     bucket = timeBucket;
     tile = tileId;
     parser = CSVParser.parse(file, Charset.forName("UTF-8"),
@@ -55,7 +51,7 @@ public class MeasurementParser implements Iterable<Measurement>, Closeable {
     vehicleTypeColumn = Integer.parseInt(cmd.getOptionValue("mode-column", "9"));
   }
   
-  public MeasurementParser(CommandLine cmd, String rawCSV, TimeBucket timeBucket, long tileId) throws IOException {
+  public MeasurementSource(CommandLine cmd, String rawCSV, TimeBucket timeBucket, long tileId) throws IOException {
     bucket = timeBucket;
     tile = tileId;
     parser = CSVParser.parse(rawCSV,
@@ -132,17 +128,6 @@ public class MeasurementParser implements Iterable<Measurement>, Closeable {
       } catch (Exception e) {
         return defaultValue;
       }
-    }
-  }
-
-  private TimeBucket parseTimeBucket(CSVRecord record, int idx) {
-    try {
-      long timestamp = parseLong(record, idx);
-      Date date = new Date(timestamp * 1000L);
-      long hour = date.getTime() / (1000L * 3600L);
-      return new TimeBucket(BucketSize.HOURLY, hour);
-    } catch (Exception e) {
-      throw new RuntimeException("Unable to parse timestamp", e);
     }
   }
 

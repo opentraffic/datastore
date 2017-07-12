@@ -26,11 +26,11 @@ public class TimeFilterTest {
     measurements.append(Long.toString(2L << 25L) + ",1,1,1,1,1,7200,7201,foo,AUTO\n");
 
     Options options = new Options();
-    MeasurementParser.AddOptions(options);
+    MeasurementSource.AddOptions(options);
     CommandLineParser cliParser = new DefaultParser();
     CommandLine cmd = cliParser.parse(options, new String[0]);
     
-    MeasurementParser parser = new MeasurementParser(cmd, measurements.toString(), new TimeBucket(BucketSize.HOURLY, 1), 0);
+    MeasurementSource parser = new MeasurementSource(cmd, measurements.toString(), new TimeBucket(BucketSize.HOURLY, 1), 0);
     TimeBucket bucket = new TimeBucket(BucketSize.HOURLY, 1);
     int count = 0;
     for (Measurement m : parser) {

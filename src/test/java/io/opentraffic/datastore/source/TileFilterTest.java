@@ -29,14 +29,14 @@ public class TileFilterTest {
     measurements.append(Long.toString(segment_not_in_tile) + ",1,1,1,1,1,1,1,foo,AUTO\n");
 
     Options options = new Options();
-    MeasurementParser.AddOptions(options);
+    MeasurementSource.AddOptions(options);
     CommandLineParser cliParser = new DefaultParser();
     CommandLine cmd = cliParser.parse(options, new String[0]);
     
-    MeasurementParser parser = new MeasurementParser(cmd, measurements.toString(), new TimeBucket(BucketSize.HOURLY, 0), tile_id);
+    MeasurementSource parser = new MeasurementSource(cmd, measurements.toString(), new TimeBucket(BucketSize.HOURLY, 0), tile_id);
     int count = 0;
     for (Measurement m : parser) {
-      assertEquals(segment_in_tile, m.key.segmentId);
+      assertEquals(segment_in_tile, m.segmentId);
       count++;
     }
     parser.close();

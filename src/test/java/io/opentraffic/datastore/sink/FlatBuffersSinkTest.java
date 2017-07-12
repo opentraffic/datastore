@@ -64,7 +64,7 @@ public class FlatBuffersSinkTest {
     assertEquals(nextSegmentId, s.nextSegmentIds(0));
     assertEquals(1, s.entriesLength());
     Entry e = s.entries(0);
-    assertEquals(59, e.dayHour());
+    assertEquals(415787L, e.epochHour());
     assertEquals(0, e.nextSegmentIdx());
     assertEquals(DurationBucket.quantise(duration), e.durationBucket());
     assertEquals(count, e.count());
@@ -100,7 +100,7 @@ public class FlatBuffersSinkTest {
 
       {
         Entry e0 = s.entries(0);
-        assertEquals(59, e0.dayHour());
+        assertEquals(415787L, e0.epochHour());
         assertEquals(0, e0.nextSegmentIdx());
         assertEquals(DurationBucket.quantise(59), e0.durationBucket());
         assertEquals(2, e0.count());
@@ -108,7 +108,7 @@ public class FlatBuffersSinkTest {
 
       {
         Entry e1 = s.entries(1);
-        assertEquals(59, e1.dayHour());
+        assertEquals(415787L, e1.epochHour());
         assertEquals(1, e1.nextSegmentIdx());
         assertEquals(DurationBucket.quantise(60), e1.durationBucket());
         assertEquals(12, e1.count());
@@ -124,7 +124,7 @@ public class FlatBuffersSinkTest {
       assertEquals(1, s.entriesLength());
 
       Entry e = s.entries(0);
-      assertEquals(59, e.dayHour());
+      assertEquals(415787L, e.epochHour());
       assertEquals(0, e.nextSegmentIdx());
       assertEquals(DurationBucket.quantise(65), e.durationBucket());
       assertEquals(7, e.count());

@@ -17,6 +17,10 @@ public class TimeBucket {
     this.index = index;
   }
   
+  public boolean intersects(long epochHour) {
+    return index == epochHour;
+  }
+  
   public boolean intersects(long minEpochSeconds, long maxEpochSeconds) {
     long minBucket = minEpochSeconds/3600L;
     long maxBucket = maxEpochSeconds/3600L;
