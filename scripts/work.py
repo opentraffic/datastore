@@ -20,14 +20,14 @@ def upload(time_key, s3_datastore_bucket):
 
     uploads = ['.fb', '.orc']
     for file_extension in uploads:
-        time_key = time_key + file_extension
+        key = time_key + file_extension
 
-        data = open(str(tile_index) + file_extension, 'rb')
+        data = open(time_key.rsplit('/', 1)[-1] + file_extension, 'rb')
         s3_client.put_object(
             Bucket=s3_datastore_bucket,
             ContentType='binary/octet-stream',
             Body=data,
-            Key=time_key
+            Key=key
             )
         data.close()
 
