@@ -1,12 +1,11 @@
 #!/usr/bin/env python3
 
-import os
 import sys
 import time
 import glob
-import boto3
 import argparse
 import subprocess
+import boto3
 
 def upload(time_bucket, tile_level, tile_index, s3_datastore_bucket):
     print('[INFO] uploading data')
@@ -19,7 +18,12 @@ def upload(time_bucket, tile_level, tile_index, s3_datastore_bucket):
         time_key = str(to_time[0]) + '/' + str(to_time[1]) + '/' + str(to_time[2]) + '/' + str(to_time[3]) + '/' + str(tile_level) + '/' + str(tile_index) + file_extension
 
         data = open(str(tile_index) + file_extension, 'rb')
-        response = s3_client.put_object(Bucket = s3_datastore_bucket, ContentType = 'binary/octet-stream', Body = data, Key = time_key)
+        s3_client.put_object(
+            Bucket=s3_datastore_bucket,
+            ContentType='binary/octet-stream',
+            Body=data,
+            Key=time_key
+            )
         data.close()
 
 def convert(tile_index, time_bucket, tile_id):
@@ -31,7 +35,7 @@ def convert(tile_index, time_bucket, tile_id):
 
     # TODO: no idea if the exception handling works
     try:
-        process = subprocess.check_output(['datastore-histogram-tile-writer', '-b', str(time_bucket), '-t', str(tile_id), '-v', '-f', fb_out_file, '-o', orc_out_file] + glob.glob('*'), timeout=180, universal_newlines=True, stderr=subprocess.STDOUT)
+        subprocess.check_output(['datastore-histogram-tile-writer', '-b', str(time_bucket), '-t', str(tile_id), '-v', '-f', fb_out_file, '-o', orc_out_file] + glob.glob('*'), timeout=180, universal_newlines=True, stderr=subprocess.STDOUT)
     except subprocess.CalledProcessError as tilewriter:
         print('[ERROR] Failed running datastore-histogram-tile-writer:', tilewriter.returncode, tilewriter.output)
         sys.exit([tilewriter.returncode])
@@ -40,7 +44,7 @@ def convert(tile_index, time_bucket, tile_id):
 
 def download(keys_array, s3_reporter_bucket):
     client = boto3.client('s3')
-    response = client.list_objects_v2(Bucket=s3_reporter_bucket)
+    client.list_objects_v2(Bucket=s3_reporter_bucket)
 
     s3_resource = boto3.resource('s3')
     for key in keys_array:
@@ -52,7 +56,7 @@ def download(keys_array, s3_reporter_bucket):
 if __name__ == "__main__":
     # build args
     parser = argparse.ArgumentParser()
-    parser.add_argument('s3_reporter_bucket', type=str,help='Bucket (e.g. reporter-work-prod) in which the data we wish to process is located')
+    parser.add_argument('s3_reporter_bucket', type=str, help='Bucket (e.g. reporter-work-prod) in which the data we wish to process is located')
     parser.add_argument('s3_datastore_bucket', type=str, help='Bucket (e.g. datastore-output-prod) into which we will place transformed data')
     parser.add_argument('s3_reporter_keys', type=str, help='S3 object keys which we will operate on, found in the s3_reporter_bucket')
     parser.add_argument('time_bucket', type=int, help='The time bucket')
