@@ -65,7 +65,7 @@ def download_data(keys_array, s3_reporter_bucket, s3_datastore_bucket, time_key)
     existing_key_name = time_key + '.fb'
     existing_download_id = time_key.rsplit('/', 1)[-1] + 'existing.fb'
     try:
-        print('[INFO] checking for existing flatbuffer data for key: ' + existing_download_id + ' in s3 bucket: ' + s3_datastore_bucket
+        print('[INFO] checking for existing flatbuffer data for key: ' + existing_download_id + ' in s3 bucket: ' + s3_datastore_bucket)
         s3_resource.Object(s3_datastore_bucket, existing_key_name).download_file(existing_download_id)
         print('[INFO] saved existing datastore object as ' + existing_download_id)
     except ClientError as e:
