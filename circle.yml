@@ -6,7 +6,8 @@ machine:
 
 dependencies:
   pre:
-    - sudo apt-get update; sudo apt-get install git
+    - sudo apt-get update; sudo apt-get install git python-pip
+    - sudo pip install pylint
     - git clone git@github.com:opentraffic/hub-deploy
   override:
     - docker info
@@ -14,6 +15,7 @@ dependencies:
 
 test:
   override:
+    - pylint -E scripts/work.py
     - ./tests/circle.sh
 
 deployment:
