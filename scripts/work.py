@@ -8,12 +8,10 @@ import subprocess
 import boto3
 from botocore.exceptions import ClientError
 
-def set_time_key(time_bucket, tile_level, tile_index):
+def get_time_key(time_bucket, tile_level, tile_index):
     # path key: year/month/day/hour/tile_level/tile_index
     to_time = time.gmtime(time_bucket * 3600)
-
     time_key = str(to_time[0]) + '/' + str(to_time[1]) + '/' + str(to_time[2]) + '/' + str(to_time[3]) + '/' + str(tile_level) + '/' + str(tile_index)
-
     return time_key
 
 def upload(time_key, s3_datastore_bucket):
@@ -61,18 +59,16 @@ def download_data(keys_array, s3_reporter_bucket, s3_datastore_bucket, time_key)
         print('[INFO] downloading ' + object_id + ' from s3 bucket: ' + s3_reporter_bucket)
         s3_resource.Object(s3_reporter_bucket, key).download_file(object_id)
 
-        # download any existing datastore data, save the object as
-        #   key + '.current' + extension, e.g. some_file.fb.current
-        # TODO: verify
-        existing_key_id = key.rsplit('/', 1)[-1] + '.fb'
-        try:
-            print('[INFO] checking for existing flatbuffer data for key: ' + existing_key_id + ' in s3 bucket: ' + s3_datastore_bucket
-
-            s3_resource.Object(s3_datastore_bucket, key).download_file(existing_key_id)
-
-            print('[INFO] saved existing datastore object as ' + existing_key_id)
-        except ClientError as e:
-            print('[WARN] found no existing data or other error: %s' % e)
+    # download any existing datastore data, save the object as
+    #   key + '.current' + extension, e.g. some_file.fb.current
+    # TODO: verify
+    existing_key_id = time_key.rsplit('/', 1)[-1] + 'existing.fb'
+    try:
+        print('[INFO] checking for existing flatbuffer data for key: ' + existing_key_id + ' in s3 bucket: ' + s3_datastore_bucket
+        s3_resource.Object(s3_datastore_bucket, time_key + '.fb').download_file(existing_key_id)
+        print('[INFO] saved existing datastore object as ' + existing_key_id)
+    except ClientError as e:
+        print('[WARN] found no existing data or other error: %s' % e)
         
 if __name__ == "__main__":
     # build args
