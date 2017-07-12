@@ -64,17 +64,15 @@ def download_data(keys_array, s3_reporter_bucket, s3_datastore_bucket, time_key)
         # download any existing datastore data, save the object as
         #   key + '.current' + extension, e.g. some_file.fb.current
         # TODO: verify
-        exts = ['.fb', '.orc']
-        for extension in exts:
-            existing_key_id = key.rsplit('/', 1)[-1] + extension
-            try:
-                print('[INFO] checking for existing datastore data for key: ' + existing_key_id + ' in s3 bucket: ' + s3_datastore_bucket
+        existing_key_id = key.rsplit('/', 1)[-1] + '.fb'
+        try:
+            print('[INFO] checking for existing flatbuffer data for key: ' + existing_key_id + ' in s3 bucket: ' + s3_datastore_bucket
 
-                s3_resource.Object(s3_datastore_bucket, key).download_file(existing_key_id)
+            s3_resource.Object(s3_datastore_bucket, key).download_file(existing_key_id)
 
-                print('[INFO] saved existing datastore object as ' + existing_key_id)
-            except ClientError as e:
-                print('[WARN] found no existing data or other error: %s' % e)
+            print('[INFO] saved existing datastore object as ' + existing_key_id)
+        except ClientError as e:
+            print('[WARN] found no existing data or other error: %s' % e)
         
 if __name__ == "__main__":
     # build args
