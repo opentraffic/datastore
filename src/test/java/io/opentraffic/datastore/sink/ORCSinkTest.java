@@ -44,7 +44,7 @@ public class ORCSinkTest {
     TimeBucket timeBucket = new TimeBucket(BucketSize.HOURLY, 415787);
     ArrayList<Measurement> measurements = new ArrayList<>();
 
-    measurements.add(new Measurement(VehicleType.AUTO, 3L << 25L, 1L, 990, 50, 60, 2, null, 0, 1));
+    measurements.add(new Measurement(VehicleType.AUTO, 3L << 25L, 1L, 255, 50, 60, 2, null, 0, 1));
 
     ByteArrayOutputStream output = new ByteArrayOutputStream();
     try {
@@ -79,16 +79,17 @@ public class ORCSinkTest {
       assertTrue(rows.nextBatch(batch));
       assertEquals(1, batch.size);
 
-      LongColumnVector vType = (LongColumnVector) batch.cols[0];
+      LongColumnVector vType = (LongColumnVector) batch.cols[0];      
       LongColumnVector segmentId = (LongColumnVector) batch.cols[1];
-      LongColumnVector dayHour = (LongColumnVector) batch.cols[2];
+      LongColumnVector epochHour = (LongColumnVector) batch.cols[2];
       LongColumnVector nextSegmentId = (LongColumnVector) batch.cols[3];
       LongColumnVector duration = (LongColumnVector) batch.cols[4];
-      LongColumnVector count = (LongColumnVector) batch.cols[5];
+      LongColumnVector queue = (LongColumnVector) batch.cols[5];
+      LongColumnVector count = (LongColumnVector) batch.cols[6];
 
       assertEquals(VehicleType.AUTO, VehicleType.values()[(int) vType.vector[0]]);
       assertEquals(3L, segmentId.vector[0]);
-      assertEquals(59, dayHour.vector[0]);
+      assertEquals(415787L, epochHour.vector[0]);
       assertEquals(1L, nextSegmentId.vector[0]);
       assertEquals(60, duration.vector[0]);
       assertEquals(2, count.vector[0]);
