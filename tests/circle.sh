@@ -24,7 +24,7 @@ fi
 
 #fold them in twice to see you get double the output
 docker run \
-  --name datastore \
+  --name datastore2 \
   -v ${PWD}/tests/work-data:/work \
   datastore:latest \
   sh -c 'datastore-histogram-tile-writer -b $((1478023200/3600)) -t $(((2140 << 3) | 0)) -v flatbuffer.fb /work/1478023200_1478026799/0/2140/* 1>verbose2.txt'
