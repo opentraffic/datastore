@@ -9,8 +9,8 @@ docker run \
   sh -c 'datastore-histogram-tile-writer -b $((1478023200/3600)) -t $(((2140 << 3) | 0)) -v -f flatbuffer.fb /work/1478023200_1478026799/0/2140/* 1>verbose.txt'
 
 #should have made a flatbuffer
-if [ ! -f ${PWD}/tests/work-data/flatbuffer.fb ]; then
-  echo "Failed: output file doesn't exist or is zero length!"
+if [[ ! -f ${PWD}/tests/work-data/flatbuffer.fb ]] || [[ ! -s ${PWD}/tests/work-data/flatbuffer.fb ]]; then
+  echo "Flatbuffer output doesn't exist or is zero length!"
   exit 1
 fi
 
