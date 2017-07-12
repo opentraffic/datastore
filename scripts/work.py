@@ -54,7 +54,7 @@ def download_data(keys_array, s3_reporter_bucket, s3_datastore_bucket, time_key)
     for key in keys_array:
         # download the new reporter data
         object_id = key.rsplit('/', 1)[-1]
-        print('[INFO] operating on key' + object_id)
+        print('[INFO] operating on key ' + object_id)
 
         print('[INFO] downloading ' + object_id + ' from s3 bucket: ' + s3_reporter_bucket)
         s3_resource.Object(s3_reporter_bucket, key).download_file(object_id)
