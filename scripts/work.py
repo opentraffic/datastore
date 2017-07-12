@@ -90,7 +90,7 @@ if __name__ == "__main__":
     print('[INFO] tile index: ' + str(args.tile_index))
 
     # do work
-    time_key = set_time_key(args.time_bucket, args.tile_level, args.tile_index)
+    time_key = get_time_key(args.time_bucket, args.tile_level, args.tile_index)
 
     download_data(
         args.s3_reporter_keys.split(','),
