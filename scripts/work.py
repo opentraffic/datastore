@@ -15,7 +15,7 @@ def get_time_key(time_bucket, tile_level, tile_index):
     return time_key
 
 def upload(time_key, s3_datastore_bucket):
-    print('[INFO] uploading data')
+    print('[INFO] uploading data to bucket: ' + s3_datastore_bucket)
     s3_client = boto3.client('s3')
 
     uploads = ['.fb', '.orc']
