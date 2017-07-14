@@ -56,7 +56,10 @@ def download_data(keys_array, s3_reporter_bucket, s3_datastore_bucket, time_key)
         object_id = key.rsplit('/', 1)[-1]
 
         print('[INFO] downloading ' + object_id + ' from s3 bucket: ' + s3_reporter_bucket)
-        s3_resource.Object(s3_reporter_bucket, key).download_file(object_id)
+        try:
+            s3_resource.Object(s3_reporter_bucket, key).download_file(object_id)
+        except ClientError as e:
+            print('[ERROR] failed to download key: %s' % e)
 
     # download any existing datastore data, save the object as
     #   key + '.current' + extension, e.g. some_file.fb.current
