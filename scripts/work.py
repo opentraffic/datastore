@@ -8,12 +8,6 @@ import subprocess
 import boto3
 from botocore.exceptions import ClientError
 
-def flush(string):
-    """ flush output """
-
-    sys.stdout.write(string + os.linesep)
-    sys.stdout.flush()
-
 def get_time_key(time_bucket, tile_level, tile_index):
     # path key: year/month/day/hour/tile_level/tile_index
     to_time = time.gmtime(time_bucket * 3600)
@@ -21,7 +15,7 @@ def get_time_key(time_bucket, tile_level, tile_index):
     return time_key
 
 def upload(time_key, s3_datastore_bucket):
-    flush('[INFO] uploading data to bucket: ' + s3_datastore_bucket)
+    print('[INFO] uploading data to bucket: ' + s3_datastore_bucket)
     s3_client = boto3.client('s3')
 
     uploads = ['.fb', '.orc']
@@ -38,7 +32,8 @@ def upload(time_key, s3_datastore_bucket):
         data.close()
 
 def convert(tile_index, time_bucket, tile_id):
-    flush('[INFO] running conversion process')
+    print('[INFO] running conversion process')
+    sys.stdout.flush()
 
     fb_out_file = str(tile_index) + '.fb'
     orc_out_file = str(tile_index) + '.orc'
@@ -47,10 +42,10 @@ def convert(tile_index, time_bucket, tile_id):
     try:
         subprocess.check_output(['datastore-histogram-tile-writer', '-b', str(time_bucket), '-t', str(tile_id), '-v', '-f', fb_out_file, '-o', orc_out_file] + glob.glob('*'), timeout=180, universal_newlines=True, stderr=subprocess.STDOUT)
     except subprocess.CalledProcessError as tilewriter:
-        flush('[ERROR] Failed running datastore-histogram-tile-writer:', tilewriter.returncode, tilewriter.output)
+        print('[ERROR] Failed running datastore-histogram-tile-writer:', tilewriter.returncode, tilewriter.output)
         sys.exit([tilewriter.returncode])
 
-    flush('[INFO] Finished running conversion')
+    print('[INFO] Finished running conversion')
 
 def download_data(keys_array, s3_reporter_bucket, s3_datastore_bucket, time_key):
     client = boto3.client('s3')
@@ -60,11 +55,11 @@ def download_data(keys_array, s3_reporter_bucket, s3_datastore_bucket, time_key)
         # download the new reporter data
         object_id = key.rsplit('/', 1)[-1]
 
-        flush('[INFO] downloading ' + object_id + ' from s3 bucket: ' + s3_reporter_bucket)
+        print('[INFO] downloading ' + object_id + ' from s3 bucket: ' + s3_reporter_bucket)
         try:
             s3_resource.Object(s3_reporter_bucket, key).download_file(object_id)
         except ClientError as e:
-            flush('[ERROR] failed to download key: %s' % e)
+            print('[ERROR] failed to download key: %s' % e)
 
     # download any existing datastore data, save the object as
     #   key + '.current' + extension, e.g. some_file.fb.current
@@ -72,11 +67,11 @@ def download_data(keys_array, s3_reporter_bucket, s3_datastore_bucket, time_key)
     existing_key_name = time_key + '.fb'
     existing_download_id = time_key.rsplit('/', 1)[-1] + '.existing.fb'
     try:
-        flush('[INFO] checking for existing flatbuffer data for key: ' + existing_key_name + ' in s3 bucket: ' + s3_datastore_bucket)
+        print('[INFO] checking for existing flatbuffer data for key: ' + existing_key_name + ' in s3 bucket: ' + s3_datastore_bucket)
         s3_resource.Object(s3_datastore_bucket, existing_key_name).download_file(existing_download_id)
-        flush('[INFO] saved existing datastore object as ' + existing_download_id)
+        print('[INFO] saved existing datastore object as ' + existing_download_id)
     except ClientError as e:
-        flush('[WARN] found no existing data or other error: %s' % e)
+        print('[WARN] found no existing data or other error: %s' % e)
         
 if __name__ == "__main__":
     # build args
@@ -90,12 +85,12 @@ if __name__ == "__main__":
     parser.add_argument('tile_index', type=int, help='The tile index')
     args = parser.parse_args()
 
-    flush('[INFO] reporter intput bucket: ' + args.s3_reporter_bucket)
-    flush('[INFO] datastore output bucket: ' + args.s3_datastore_bucket)
-    flush('[INFO] time bucket: ' + str(args.time_bucket))
-    flush('[INFO] tile id: ' + str(args.tile_id))
-    flush('[INFO] tile level: ' + str(args.tile_level))
-    flush('[INFO] tile index: ' + str(args.tile_index))
+    print('[INFO] reporter intput bucket: ' + args.s3_reporter_bucket)
+    print('[INFO] datastore output bucket: ' + args.s3_datastore_bucket)
+    print('[INFO] time bucket: ' + str(args.time_bucket))
+    print('[INFO] tile id: ' + str(args.tile_id))
+    print('[INFO] tile level: ' + str(args.tile_level))
+    print('[INFO] tile index: ' + str(args.tile_index))
 
     # do work
     time_key = get_time_key(args.time_bucket, args.tile_level, args.tile_index)
@@ -108,4 +103,4 @@ if __name__ == "__main__":
     convert(args.tile_index, args.time_bucket, args.tile_id)
     upload(time_key, args.s3_datastore_bucket)
 
-    flush('[INFO] run complete')
+    print('[INFO] run complete')
