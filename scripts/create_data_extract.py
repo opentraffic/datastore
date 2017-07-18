@@ -82,8 +82,17 @@ def createOrdinalSegmentsOut(segment_list):
     "description" : "168 ordinal hours of week 0 of year 2017",
     "segments" : segment_list
     }
-    
-  with gzip.GzipFile('data_extracts/test_segment_speed.gz', 'w') as fout:
+
+  output_path = 'week' + str(ordinal_out['week']) + '_' + str(ordinal_out['year']) + '/' + str(int(sys.argv[2])) + '/' + str(int(sys.argv[3])) + '/'
+
+  if not os.path.exists(os.path.dirname(output_path)):
+    try:
+      os.makedirs(os.path.dirname(output_path))
+    except OSError as exc: # Guard against race condition
+        if exc.errno != errno.EEXIST:
+            raise
+
+  with gzip.GzipFile(output_path + sys.argv[4] + '.gz', 'w') as fout:
      ordinal_result = (json.dumps(ordinal_out, separators=(',', ':'))).encode('utf-8') 
      fout.write(ordinal_result)
   
@@ -94,8 +103,8 @@ def createOrdinalSegmentsOut(segment_list):
   
 # Main procedure:  Reads an OSMLR tile and prints all segment Ids and lengths
 if __name__ == '__main__':
-  if len(sys.argv) != 4:
-    print "Usage:", sys.argv[0], "<OSMLR pbf file> <level> <tile_id>"
+  if len(sys.argv) != 5:
+    print "Usage:", sys.argv[0], "<OSMLR pbf file> <level> <tile_id> <output_file>"
     sys.exit(-1)
 
   osmlr_tile = loadOSMLR()
