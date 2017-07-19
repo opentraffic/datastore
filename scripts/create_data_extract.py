@@ -22,51 +22,46 @@ def loadOSMLR():
 #Iterates through the segments, listing the lengths
 def list_segment_lengths(osmlr_tile, level, tile_id):
   id = 0
-  segments_dict = {"segments":[]}
-
+  segments_dict = {'segments':{}}
   for entry in osmlr_tile.entries:
     length = 0
     segment_id = (id << 25) + (tile_id << 3) + level
+    id += 1
     if entry.HasField("segment"): 
       for loc_ref in entry.segment.lrps:
         if loc_ref.HasField('length'):
           length = length + loc_ref.length
       #print segment_id, level, tile_id, id, length
    
-    next_segments_dict = {}
-    for i in range(0,random.randint(0,4)):
-      next_id = random.randrange(1000000000,9999999999)
-      next_segments_dict[next_id] = {
-        "prevalence": round(random.uniform(0.0, 10.0),2),
-        "id" : next_id,
-        "delay": random.randint(0, 100),
-        "variance" : round(random.uniform(0.0, 2.0),2)
-      }
-      
     entries= []
+    next_segment_ids = [random.randrange(1000000000,9999999999) for i in range(0,random.randint(0,3))]
+    #hours per week = entry
     for hpw in range(0, 168):
+      next_segments_dict = {}
+      if int(sys.argv[2]) is not 2:
+        for next_id in next_segment_ids:
+          next_segments_dict[next_id] = {
+            "prevalence": round(random.uniform(0.0, 10.0),2),
+            "id" : next_id,
+            "delay_variance": random.randint(0, 100),
+            "queue_variance" : round(random.uniform(0.0, 2.0),2),
+            "queue_length" : round((length * .20), 2)
+          }
       entry_dict = {
         "entry" : hpw,
         "id" : segment_id,  
         "speed" : random.randint(30, 100),
-        "variance" : round(random.uniform(0.0, 2.0),2),
+        "speed_variance" : round(random.uniform(0.0, 2.0),2),
         "prevalence" : round(random.uniform(0.0, 10.0),2),
-        "queue_length" : round((length * .20), 2),
         "next_segments" : next_segments_dict
       }
       entries.append(entry_dict)
   
-      
-  segment_dict = {
-    segment_id : {
-      "reference_speed": 37,
-      "entries" : entries
-    }
-  }
+      segments_dict['segments'][segment_id] = {
+        "reference_speed": random.randint(30, 100),
+        "entries" : entries
+      }
     
-  segments_dict.update(segment_dict)
-  id += 1
-  
   return segments_dict
 
 
@@ -108,10 +103,13 @@ if __name__ == '__main__':
     print "Usage:", sys.argv[0], "<OSMLR pbf file> <level> <tile_id> <output_file>"
     sys.exit(-1)
 
+  random.seed(123)
+
   osmlr_tile = loadOSMLR()
   # Read the existing address book.
   level = int(sys.argv[2])
   tile_id = int(sys.argv[3])
+
 
   segment_list = list_segment_lengths(osmlr_tile, level, tile_id)
   #output the generated encoded json to a gzip
