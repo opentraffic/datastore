@@ -23,7 +23,7 @@ def loadOSMLR():
 def list_segment_lengths(osmlr_tile, level, tile_id):
   id = 0
   segments_dict = {"segments":[]}
-  next_segments_dict = {}
+
   for entry in osmlr_tile.entries:
     length = 0
     segment_id = (id << 25) + (tile_id << 3) + level
@@ -33,6 +33,7 @@ def list_segment_lengths(osmlr_tile, level, tile_id):
           length = length + loc_ref.length
       #print segment_id, level, tile_id, id, length
    
+    next_segments_dict = {}
     for i in range(0,random.randint(0,4)):
       next_id = random.randrange(1000000000,9999999999)
       next_segments_dict[next_id] = {
