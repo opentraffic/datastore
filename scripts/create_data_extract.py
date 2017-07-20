@@ -9,7 +9,7 @@ import json, gzip
 
 #Read in v0.1 geojson OSMLR tiles from AWS to generate segment speed files that 
 #ie. week0_2017/level/0/tileid/segment_speeds.json (same as directory structure output as OSMLR input)
-#https://s3.amazonaws.com/osmlr-tiles/v0.1/pbf/0/000/xxx.osmlr
+#https://s3.amazonaws.com/osmlr-tiles/v0.1/pbf/0/000/747.osmlr
 def loadOSMLR():
   osmlr_tile = tile_pb2.Tile()
   f = open(sys.argv[1], "rb")
@@ -23,9 +23,12 @@ def loadOSMLR():
 def list_segment_lengths(osmlr_tile, level, tile_id):
   id = 0
   segments_dict = {'segments':{}}
+  tile_ids = []
+  tile_ids = (tile_id if '#' not in sys.argv[3] else sys.argv[3].split("#"))
+  print tile_ids
   for entry in osmlr_tile.entries:
     length = 0
-    segment_id = (id << 25) + (tile_id << 3) + level
+    segment_id = (id << 25) + (int(tile_ids[0]) << 3) + level
     id += 1
     if entry.HasField("segment"): 
       for loc_ref in entry.segment.lrps:
@@ -79,7 +82,12 @@ def createOrdinalSegmentsOut(segment_list):
     "segments" : segment_list
     }
 
-  output_path = 'week' + str(ordinal_out['week']) + '_' + str(ordinal_out['year']) + '/' + str(int(sys.argv[2])) + '/' + str(int(sys.argv[3])) + '/'
+  if '#' not in sys.argv[3]:
+    output_path = 'data-extracts/week' + str(ordinal_out['week']) + '_' + str(ordinal_out['year']) + '/' + str(int(sys.argv[2])) + '/' + sys.argv[3] + '/'
+  else:
+    #for level 2, we append 2 tile levels with # (ie. 000/601 = 000#601)
+    tile_ids = sys.argv[3].split("#")
+    output_path = 'data-extracts/week' + str(ordinal_out['week']) + '_' + str(ordinal_out['year']) + '/' + str(int(sys.argv[2])) + '/' + str(tile_ids[0]) + '/' + str(tile_ids[1]) + '/'
 
   if not os.path.exists(os.path.dirname(output_path)):
     try:
@@ -106,10 +114,10 @@ if __name__ == '__main__':
   random.seed(123)
 
   osmlr_tile = loadOSMLR()
-  # Read the existing address book.
-  level = int(sys.argv[2])
-  tile_id = int(sys.argv[3])
-
+  # Read the existing address book. /2/000/601/683
+  level = int(sys.argv[2])  #ie. 0
+  tile_id = sys.argv[3] #for level 2, just append 2 tile levels with # (ie. 000/601 = 000#601)
+  osmlr = int(sys.argv[4]) #ie. 683
 
   segment_list = list_segment_lengths(osmlr_tile, level, tile_id)
   #output the generated encoded json to a gzip
