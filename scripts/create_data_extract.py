@@ -22,13 +22,10 @@ def loadOSMLR():
 #Iterates through the segments, listing the lengths
 def list_segment_lengths(osmlr_tile, level, tile_id):
   id = 0
-  segments_dict = {'segments':{}}
-  tile_ids = []
-  tile_ids = (tile_id if '#' not in sys.argv[3] else sys.argv[3].split("#"))
-  print tile_ids
+  segments_dict = {}
   for entry in osmlr_tile.entries:
     length = 0
-    segment_id = (id << 25) + (int(tile_ids[0]) << 3) + level
+    segment_id = (id << 25) | (tile_id << 3) | level
     id += 1
     if entry.HasField("segment"): 
       for loc_ref in entry.segment.lrps:
@@ -41,7 +38,7 @@ def list_segment_lengths(osmlr_tile, level, tile_id):
     #hours per week = entry
     for hpw in range(0, 168):
       next_segments_dict = {}
-      if int(sys.argv[2]) is not 2:
+      if level is not 2:
         for next_id in next_segment_ids:
           next_segments_dict[next_id] = {
             "prevalence": round(random.uniform(0.0, 10.0),2),
@@ -82,6 +79,20 @@ def createOrdinalSegmentsOut(segment_list):
     "segments" : segment_list
     }
 
+  #should we output to stdout and let user decide where to put it
+  #sys.stdout.write(json.dumps(ordinal_out, separators=(',', ':')))
+  #sys.stdout.flush()
+  #for now, need to output to file for s3
+  with open(input_file + '.json', 'w') as fout:
+     ordinal_result = (json.dumps(ordinal_out, separators=(',', ':'))).encode('utf-8')
+     fout.write(ordinal_result)
+
+
+#contain hourly avg speeds per week over 1 calendar year (periodic)open
+#def createPeriodicSegmentsOut():
+
+#In case we need to do any of this later
+  '''
   if '#' not in sys.argv[3]:
     output_path = 'data-extracts/week' + str(ordinal_out['week']) + '_' + str(ordinal_out['year']) + '/' + str(int(sys.argv[2])) + '/' + sys.argv[3] + '/'
   else:
@@ -96,33 +107,29 @@ def createOrdinalSegmentsOut(segment_list):
         if exc.errno != errno.EEXIST:
             raise
 
-  with gzip.GzipFile(output_path + sys.argv[4] + '.gz', 'w') as fout:
+  with gzip.GzipFile(output_path + input_file + '.gz', 'w') as fout:
      ordinal_result = (json.dumps(ordinal_out, separators=(',', ':'))).encode('utf-8') 
      fout.write(ordinal_result)
-  
+  '''
 
-#contain hourly avg speeds per week over 1 calendar year (periodic)open
-#def createPeriodicSegmentsOut():
-
-  
-# Main procedure:  Reads an OSMLR tile and prints all segment Ids and lengths
+# Main procedure:  Reads an OSMLR tile and outputs dummy json segment speed data
 if __name__ == '__main__':
-  if len(sys.argv) != 5:
-    print "Usage:", sys.argv[0], "<OSMLR pbf file> <level> <tile_id> <output_file>"
+  if len(sys.argv) != 4:
+    print "Usage:", sys.argv[0], "<OSMLR pbf file>, <level>, <tile_id>, <flatbuffer(s)"
     sys.exit(-1)
 
   random.seed(123)
 
   osmlr_tile = loadOSMLR()
-  # Read the existing address book. /2/000/601/683
+  # Read the existing address book. /0/002/415
+  input_file = sys.argv[1].split('.osmlr')[0].rsplit('/', 1)[1]
+  print ("input file: " + input_file) #ie. 415
   level = int(sys.argv[2])  #ie. 0
-  tile_id = sys.argv[3] #for level 2, just append 2 tile levels with # (ie. 000/601 = 000#601)
-  osmlr = int(sys.argv[4]) #ie. 683
+  tile_id = int(sys.argv[3]) #ie. 002
 
   segment_list = list_segment_lengths(osmlr_tile, level, tile_id)
   #output the generated encoded json to a gzip
   createOrdinalSegmentsOut(segment_list)
-  
 
 
 
