@@ -60,7 +60,7 @@ def list_segment_lengths(osmlr_tile, level, tile_id):
       }
       entries.append(entry_dict)
   
-      segments_dict['segments'][segment_id] = {
+      segments_dict[segment_id] = {
         "reference_speed": random.randint(30, 100),
         "entries" : entries
       }
