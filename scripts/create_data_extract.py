@@ -41,25 +41,25 @@ def list_segment_lengths(osmlr_tile, level, tile_id):
       if level is not 2:
         for next_id in next_segment_ids:
           next_segments_dict[next_id] = {
-            "prevalence": round(random.uniform(0.0, 10.0),2),
+            "p": round(random.uniform(0.0, 10.0),2), #prevalence
             "id" : next_id,
-            "delay_variance": random.randint(0, 100),
-            "queue_variance" : round(random.uniform(0.0, 2.0),2),
-            "queue_length" : round((length * .20), 2)
+            "dv": random.randint(0, 100), #delay_variance
+            "qv" : round(random.uniform(0.0, 2.0),2), #queue_variance
+            "ql" : round((length * .20), 2) #queue_length
           }
       entry_dict = {
-        "entry" : hpw,
+        "e" : hpw, #entry
         "id" : segment_id,  
-        "speed" : random.randint(30, 100),
-        "speed_variance" : round(random.uniform(0.0, 2.0),2),
-        "prevalence" : round(random.uniform(0.0, 10.0),2),
-        "next_segments" : next_segments_dict
+        "sp" : random.randint(30, 100), #speed
+        "spv" : round(random.uniform(0.0, 2.0),2), #speed_variance
+        "p" : round(random.uniform(0.0, 10.0),2), #prevalence
+        "nsegs" : next_segments_dict #next_segments
       }
       entries.append(entry_dict)
   
       segments_dict[segment_id] = {
-        "reference_speed": random.randint(30, 100),
-        "entries" : entries
+        "rsp": random.randint(30, 100), #reference_speed
+        "ets" : entries #entries
       }
     
   return segments_dict
@@ -70,35 +70,23 @@ def list_segment_lengths(osmlr_tile, level, tile_id):
 def createOrdinalSegmentsOut(segment_list):
   #create a dict, append to it and output the segement_ids
   ordinal_out = {
-    "range_type" : "ordinal",
-    "unit_type" : "hour",
-    "year" : 2017,
-    "week" : 0,
-    "unit_entries" : 168,
-    "description" : "168 ordinal hours of week 0 of year 2017",
-    "segments" : segment_list
+    "rt" : "ordinal", #range_type
+    "ut" : "hour", #unit_type
+    "y" : 2017, #year
+    "w" : 0, #week
+    "ue" : 168, #unit_entries
+    "d" : "168 ordinal hours of week 0 of year 2017", #description
+    "segs" : segment_list #segments
     }
 
-  #should we output to stdout and let user decide where to put it
-  #sys.stdout.write(json.dumps(ordinal_out, separators=(',', ':')))
-  #sys.stdout.flush()
-  #for now, need to output to file for s3
-  with open(input_file + '.json', 'w') as fout:
-     ordinal_result = (json.dumps(ordinal_out, separators=(',', ':'))).encode('utf-8')
-     fout.write(ordinal_result)
 
-
-#contain hourly avg speeds per week over 1 calendar year (periodic)open
-#def createPeriodicSegmentsOut():
-
-#In case we need to do any of this later
-  '''
+  #In case we need to do any of this later
   if '#' not in sys.argv[3]:
-    output_path = 'data-extracts/week' + str(ordinal_out['week']) + '_' + str(ordinal_out['year']) + '/' + str(int(sys.argv[2])) + '/' + sys.argv[3] + '/'
+    output_path = 'data-extracts/' + str(ordinal_out['y']) + '/' + str(ordinal_out['w']) + '/' + str(int(sys.argv[2])) + '/' + sys.argv[3] + '/'
   else:
     #for level 2, we append 2 tile levels with # (ie. 000/601 = 000#601)
     tile_ids = sys.argv[3].split("#")
-    output_path = 'data-extracts/week' + str(ordinal_out['week']) + '_' + str(ordinal_out['year']) + '/' + str(int(sys.argv[2])) + '/' + str(tile_ids[0]) + '/' + str(tile_ids[1]) + '/'
+    output_path = 'data-extracts/' + str(ordinal_out['y']) + '/' + str(ordinal_out['w']) + '/' + str(int(sys.argv[2])) + '/' + str(tile_ids[0]) + '/' + str(tile_ids[1]) + '/'
 
   if not os.path.exists(os.path.dirname(output_path)):
     try:
@@ -106,16 +94,25 @@ def createOrdinalSegmentsOut(segment_list):
     except OSError as exc: # Guard against race condition
         if exc.errno != errno.EEXIST:
             raise
-
-  with gzip.GzipFile(output_path + input_file + '.gz', 'w') as fout:
+            
+  #should we output to stdout and let user decide where to put it
+  #sys.stdout.write(json.dumps(ordinal_out, separators=(',', ':')))
+  #sys.stdout.flush()
+  #for now, need to output to file for s3
+  with open(output_path + input_file + '.json', 'w') as fout:
+     ordinal_result = (json.dumps(ordinal_out, separators=(',', ':'))).encode('utf-8')
+     fout.write(ordinal_result)
+            
+'''
+  with gzip.GzipFile(output_path + input_file + '.json' + '.gz', 'w') as fout:
      ordinal_result = (json.dumps(ordinal_out, separators=(',', ':'))).encode('utf-8') 
      fout.write(ordinal_result)
-  '''
+'''
 
 # Main procedure:  Reads an OSMLR tile and outputs dummy json segment speed data
 if __name__ == '__main__':
   if len(sys.argv) != 4:
-    print "Usage:", sys.argv[0], "<OSMLR pbf file>, <level>, <tile_id>, <flatbuffer(s)"
+    print "Usage:", sys.argv[0], "<OSMLR pbf file>, <level>, <tile_id>"
     sys.exit(-1)
 
   random.seed(123)
