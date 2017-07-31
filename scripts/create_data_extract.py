@@ -31,7 +31,7 @@ def list_segment_lengths(osmlr_tile, level, tile_id):
       for loc_ref in entry.segment.lrps:
         if loc_ref.HasField('length'):
           length = length + loc_ref.length
-      #print segment_id, level, tile_id, id, length
+        #print segment_id, level, tile_id, id, length
    
     entries= []
     next_segment_ids = [random.randrange(1000000000,9999999999) for i in range(0,random.randint(0,3))]
@@ -122,7 +122,7 @@ if __name__ == '__main__':
   input_file = sys.argv[1].split('.osmlr')[0].rsplit('/', 1)[1]
   print ("input file: " + input_file) #ie. 415
   level = int(sys.argv[2])  #ie. 0
-  tile_id = int(sys.argv[3]) #ie. 002
+  tile_id = int(sys.argv[3]) #ie. 2415
 
   segment_list = list_segment_lengths(osmlr_tile, level, tile_id)
   #output the generated encoded json to a gzip
