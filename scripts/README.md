@@ -27,7 +27,6 @@ Key parameters now have abbreviated names.  See below...
        		“sp” | "speed": 25,
             "spv” | “speed_variance”: 1.0,
      		“p” | "prevalence": 7,
-     		“v” | "variance": 6.4,
      		“nsegs” |  "next_segments": {
      		  "987654321": {
                 “p” |  “prevalence”:3,
@@ -52,7 +51,6 @@ Key parameters now have abbreviated names.  See below...
             “sp” | "speed": 25,
    			“spv” | "speed_variance": 1.0,
    			“p” | "prevalence": 6,
-   			“v” | "variance": 3.4,
    			“nsegs” | "next_segments": {
    			  "987654321": {
    			      “p” |  “prevalence”:3,
