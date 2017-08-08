@@ -35,11 +35,11 @@ message SpeedTile {
     repeated uint32 nextSegmentIndices = 15 [packed=true];//an index into the next segment array of a given entry of a given segment
     repeated uint32 nextSegmentCounts = 16 [packed=true]; //total next segments for this segment of a given entry of a given segment
 
-    repeated uint64 nextSegmentIds = 17;                  //full mask of tile and level and id from corresponding  entry
-    repeated uint32 nextSegmentDelays = 18;               //delay in seconds from average speed from corresponding entry
-    repeated uint32 nextSegmentDelayVariances = 19;       //variance of delay samples from corresponding entry
-    repeated uint32 nextSegmentQueueLengths = 20;         //length of any queue on segment from corresponding entry
-    repeated uint32 nextSegmentQueueLengthVariances = 21; //variance of queue length samples from corresponding entry
+    repeated uint64 nextSegmentIds = 17 [packed=true];                  //full mask of tile and level and id from corresponding  entry
+    repeated uint32 nextSegmentDelays = 18 [packed=true];               //delay in seconds from average speed from corresponding entry
+    repeated uint32 nextSegmentDelayVariances = 19 [packed=true];       //variance of delay samples from corresponding entry
+    repeated uint32 nextSegmentQueueLengths = 20 [packed=true];         //length of any queue on segment from corresponding entry
+    repeated uint32 nextSegmentQueueLengthVariances = 21 [packed=true]; //variance of queue length samples from corresponding entry
   }
 
 }
