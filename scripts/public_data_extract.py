@@ -18,6 +18,22 @@ STEP_SIZES = { 1, 2, 5, 10 }
 #STEP_OFFSET[i] = STEP_OFFSET[i-1] + 2^6 * STEP_SIZES[i-1]
 STEP_OFFSETS = { 0, 64, 192, 512, 1152 }
 
+def unquantise(val):
+    hi = 0
+    lo = 0
+    if (val < 0):
+      hi = 2 | (((-val) & 64) >> 6)
+      lo = (-val) & 63
+    else:
+      hi = (val & 192) >> 6
+      lo = val & 63
+
+    assert (hi >= 0)
+    assert (hi < 4)
+    assert (lo >= 0)
+    assert (lo < 64)
+
+    return STEP_OFFSETS[hi] + STEP_SIZES[hi] * lo
 
 class public_data_extract():
   #Read in Manila OSMLR tiles to generate the segment speed files to get the list of segment ids 
@@ -38,23 +54,6 @@ class public_data_extract():
         
     return histogram
     
-  def unquantise(self, byte):
-    hi = 0
-    lo = 0
-    if (val < 0):
-      hi = 2 | (((-val) & 64) >> 6)
-      lo = (-val) & 63
-    else:
-      hi = (val & 192) >> 6
-      lo = val & 63
-
-    assert (hi >= 0);
-    assert (hi < 4);
-    assert (lo >= 0);
-    assert (lo < 64);
-
-    return STEP_OFFSETS[hi] + STEP_SIZES[hi] * lo
-
 
   #Iterates through the segments, listing the lengths
   def list_segment_data(level, tile, osmlr_tile, histogram, dy, hr):
@@ -92,7 +91,7 @@ class public_data_extract():
             #calculations
             e = h_seg.Entries(i);
             #TODO: decode duration bucket to # of secs.  then do length / time
-            speed_secs = self.unquantise(e.DurationBucket().Bytes())
+            speed_secs = unquantise(e.DurationBucket())
             speed_secs_list.append(speed_secs)
             speed = length / speed_secs
             speed_list.append(speed)
