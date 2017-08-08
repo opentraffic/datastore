@@ -19,7 +19,7 @@ try:
   import Segment
   import VehicleType
 except ImportError:
-  print 'You need to generate the flatbuffer soruce via: sed -e "/namespace.*/d" ../src/main/fbs/histogram-tile.fbs > schema.fbs && flatc --python schema.fbs'
+  print 'You need to generate the flatbuffer source via: sed -e "/namespace.*/d" ../src/main/fbs/histogram-tile.fbs > schema.fbs && flatc --python schema.fbs'
   sys.exit(1)
 
 #try this fat tile: wget https://s3.amazonaws.com/osmlr-tiles/v0.1/pbf/2/000/724/159.osmlr
