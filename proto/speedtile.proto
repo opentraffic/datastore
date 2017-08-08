@@ -1,0 +1,54 @@
+syntax = "proto2";
+package SizeTest;
+
+message SpeedTile {
+  
+  //this allows us to chunk up large tiles into smaller pieces
+  repeated SubTile subtiles = 1;
+  message SubTile {
+    //tile information, where this is
+    optional uint32 level = 1;  //the tile level
+    optional uint32 index = 2;  //the tile index
+
+    //what segments will be found in this tile
+    optional uint32 startSegmentIndex = 3; //the first segment index in the subtile
+                                           //makes up the highest 21 bits of of the segment id
+    optional uint32 totalSegments = 11;    //how many segments there are across all subtiles in this tile
+                                           //these may be in this message or in another proto message
+
+    //time information, when this is
+    //Note: that it represent both a single ordinal unit in time (if rangeEnd - rangeStart == unitSize)
+    //but also be an average unit over a longer period of time (if rangeEnd - rangeStart > unitSize)
+    optional uint32 rangeStart = 4; //epoch start time (inclusive) seconds
+    optional uint32 rangeEnd = 5;   //epoch end time (exclusive) seconds
+    optional uint32 unitSize = 6;   //target time range seconds, a week would be 604800
+    optional uint32 entrySize = 7;  //target time range granularity seconds, an hour would be 3600
+
+    optional string description = 8; //text describing the time period this covers
+
+    repeated Segment segments = 9;          //the segments in order
+    repeated NextSegment nextSegments = 10; //all next segments in blocks referenced by above segments
+
+    message Segment {
+      optional uint32 referenceSpeed = 1;  //the default speed of the segment
+      repeated Entry entries = 2;          //all the entries for the given unit of time
+                                           //should be a total of unitSize/entrySize entries
+      message Entry {
+        optional uint32 speed = 1;            //the average speed
+        optional float speedVariance = 2;     //the variance between samples
+        optional uint32 prevalence = 3;       //a rough indication of how many samples
+        optional uint32 nextSegmentIndex = 4; //an index into the next segment array
+        optional uint32 nextSegmentCount = 5; //total next segments for this segment
+      }
+    }
+
+    message NextSegment {
+      optional uint64 id = 1;                 //full mask of tile and level and id
+      optional uint32 delay = 2;              //delay in seconds from average speed
+      optional float delayVariance = 3;       //variance of delay samples
+      optional uint32 queueLength = 4;        //length of any queue on segment
+      optional float queueLengthVariance = 5; //variance of queue length samples
+    }
+  }
+
+}
