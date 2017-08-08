@@ -59,7 +59,7 @@ def write(name, count, tile, should_remove):
     f.write(tile.SerializeToString())
   print 'wrote subtile to ' + name
 
-def next(startIndex, total, nextName):
+def next(startIndex, total, nextName, subtileSegments):
   print 'creating new subtile starting at ' + str(startIndex)
   tile = speedtile_pb2.SpeedTile()
   subtile = tile.subtiles.add()
@@ -75,6 +75,7 @@ def next(startIndex, total, nextName):
     st.index = 2415   #TODO: get from osmlr
     st.startSegmentIndex = startIndex
     st.totalSegments = total
+    st.subtileSegments = subtileSegments
     #time stuff
     st.rangeStart = 1483228800 #TODO: get from input
     st.rangeEnd = 1483833600   #TODO: get from input
@@ -111,28 +112,26 @@ def simulate(segmentIds, fileName, subTileSize, nextName, separate):
         del nextSubtile
         del nextTile
       #set up new pbf messages to write into
-      tile, subtile, nextTile, nextSubtile = next(i, len(segmentIds), nextName)
+      tile, subtile, nextTile, nextSubtile = next(i, len(segmentIds), nextName, subTileSize)
 
     #continue making fake data
-    segment = subtile.segments.add()
-    if sid == -1: #need blank one to keep the indices correct
-      continue
-    segment.referenceSpeed = random.randint(20, 100)
-    nextIds = [ (random.randint(0,2**21)<<25)|(subtile.index<<3)|subtile.level for i in range(0, random.randint(0,3)) ]
+    subtile.referenceSpeeds.append(random.randint(20, 100) if sid != -1 else 0)
+    #dead osmlr ids have no next segment data
+    nextIds = [ (random.randint(0,2**21)<<25)|(subtile.index<<3)|subtile.level for i in range(0, random.randint(0,3)) ] if sid != -1 else []
+    #do all the entries
     for i in range(0, subtile.unitSize/subtile.entrySize):
-      entry = segment.entries.add()
-      entry.speed = random.randint(20, 100)
-      entry.speedVariance = random.uniform(0,1)
-      entry.prevalence = random.randint(1, 100)
-      entry.nextSegmentIndex = len(subtile.nextSegments)
-      entry.nextSegmentCount = len(nextIds)
+      #any time its a dead one we put in 0's for the data
+      subtile.speeds.append(random.randint(20, 100) if sid != -1 else 0)
+      subtile.speedVariances.append(int(random.uniform(0,127.5) * 2 if sid != -1 else 0))
+      subtile.prevalences.append(random.randint(1, 100) if sid != -1 else 0)
+      subtile.nextSegmentIndices.append(len(subtile.nextSegmentIds) if sid != -1 else 0)
+      subtile.nextSegmentCounts.append(len(nextIds) if sid != -1 else 0)
       for nid in nextIds:
-        nextSegment = nextSubtile.nextSegments.add();
-        nextSegment.id = nid
-        nextSegment.delay = random.randint(0,30)
-        nextSegment.delayVariance = random.uniform(0,1)
-        nextSegment.queueLength = random.randint(0,200)
-        nextSegment.queueLengthVariance = random.uniform(0,1)
+        nextSubtile.nextSegmentIds.append(nid)
+        nextSubtile.nextSegmentDelays.append(random.randint(0,30))
+        nextSubtile.nextSegmentDelayVariances.append(int(random.uniform(0,100)))
+        nextSubtile.nextSegmentQueueLengths.append(random.randint(0,200))
+        nextSubtile.nextSegmentQueueLengthVariances.append(int(random.uniform(0,200)))
 
   #get the last one written
   if tile is not None:
