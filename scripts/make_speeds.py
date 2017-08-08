@@ -42,8 +42,18 @@ def getIds(fileName):
   del osmlr
   return segmentIds
 
-def write(name, count, tile):
+def remove(path):
+  try:
+    print 'Removing ' + path
+    os.remove(path)
+  except OSError as e:
+    if e.errno != errno.ENOENT:
+      raise
+
+def write(name, count, tile, should_remove):
   name += '.' + str(count)
+  if should_remove:
+    remove(name)
   print 'writing subtile to ' + name
   with open(name, 'ab') as f:
     f.write(tile.SerializeToString())
@@ -73,14 +83,6 @@ def next(startIndex, total, nextName):
     st.description = '168 ordinal hours of week 0 of year 2017' #TODO: get from input
   return tile, subtile, nextTile, nextSubtile
 
-def remove(path):
-  try:
-    print 'Removing ' + path
-    os.remove(path)
-  except OSError as e:
-    if e.errno != errno.ENOENT:
-      raise
-
 def simulate(segmentIds, fileName, subTileSize, nextName, separate):
   random.seed(0)
 
@@ -94,12 +96,10 @@ def simulate(segmentIds, fileName, subTileSize, nextName, separate):
     if i % subTileSize == 0:
       #writing tile
       if tile is not None:
-        remove(fileName) if first else None
-        write(fileName, subTileCount, tile)
+        write(fileName, subTileCount, tile, first or separate)
         #writing next data if its separated
         if nextTile is not tile:
-          remove(nextName) if first else None
-          write(nextName, subTileCount, nextTile)
+          write(nextName, subTileCount, nextTile, first or separate)
         #dont delete the files from this point on
         first = False
         #if the subtiles are to be separate increment
@@ -136,11 +136,9 @@ def simulate(segmentIds, fileName, subTileSize, nextName, separate):
 
   #get the last one written
   if tile is not None:
-    remove(fileName) if first else None
-    write(fileName, subTileCount, tile)
+    write(fileName, subTileCount, tile, first or separate)
     if nextTile is not tile:
-      remove(nextName) if first else None
-      write(nextName, subTileCount, nextTile)
+      write(nextName, subTileCount, nextTile, first or separate)
     del subtile
     del tile
     del nextSubtile
