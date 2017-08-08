@@ -14,12 +14,12 @@ except ImportError:
   sys.exit(1)
 
 try:
-  import io.opentraffic.datastore.flatbuffer.Entry
-  import io.opentraffic.datastore.flatbuffer.Histogram
-  import io.opentraffic.datastore.flatbuffer.Segment
-  import io.opentraffic.datastore.flatbuffer.VehicleType
+  import Entry
+  import Histogram
+  import Segment
+  import VehicleType
 except ImportError:
-  print 'You need to generate the flatbuffer soruce via: flatc --python ../src/main/fbs/histogram-tile.fbs'
+  print 'You need to generate the flatbuffer soruce via: sed -e "/namespace.*/d" ../src/main/fbs/histogram-tile.fbs > schema.fbs && flatc --python schema.fbs'
   sys.exit(1)
 
 #try this fat tile: wget https://s3.amazonaws.com/osmlr-tiles/v0.1/pbf/2/000/724/159.osmlr
