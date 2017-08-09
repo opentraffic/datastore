@@ -14,33 +14,46 @@ except ImportError:
   sys.exit(1)
 
 try:
-  import Entry
-  import Histogram
-  import Segment
-  import VehicleType
+  import flatbuffers
+  from Histogram import Histogram
+  from Segment import Segment
+  from Entry import Entry
+  from VehicleType import VehicleType
 except ImportError:
   print 'You need to generate the flatbuffer source via: sed -e "/namespace.*/d" ../src/main/fbs/histogram-tile.fbs > schema.fbs && flatc --python schema.fbs'
   sys.exit(1)
 
-#try this fat tile: wget https://s3.amazonaws.com/osmlr-tiles/v0.1/pbf/2/000/724/159.osmlr
+#try this fat tile: wget https://s3.amazonaws.com/datastore_output_prod/2017/1/1/0/0/2415.fb
 
-def getIds(fileName):
+def getHistogram(fileList):
+  fbList = []
+  for hist in fileList:
+    buf = open(hist, 'rb').read()
+    hist = Histogram.GetRootAsHistogram(bytearray(buf), 0)
+    fbList.append(hist)
+
+  histogram = {"histogram" : fbList}
+  return histogram
+
+#try this fat tile: wget https://s3.amazonaws.com/osmlr-tiles/v0.1/pbf/0/002/415.osmlr
+
+def getLengths(fileName):
   osmlr = tile_pb2.Tile()
   with open(fileName, 'rb') as f:
     osmlr.ParseFromString(f.read())
 
-  #get out the segment ids
-  segId = 0
-  segmentIds = []
+  #get out the length
+  index = 0
+  lengths = []
   for entry in osmlr.entries:
     if entry.segment:
-      segmentIds.append(segId)
+      lengths.append(index)
     else:
-      segmentIds.append(-1)
-    segId += 1
+      lengths.append(-1)
+    index += 1
 
   del osmlr
-  return segmentIds
+  return lengths
 
 def remove(path):
   try:
@@ -155,8 +168,11 @@ if __name__ == "__main__":
   #TODO: add the tile id argument until we can get it from osmlr
   args = parser.parse_args()
 
-  print 'getting osmlr segments'
-  ids = getIds(args.osmlr)
+  print 'getting osmlr lengths'
+  lengths = getLengths(args.osmlr)
+
+  print 'getting speed averages from fb Histogram'
+  histogram = getHistogram(args.flatbuffers)
   
   print 'simulating 1 week of speeds at hourly intervals for ' + str(len(ids)) + ' segments'
   simulate(ids, args.output_prefix, args.max_segments, args.separate_next_segments_prefix, not args.no_separate_subtiles)
