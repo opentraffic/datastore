@@ -100,7 +100,7 @@ def next(startIndex, total, nextName, subtileSegments):
     st.description = '168 ordinal hours of week 0 of year 2017' #TODO: get from input
   return tile, subtile, nextTile, nextSubtile
 
-def simulate(lengths, fileName, subTileSize, nextName, separate):
+def simulate(segmentIds, fileName, subTileSize, nextName, separate):
   random.seed(0)
 
   #fake a segment for each entry in the osmlr
@@ -178,6 +178,6 @@ if __name__ == "__main__":
   histogram = getHistogram(args.flatbuffers)
   
   print 'simulating 1 week of speeds at hourly intervals for ' + str(len(lengths)) + ' segments'
-  simulate(lengths, args.output_prefix, args.max_segments, args.separate_next_segments_prefix, not args.no_separate_subtiles)
+  #simulate(lengths, args.output_prefix, args.max_segments, args.separate_next_segments_prefix, not args.no_separate_subtiles)
 
   print 'done'
