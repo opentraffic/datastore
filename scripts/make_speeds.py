@@ -15,10 +15,10 @@ except ImportError:
 
 try:
   import flatbuffers
-  from Histogram import Histogram
-  from Segment import Segment
-  from Entry import Entry
-  from VehicleType import VehicleType
+  from dsfb.Histogram import Histogram
+  from dsfb.Segment import Segment
+  from dsfb.Entry import Entry
+  from dsfb.VehicleType import VehicleType
 except ImportError:
   print 'You need to generate the flatbuffer source via: sed -e "/namespace.*/d" ../src/main/fbs/histogram-tile.fbs > schema.fbs && flatc --python schema.fbs'
   sys.exit(1)
@@ -40,7 +40,26 @@ def get_tile_index(segment_id):
 def get_segment_index(segment_id):
   return (segment_id >> (LEVEL_BITS + TILE_INDEX_BITS)) & SEGMENT_INDEX_MASK
 
-def getHistogram(path, target_level, target_tile_id):
+
+#the step sizes, which increase as the high 2 bits increase to provide variable precision.
+STEP_SIZES = [ 1, 2, 5, 10 ]#offset of each step, derived from the above.
+#STEP_OFFSET[i] = STEP_OFFSET[i-1] + 2^6 * STEP_SIZES[i-1]
+STEP_OFFSETS = [ 0, 64, 192, 512, 1152 ]
+
+def unquantise(val):
+  hi = 0
+  lo = 0
+  if val < 0:
+    hi = 2 | (((-val) & 64) >> 6)
+    lo = (-val) & 63
+  else:
+    hi = (val & 192) >> 6
+    lo = val & 63
+  if hi >= 0 and hi < 4 and lo >= 0 and lo < 64:
+    return STEP_OFFSETS[hi] + STEP_SIZES[hi] * lo
+  raise (hi, lo)
+
+def getSegments(path, target_level, target_tile_id, lengths):
   print('Looking for level=' + str(target_level) + ' and tile_id=' + str(target_tile_id) + ' here:' + path)
   segments = {}
   for root, dirs, files in os.walk(path):
@@ -51,36 +70,36 @@ def getHistogram(path, target_level, target_tile_id):
         level = get_level(hist.TileId())
         tile_index = get_tile_index(hist.TileId())
         if (level == target_level) and (tile_index == target_tile_id):
-          fbList.append(hist)
-          processHistogram(segments, histogram)
-
+          #for each segment
+          for i in range(0, hist.SegmentsLength()):
+            segment = hist.Segments(i)
+            #has to be one we know about and its not tombstoned/markered
+            if segment.EntriesLength() > 0 and segment.SegmentId() < len(lengths) and lengths[segment.SegmentId()] > 0:
+              length = lengths[segment.SegmentId()]
+              processSegment(segments, segment, length)
+        del hist
   return segments
 
-def processHistogram(segments, histogram):
-
-  h_seg = histogram.Segments(i)
-  #do all the entries
-  for i in range(0, subtile.unitSize/subtile.entrySize):
-    #calculations
-    e = h_seg.Entries(i);
-    speed_secs = unquantise(e.DurationBucket())
-    speed_secs_list.append(speed_secs)
-    speed = length / speed_secs
-    speed_list.append(speed)
-
-    segs_per_spd_count = sum(speed_list.count(speed))
-    #seg_speed_arr {25:4, 30:10, 35:5}
-    seg_speed_arr = {speed:speed_list.count(speed) for speed in speed_list}
-    avg_duration = sum(seg_speed_arr.keys() * seg_speed_arr.values()) / segs_per_spd_count
-
-    avg_speed = length / avg_duration if length != -1 else 0
-    speed_variance += int((avg_speed - (i in range(speed_list))) ** 2) if length != -1 else 0
-    min_duration = min(speed_secs_list)
-    
- 
-
-  
-#try this fat tile: wget https://s3.amazonaws.com/osmlr-tiles/v0.1/pbf/0/002/415.osmlr
+def processSegment(segments, segment, length):
+  for i in range(0, segment.EntriesLength()):
+    #TODO: measure variance
+    e = segment.Entries(i)
+    #get the right segment
+    if segment.SegmentId() not in segments:
+      segments[segment.SegmentId()] = { }
+    hours = segments[segment.SegmentId()]
+    #get the right hour in there
+    if e.EpochHour() not in hours:
+       hours[e.EpochHour()] = { }
+    nexts = hours[e.EpochHour()]
+    #if you dont have the right next segment in there
+    if segment.NextSegmentIds(e.NextSegmentIdx()) not in nexts:
+      nexts[segment.NextSegmentIds(e.NextSegmentIdx())] = {'count': 0, 'duration': 0, 'queue': 0 }
+    totals = nexts[segment.NextSegmentIds(e.NextSegmentIdx())]
+    #continuing a previous pair
+    totals['count'] += e.Count()
+    totals['duration'] += unquantise(e.DurationBucket())
+    totals['queue'] += (e.Queue()/255.0) * length
 
 def getLengths(fileName):
   osmlr = tile_pb2.Tile()
@@ -273,10 +292,10 @@ if __name__ == "__main__":
   lengths = getLengths(args.osmlr)
 
   print 'getting speed averages from fb Histogram'
-  histogram = getHistogram(args.fb_path, args.level, args.tile_id)
+  segments = getSegments(args.fb_path, args.level, args.tile_id, lengths)
   
   print 'simulating 1 week of speeds at hourly intervals for ' + str(len(lengths)) + ' segments'
   #simulate(lengths, args.output_prefix, args.max_segments, args.separate_next_segments_prefix, not args.no_separate_subtiles)
-  #createSpeedTiles(lengths, args.output_prefix, args.max_segments, args.separate_next_segments_prefix, not args.no_separate_subtiles)
+  #createSpeedTiles(lengths, args.output_prefix, args.max_segments, args.separate_next_segments_prefix, not args.no_separate_subtiles, segments)
 
   print 'done'
