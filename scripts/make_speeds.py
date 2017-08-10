@@ -66,10 +66,12 @@ def getSegments(path, target_level, target_tile_id, lengths):
     for file in files:
       if (root + os.sep + file).endswith('.fb'):
         with open(root + os.sep + file, 'rb') as filehandle:
+          print 'Loading ' + (root + os.sep + file) + '...'
           hist = Histogram.GetRootAsHistogram(bytearray(filehandle.read()), 0)
         level = get_level(hist.TileId())
         tile_index = get_tile_index(hist.TileId())
         if (level == target_level) and (tile_index == target_tile_id):
+          print 'Processing ' + (root + os.sep + file) + '...'
           #for each segment
           for i in range(0, hist.SegmentsLength()):
             segment = hist.Segments(i)
@@ -84,6 +86,7 @@ def processSegment(segments, segment, length):
   for i in range(0, segment.EntriesLength()):
     #TODO: measure variance
     e = segment.Entries(i)
+    #print e.EpochHour(), segment.SegmentId(), e.NextSegmentIdx(), e.Count(), e.DurationBucket(), e.Queue()
     #get the right segment
     if segment.SegmentId() not in segments:
       segments[segment.SegmentId()] = { }
@@ -98,8 +101,8 @@ def processSegment(segments, segment, length):
     totals = nexts[segment.NextSegmentIds(e.NextSegmentIdx())]
     #continuing a previous pair
     totals['count'] += e.Count()
-    totals['duration'] += unquantise(e.DurationBucket())
-    totals['queue'] += (e.Queue()/255.0) * length
+    totals['duration'] += unquantise(e.DurationBucket()) * e.Count()
+    totals['queue'] += (e.Queue()/255.0) * length * e.Count()
 
 def getLengths(fileName):
   osmlr = tile_pb2.Tile()
@@ -164,7 +167,7 @@ def next(startIndex, total, nextName, subtileSegments):
     st.description = '168 ordinal hours of week 0 of year 2017' #TODO: get from input
   return tile, subtile, nextTile, nextSubtile
 
-def simulate(segmentIds, fileName, subTileSize, nextName, separate):
+def simulate(lengths, fileName, subTileSize, nextName, separate):
   random.seed(0)
 
   #fake a segment for each entry in the osmlr
@@ -172,9 +175,9 @@ def simulate(segmentIds, fileName, subTileSize, nextName, separate):
   nextTile = None
   subTileCount = 0
   first = True
-  for i, sid in enumerate(segmentIds):
+  for k, sid in enumerate(lengths):
     #its time to write a subtile
-    if i % subTileSize == 0:
+    if k % subTileSize == 0:
       #writing tile
       if tile is not None:
         write(fileName, subTileCount, tile, first or separate)
@@ -192,7 +195,7 @@ def simulate(segmentIds, fileName, subTileSize, nextName, separate):
         del nextSubtile
         del nextTile
       #set up new pbf messages to write into
-      tile, subtile, nextTile, nextSubtile = next(i, len(segmentIds), nextName, subTileSize)
+      tile, subtile, nextTile, nextSubtile = next(k, len(lengths), nextName, subTileSize)
 
     #continue making fake data
     subtile.referenceSpeeds.append(random.randint(20, 100) if sid != -1 else 0)
@@ -223,17 +226,22 @@ def simulate(segmentIds, fileName, subTileSize, nextName, separate):
     del nextSubtile
     del nextTile
 
-def simulate(segmentIds, fileName, subTileSize, nextName, separate):
-  random.seed(0)
+#TODO: figure out how to measure this for real
+def prevalance(val):
+  return int(round(val / 10.0) * 10)
+
+def createSpeedTiles(lengths, fileName, subTileSize, nextName, separate, segments):
+  #find the minimum hour
+  minHour = min([int(hour) for k,v in segments.iteritems() for hour in v.keys()])
 
   #fake a segment for each entry in the osmlr
   tile = None
   nextTile = None
   subTileCount = 0
   first = True
-  for i, sid in enumerate(segmentIds):
+  for k, length in enumerate(lengths):
     #its time to write a subtile
-    if i % subTileSize == 0:
+    if k % subTileSize == 0:
       #writing tile
       if tile is not None:
         write(fileName, subTileCount, tile, first or separate)
@@ -251,26 +259,35 @@ def simulate(segmentIds, fileName, subTileSize, nextName, separate):
         del nextSubtile
         del nextTile
       #set up new pbf messages to write into
-      tile, subtile, nextTile, nextSubtile = next(i, len(segmentIds), nextName, subTileSize)
+      tile, subtile, nextTile, nextSubtile = next(k, len(lengths), nextName, subTileSize)
 
     #continue making fake data
-    subtile.referenceSpeeds.append(random.randint(20, 100) if sid != -1 else 0)
-    #dead osmlr ids have no next segment data
-    nextIds = [ (random.randint(0,2**21)<<25)|(subtile.index<<3)|subtile.level for i in range(0, random.randint(0,3)) ] if sid != -1 else []
+    #subtile.referenceSpeeds.append(random.randint(20, 100) if length > 0 else 0)
+
     #do all the entries
-    for i in range(0, subtile.unitSize/subtile.entrySize):
+    for i in range(0 + minHour, subtile.unitSize/subtile.entrySize + minHour):
+      #if we have data get it
+      s = segments[k][i] if k in segments and i in segments[k] else None
+      #compute the averages
+      if s:
+        for nid, n in s.iteritems():
+          n['duration'] /= float(n['count'])
+          n['queue'] /= float(n['count'])          
+      
       #any time its a dead one we put in 0's for the data
-      subtile.speeds.append(random.randint(20, 100) if sid != -1 else 0)
-      subtile.speedVariances.append(int(random.uniform(0,127.5) * 2 if sid != -1 else 0))
-      subtile.prevalences.append(random.randint(1, 100) if sid != -1 else 0)
-      subtile.nextSegmentIndices.append(len(subtile.nextSegmentIds) if sid != -1 else 0)
-      subtile.nextSegmentCounts.append(len(nextIds) if sid != -1 else 0)
-      for nid in nextIds:
-        nextSubtile.nextSegmentIds.append(nid)
-        nextSubtile.nextSegmentDelays.append(random.randint(0,30))
-        nextSubtile.nextSegmentDelayVariances.append(int(random.uniform(0,100)))
-        nextSubtile.nextSegmentQueueLengths.append(random.randint(0,200))
-        nextSubtile.nextSegmentQueueLengthVariances.append(int(random.uniform(0,200)))
+      minDuration = min([n['duration'] for nid, n in s.iteritems()]) if s else 0
+      subtile.speeds.append(int(round(length / minDuration if s else 0)))
+      #subtile.speedVariances.append(TODO if s else 0)
+      subtile.prevalences.append(prevalance(sum([n['count'] for nid, n in s.iteritems()]) if s else 0))
+      subtile.nextSegmentIndices.append(len(subtile.nextSegmentIds) if 1 else 0)
+      subtile.nextSegmentCounts.append(len(s) if s else 0)
+      if s:
+        for nid, n in s.iteritems():
+          nextSubtile.nextSegmentIds.append(nid)
+          nextSubtile.nextSegmentDelays.append(int(round(n['duration'] - minDuration)))
+          #nextSubtile.nextSegmentDelayVariances.append(TODO)
+          nextSubtile.nextSegmentQueueLengths.append(int(round(n['queue'])))
+          #nextSubtile.nextSegmentQueueLengthVariances.append(TODO)
 
   #get the last one written
   if tile is not None:
@@ -303,6 +320,6 @@ if __name__ == "__main__":
   
   print 'simulating 1 week of speeds at hourly intervals for ' + str(len(lengths)) + ' segments'
   #simulate(lengths, args.output_prefix, args.max_segments, args.separate_next_segments_prefix, not args.no_separate_subtiles)
-  #createSpeedTiles(lengths, args.output_prefix, args.max_segments, args.separate_next_segments_prefix, not args.no_separate_subtiles, segments)
+  createSpeedTiles(lengths, args.output_prefix, args.max_segments, args.separate_next_segments_prefix, not args.no_separate_subtiles, segments)
 
   print 'done'
