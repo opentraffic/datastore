@@ -42,23 +42,21 @@ def get_segment_index(segment_id):
 
 def getHistogram(path, target_level, target_tile_id):
   print('Looking for level=' + str(target_level) + ' and tile_id=' + str(target_tile_id) + ' here:' + path)
-  fbList = []
+  segments = {}
   for root, dirs, files in os.walk(path):
     for file in files:
       if (root + os.sep + file).endswith('.fb'):
-        buf = open(root + os.sep + file, 'rb').read()
-        hist = Histogram.GetRootAsHistogram(bytearray(buf), 0)
+        with open(root + os.sep + file, 'rb') as filehandle:
+          hist = Histogram.GetRootAsHistogram(bytearray(filehandle.read()), 0)
         level = get_level(hist.TileId())
         tile_index = get_tile_index(hist.TileId())
-        if ((level == target_level) and (tile_index == target_tile_id)):
+        if (level == target_level) and (tile_index == target_tile_id):
           fbList.append(hist)
+          processHistogram(segments, histogram)
 
-  histogram = {"histogram" : fbList}
-  #processHistogram(histogram)
+  return segments
 
-  return histogram
-
-def processHistogram(histoList):
+def processHistogram(segments, histogram):
 
   h_seg = histogram.Segments(i)
   #do all the entries
@@ -78,9 +76,10 @@ def processHistogram(histoList):
     avg_speed = length / avg_duration if length != -1 else 0
     speed_variance += int((avg_speed - (i in range(speed_list))) ** 2) if length != -1 else 0
     min_duration = min(speed_secs_list)
+    
+ 
 
-
-
+  
 #try this fat tile: wget https://s3.amazonaws.com/osmlr-tiles/v0.1/pbf/0/002/415.osmlr
 
 def getLengths(fileName):
