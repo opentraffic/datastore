@@ -20,7 +20,7 @@ try:
   from dsfb.Entry import Entry
   from dsfb.VehicleType import VehicleType
 except ImportError:
-  print 'You need to generate the flatbuffer source via: sed -e "s/namespace.*/namespace dsbfs;/g" ../src/main/fbs/histogram-tile.fbs > schema.fbs && flatc --python schema.fbs'
+  print 'You need to generate the flatbuffer source via: sed -e "s/namespace.*/namespace dsfb;/g" ../src/main/fbs/histogram-tile.fbs > schema.fbs && flatc --python schema.fbs'
   sys.exit(1)
 
 #try this fat tile: wget https://s3.amazonaws.com/datastore_output_prod/2017/1/1/0/0/2415.fb
@@ -164,12 +164,15 @@ def next(startIndex, total, nextName, subtileSegments):
     st.description = '168 ordinal hours of week 0 of year 2017' #TODO: get from input
   return tile, subtile, nextTile, nextSubtile
 
-def createSpeedTiles(lengths, fileName, subTileSize, nextName, separate):
+def simulate(segmentIds, fileName, subTileSize, nextName, separate):
+  random.seed(0)
+
+  #fake a segment for each entry in the osmlr
   tile = None
   nextTile = None
   subTileCount = 0
   first = True
-  for i, length in enumerate(lengths):
+  for i, sid in enumerate(segmentIds):
     #its time to write a subtile
     if i % subTileSize == 0:
       #writing tile
@@ -189,22 +192,26 @@ def createSpeedTiles(lengths, fileName, subTileSize, nextName, separate):
         del nextSubtile
         del nextTile
       #set up new pbf messages to write into
-      tile, subtile, nextTile, nextSubtile = next(i, len(lengths), nextName, subTileSize)
+      tile, subtile, nextTile, nextSubtile = next(i, len(segmentIds), nextName, subTileSize)
 
     #continue making fake data
-    subtile.referenceSpeeds.append(random.randint(20, 100) if length != -1 else 0)
+    subtile.referenceSpeeds.append(random.randint(20, 100) if sid != -1 else 0)
     #dead osmlr ids have no next segment data
-    nextIds = [ (random.randint(0,2**21)<<25)|(subtile.index<<3)|subtile.level for i in range(0, random.randint(0,3)) ] if length != -1 else []
+    nextIds = [ (random.randint(0,2**21)<<25)|(subtile.index<<3)|subtile.level for i in range(0, random.randint(0,3)) ] if sid != -1 else []
     #do all the entries
     for i in range(0, subtile.unitSize/subtile.entrySize):
       #any time its a dead one we put in 0's for the data
-      subtile.speeds.append(avg_speed)
-      subtile.speedVariances.append(speed_variance)
-      #how to display this?
-      subtile.prevalences.append(random.randint(1, 100) if length != -1 else 0)
-      subtile.nextSegmentIndices.append(len(subtile.nextSegmentIds) if length != -1 else 0)
-      subtile.nextSegmentCounts.append(len(nextIds) if length != -1 else 0)
-
+      subtile.speeds.append(random.randint(20, 100) if sid != -1 else 0)
+      subtile.speedVariances.append(int(random.uniform(0,127.5) * 2 if sid != -1 else 0))
+      subtile.prevalences.append(random.randint(1, 100) if sid != -1 else 0)
+      subtile.nextSegmentIndices.append(len(subtile.nextSegmentIds) if sid != -1 else 0)
+      subtile.nextSegmentCounts.append(len(nextIds) if sid != -1 else 0)
+      for nid in nextIds:
+        nextSubtile.nextSegmentIds.append(nid)
+        nextSubtile.nextSegmentDelays.append(random.randint(0,30))
+        nextSubtile.nextSegmentDelayVariances.append(int(random.uniform(0,100)))
+        nextSubtile.nextSegmentQueueLengths.append(random.randint(0,200))
+        nextSubtile.nextSegmentQueueLengthVariances.append(int(random.uniform(0,200)))
 
   #get the last one written
   if tile is not None:
@@ -215,7 +222,7 @@ def createSpeedTiles(lengths, fileName, subTileSize, nextName, separate):
     del tile
     del nextSubtile
     del nextTile
-    
+
 def simulate(segmentIds, fileName, subTileSize, nextName, separate):
   random.seed(0)
 
