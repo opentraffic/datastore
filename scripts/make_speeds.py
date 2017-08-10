@@ -25,15 +25,41 @@ except ImportError:
 
 #try this fat tile: wget https://s3.amazonaws.com/datastore_output_prod/2017/1/1/0/0/2415.fb
 
-def getHistogram(fileList):
+LEVEL_BITS = 3
+TILE_INDEX_BITS = 22
+SEGMENT_INDEX_BITS = 21
+
+LEVEL_MASK = (2**LEVEL_BITS) - 1
+TILE_INDEX_MASK = (2**TILE_INDEX_BITS) - 1
+SEGMENT_INDEX_MASK = (2**SEGMENT_INDEX_BITS) - 1
+
+def get_level(segment_id):
+  return segment_id & LEVEL_MASK
+def get_tile_index(segment_id):
+  return (segment_id >> LEVEL_BITS) & TILE_INDEX_MASK
+def get_segment_index(segment_id):
+  return (segment_id >> (LEVEL_BITS + TILE_INDEX_BITS)) & SEGMENT_INDEX_MASK
+
+def getHistogram(path, target_level, target_tile_id):
+  print('Looping for level=' + str(target_level) + ' and tile_id=' + str(target_tile_id) + ' here:' + path)
   fbList = []
-  for hist in fileList:
-    buf = open(hist, 'rb').read()
-    hist = Histogram.GetRootAsHistogram(bytearray(buf), 0)
-    fbList.append(hist)
+  for root, dirs, files in os.walk(path):
+    for file in files:
+      if (root + os.sep + file).endswith('.fb'):
+        buf = open(root + os.sep + file, 'rb').read()
+        hist = Histogram.GetRootAsHistogram(bytearray(buf), 0)
+        level = get_level(hist.TileId())
+        tile_index = get_tile_index(hist.TileId())
+        if ((level == target_level) and (tile_index == target_tile_id)):
+          fbList.append(hist)
 
   histogram = {"histogram" : fbList}
+  #processHistogram(histogram)
+
   return histogram
+
+#def processHistogram(histoList):
+
 
 #try this fat tile: wget https://s3.amazonaws.com/osmlr-tiles/v0.1/pbf/0/002/415.osmlr
 
@@ -222,19 +248,20 @@ if __name__ == "__main__":
   parser.add_argument('--no-separate-subtiles', help='If present all subtiles will be in the same tile', action='store_true')
   parser.add_argument('--separate-next-segments-prefix', type=str, help='The prefix for the next segments output tiles if they should be separated from the primary speed entries. If omitted they will not be separate')
   parser.add_argument('--osmlr', type=str, help='The osmlr tile containing the relevant segments definitions')
-  parser.add_argument('flatbuffers', metavar='N', type=str, nargs='+', help='The flatbuffer tiles for the time period in question')
+  parser.add_argument('--fb-path', type=str, help='The flatbuffer tile path to load the files necessary for the time period given')
+  parser.add_argument('--level', type=int, help='The level to target')
+  parser.add_argument('--tile-id', type=int, help='The tile id to target')
   #TODO: add the time period argument
-  #TODO: add the tile id argument until we can get it from osmlr
   args = parser.parse_args()
 
   print 'getting osmlr lengths'
   lengths = getLengths(args.osmlr)
 
   print 'getting speed averages from fb Histogram'
-  histogram = getHistogram(args.flatbuffers)
+  histogram = getHistogram(args.fb_path, args.level, args.tile_id)
   
   print 'simulating 1 week of speeds at hourly intervals for ' + str(len(lengths)) + ' segments'
   #simulate(lengths, args.output_prefix, args.max_segments, args.separate_next_segments_prefix, not args.no_separate_subtiles)
-  createSpeedTiles(lengths, args.output_prefix, args.max_segments, args.separate_next_segments_prefix, not args.no_separate_subtiles)
+  #createSpeedTiles(lengths, args.output_prefix, args.max_segments, args.separate_next_segments_prefix, not args.no_separate_subtiles)
 
   print 'done'
