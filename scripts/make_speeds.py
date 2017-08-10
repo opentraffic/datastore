@@ -20,7 +20,7 @@ try:
   from dsfb.Entry import Entry
   from dsfb.VehicleType import VehicleType
 except ImportError:
-  print 'You need to generate the flatbuffer source via: sed -e "/namespace.*/d" ../src/main/fbs/histogram-tile.fbs > schema.fbs && flatc --python schema.fbs'
+  print 'You need to generate the flatbuffer source via: sed -e "s/namespace.*/namespace dsbfs;/g" ../src/main/fbs/histogram-tile.fbs > schema.fbs && flatc --python schema.fbs'
   sys.exit(1)
 
 #try this fat tile: wget https://s3.amazonaws.com/datastore_output_prod/2017/1/1/0/0/2415.fb
