@@ -41,7 +41,7 @@ def get_segment_index(segment_id):
   return (segment_id >> (LEVEL_BITS + TILE_INDEX_BITS)) & SEGMENT_INDEX_MASK
 
 def getHistogram(path, target_level, target_tile_id):
-  print('Looping for level=' + str(target_level) + ' and tile_id=' + str(target_tile_id) + ' here:' + path)
+  print('Looking for level=' + str(target_level) + ' and tile_id=' + str(target_tile_id) + ' here:' + path)
   fbList = []
   for root, dirs, files in os.walk(path):
     for file in files:
@@ -58,7 +58,27 @@ def getHistogram(path, target_level, target_tile_id):
 
   return histogram
 
-#def processHistogram(histoList):
+def processHistogram(histoList):
+
+  h_seg = histogram.Segments(i)
+  #do all the entries
+  for i in range(0, subtile.unitSize/subtile.entrySize):
+    #calculations
+    e = h_seg.Entries(i);
+    speed_secs = unquantise(e.DurationBucket())
+    speed_secs_list.append(speed_secs)
+    speed = length / speed_secs
+    speed_list.append(speed)
+
+    segs_per_spd_count = sum(speed_list.count(speed))
+    #seg_speed_arr {25:4, 30:10, 35:5}
+    seg_speed_arr = {speed:speed_list.count(speed) for speed in speed_list}
+    avg_duration = sum(seg_speed_arr.keys() * seg_speed_arr.values()) / segs_per_spd_count
+
+    avg_speed = length / avg_duration if length != -1 else 0
+    speed_variance += int((avg_speed - (i in range(speed_list))) ** 2) if length != -1 else 0
+    min_duration = min(speed_secs_list)
+
 
 
 #try this fat tile: wget https://s3.amazonaws.com/osmlr-tiles/v0.1/pbf/0/002/415.osmlr
@@ -160,17 +180,13 @@ def createSpeedTiles(lengths, fileName, subTileSize, nextName, separate):
     #do all the entries
     for i in range(0, subtile.unitSize/subtile.entrySize):
       #any time its a dead one we put in 0's for the data
-      subtile.speeds.append(random.randint(20, 100) if length != -1 else 0)
-      subtile.speedVariances.append(int(random.uniform(0,127.5) * 2 if length != -1 else 0))
+      subtile.speeds.append(avg_speed)
+      subtile.speedVariances.append(speed_variance)
+      #how to display this?
       subtile.prevalences.append(random.randint(1, 100) if length != -1 else 0)
       subtile.nextSegmentIndices.append(len(subtile.nextSegmentIds) if length != -1 else 0)
       subtile.nextSegmentCounts.append(len(nextIds) if length != -1 else 0)
-      for nid in nextIds:
-        nextSubtile.nextSegmentIds.append(nid)
-        nextSubtile.nextSegmentDelays.append(random.randint(0,30))
-        nextSubtile.nextSegmentDelayVariances.append(int(random.uniform(0,100)))
-        nextSubtile.nextSegmentQueueLengths.append(random.randint(0,200))
-        nextSubtile.nextSegmentQueueLengthVariances.append(int(random.uniform(0,200)))
+
 
   #get the last one written
   if tile is not None:
