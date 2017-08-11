@@ -154,8 +154,8 @@ def next(startIndex, total, nextName, subtileSegments):
     nextSubtile = subtile
   for st in [subtile, nextSubtile]:
     #geo stuff
-    st.level = 0      #TODO: get from osmlr
-    st.index = 2415   #TODO: get from osmlr
+    st.level = args.level      #TODO: get from osmlr
+    st.index = args.tile_id   #TODO: get from osmlr
     st.startSegmentIndex = startIndex
     st.totalSegments = total
     st.subtileSegments = subtileSegments
