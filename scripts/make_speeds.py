@@ -25,6 +25,7 @@ except ImportError:
 
 #try this fat tile: wget https://s3.amazonaws.com/datastore_output_prod/2017/1/1/0/0/2415.fb
 
+###############################################################################
 LEVEL_BITS = 3
 TILE_INDEX_BITS = 22
 SEGMENT_INDEX_BITS = 21
@@ -41,6 +42,7 @@ def get_segment_index(segment_id):
   return (segment_id >> (LEVEL_BITS + TILE_INDEX_BITS)) & SEGMENT_INDEX_MASK
 
 
+###############################################################################
 #the step sizes, which increase as the high 2 bits increase to provide variable precision.
 STEP_SIZES = [ 1, 2, 5, 10 ]#offset of each step, derived from the above.
 #STEP_OFFSET[i] = STEP_OFFSET[i-1] + 2^6 * STEP_SIZES[i-1]
@@ -59,8 +61,11 @@ def unquantise(val):
     return STEP_OFFSETS[hi] + STEP_SIZES[hi] * lo
   raise (hi, lo)
 
+###############################################################################
 def getSegments(path, target_level, target_tile_id, lengths):
-  print('Looking for level=' + str(target_level) + ' and tile_id=' + str(target_tile_id) + ' here:' + path)
+  #GDG
+  print 'getSegments ###############################################################################'
+  print 'Looking for level=' + str(target_level) + ' and tile_id=' + str(target_tile_id) + ' here:' + path
   segments = {}
   for root, dirs, files in os.walk(path):
     for file in files:
@@ -82,15 +87,21 @@ def getSegments(path, target_level, target_tile_id, lengths):
         del hist
   return segments
 
+###############################################################################
 def processSegment(segments, segment, length):
+  print 'processSegment ###############################################################################'
+  print 'e.EpochHour(), segment.SegmentId(), e.NextSegmentIdx(), e.Count(), e.DurationBucket(), unquantise(e.DurationBucket()), e.Queue()'
   for i in range(0, segment.EntriesLength()):
     #TODO: measure variance
     e = segment.Entries(i)
-    #print e.EpochHour(), segment.SegmentId(), e.NextSegmentIdx(), e.Count(), e.DurationBucket(), e.Queue()
+    #GDG
+    print e.EpochHour(), segment.SegmentId(), e.NextSegmentIdx(), e.Count(), e.DurationBucket(), unquantise(e.DurationBucket()), e.Queue()
     #get the right segment
     if segment.SegmentId() not in segments:
       segments[segment.SegmentId()] = { }
     hours = segments[segment.SegmentId()]
+    #GDG
+    print 'hours=' + str(hours)
     #get the right hour in there
     if e.EpochHour() not in hours:
        hours[e.EpochHour()] = { }
@@ -103,8 +114,12 @@ def processSegment(segments, segment, length):
     totals['count'] += e.Count()
     totals['duration'] += unquantise(e.DurationBucket()) * e.Count()
     totals['queue'] += (e.Queue()/255.0) * length * e.Count()
+    #GDG
+    print '>>>>>>>>>>>>>>>> totals=' + str(totals)
 
+###############################################################################
 def getLengths(fileName):
+  print 'getLengths ###############################################################################'
   osmlr = tile_pb2.Tile()
   with open(fileName, 'rb') as f:
     osmlr.ParseFromString(f.read())
@@ -125,6 +140,7 @@ def getLengths(fileName):
   del osmlr
   return lengths
 
+###############################################################################
 def remove(path):
   try:
     print 'Removing ' + path
@@ -133,6 +149,7 @@ def remove(path):
     if e.errno != errno.ENOENT:
       raise
 
+###############################################################################
 def write(name, count, tile, should_remove):
   name += '.' + str(count)
   if should_remove:
@@ -142,6 +159,7 @@ def write(name, count, tile, should_remove):
     f.write(tile.SerializeToString())
   print 'wrote subtile to ' + name
 
+###############################################################################
 def next(startIndex, total, nextName, subtileSegments):
   print 'creating new subtile starting at ' + str(startIndex)
   tile = speedtile_pb2.SpeedTile()
@@ -167,6 +185,7 @@ def next(startIndex, total, nextName, subtileSegments):
     st.description = '168 ordinal hours of week 0 of year 2017' #TODO: get from input
   return tile, subtile, nextTile, nextSubtile
 
+###############################################################################
 def simulate(lengths, fileName, subTileSize, nextName, separate):
   random.seed(0)
 
@@ -226,13 +245,20 @@ def simulate(lengths, fileName, subTileSize, nextName, separate):
     del nextSubtile
     del nextTile
 
+###############################################################################
 #TODO: figure out how to measure this for real
 def prevalance(val):
   return int(round(val / 10.0) * 10)
 
+###############################################################################
 def createSpeedTiles(lengths, fileName, subTileSize, nextName, separate, segments):
+  #GDG
+  print 'createSpeedTiles ###############################################################################'
+
   #find the minimum hour
   minHour = min([int(hour) for k,v in segments.iteritems() for hour in v.keys()])
+  #GDG
+  print 'minHour=' + str(minHour)
 
   #fake a segment for each entry in the osmlr
   tile = None
@@ -240,6 +266,9 @@ def createSpeedTiles(lengths, fileName, subTileSize, nextName, separate, segment
   subTileCount = 0
   first = True
   for k, length in enumerate(lengths):
+    #GDG
+    print 'k=' + str(k) + ' | length=' + str(length)
+
     #its time to write a subtile
     if k % subTileSize == 0:
       #writing tile
@@ -261,6 +290,7 @@ def createSpeedTiles(lengths, fileName, subTileSize, nextName, separate, segment
       #set up new pbf messages to write into
       tile, subtile, nextTile, nextSubtile = next(k, len(lengths), nextName, subTileSize)
 
+
     #continue making fake data
     #subtile.referenceSpeeds.append(random.randint(20, 100) if length > 0 else 0)
 
@@ -271,16 +301,31 @@ def createSpeedTiles(lengths, fileName, subTileSize, nextName, separate, segment
       #compute the averages
       if s:
         for nid, n in s.iteritems():
+          #GDG
+          print 'BEFORE nid=' + str(nid) + ' | n=' + str(n)
           n['duration'] /= float(n['count'])
           n['queue'] /= float(n['count'])          
+          print 'AFTER nid=' + str(nid) + ' | n=' + str(n)
       
       #any time its a dead one we put in 0's for the data
       minDuration = min([n['duration'] for nid, n in s.iteritems()]) if s else 0
-      subtile.speeds.append(int(round(length / minDuration if s else 0)))
+      #GDG
+      print 'minDuration=' + str(minDuration) + ' | s=' + str(s)
+      subtile.speeds.append(int(round(length / minDuration * 3.6 if s else 0)))
+      #GDG
+      print 'length=' + str(length) + ' | minDuration=' + str(minDuration) + ' | speed=' + str((int(round(length / minDuration * 3.6 if s else 0))))
+      print 'subtile.speed=' + str(subtile.speeds[len(subtile.speeds)-1])
       #subtile.speedVariances.append(TODO if s else 0)
       subtile.prevalences.append(prevalance(sum([n['count'] for nid, n in s.iteritems()]) if s else 0))
       subtile.nextSegmentIndices.append(len(subtile.nextSegmentIds) if 1 else 0)
       subtile.nextSegmentCounts.append(len(s) if s else 0)
+
+      #import json
+      #from google.protobuf.json_format import MessageToJson
+      #print(json.dumps(MessageToJson(subtile)))
+      #GDG
+      #print 'After json.dumps'
+
       if s:
         for nid, n in s.iteritems():
           nextSubtile.nextSegmentIds.append(nid)
@@ -317,9 +362,16 @@ if __name__ == "__main__":
 
   print 'getting speed averages from fb Histogram'
   segments = getSegments(args.fb_path, args.level, args.tile_id, lengths)
+
+  #GDG
+  print 'loop over segments ###############################################################################'
+  for k,v in segments.iteritems():
+    print k, v
+  print 'DONE loop over segments ###############################################################################'
   
-  print 'simulating 1 week of speeds at hourly intervals for ' + str(len(lengths)) + ' segments'
+  #print 'simulating 1 week of speeds at hourly intervals for ' + str(len(lengths)) + ' segments'
   #simulate(lengths, args.output_prefix, args.max_segments, args.separate_next_segments_prefix, not args.no_separate_subtiles)
+  print 'creating 1 week of speeds at hourly intervals for ' + str(len(lengths)) + ' segments'
   createSpeedTiles(lengths, args.output_prefix, args.max_segments, args.separate_next_segments_prefix, not args.no_separate_subtiles, segments)
 
   print 'done'
