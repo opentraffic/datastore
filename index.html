@@ -144,8 +144,7 @@ Costing: <select id="costing">
       var idx = get_segment_index(segments[0]);
       var subtile_index = (idx / 10000) | 0;
       //data please
-      //getByteBufferUrl('https://s3.amazonaws.com/speed-extracts/2017/0/' + tile_url(level, tile_index) + '.spd.' + subtile_index + '.gz', function(bytes) {
-      getByteBufferUrl('http://localhost:8000/speed-extracts/2017/0/' + tile_url(level, tile_index) + '.spd.' + subtile_index, function(bytes) {
+      getByteBufferUrl('https://s3.amazonaws.com/speed-extracts/2017/0/' + tile_url(level, tile_index) + '.spd.' + subtile_index + '.gz', function(bytes) {
         //parse the binary data into an object
         var speedTile = SpeedTile.decode(bytes);
         var subtile = speedTile.subtiles[0];
