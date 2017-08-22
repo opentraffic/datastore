@@ -11,7 +11,6 @@ import itertools
 
 def convert(dictionary):
   print('[INFO] running conversion process')
-  #sys.stdout.flush()
     
   print len(dictionary)
   for key, val in dictionary.items():
@@ -73,10 +72,10 @@ def build_dictionary(reporter_buckets, bucket_interval, reporter_path):
 if __name__ == "__main__":
   parser = argparse.ArgumentParser(description='Generate flatbuffer tiles from Reporter output', formatter_class=argparse.ArgumentDefaultsHelpFormatter)
   parser.add_argument('--reporter-path', type=str, help='The directory path to the root of the Reporter output containing the epochHour generated folders.')
-  parser.add_argument('--datastore-bucket', type=str, help='The directory path to the where the Reporter work is processed.')
+  parser.add_argument('--datastore-bucket', type=str, help='The directory path to the where the flatbuffer files are generated.')
   args = parser.parse_args()
   
-  bucket_interval = 3600 # optional; an hour would be 3600
+  bucket_interval = 3600 # an hour would be 3600
  
   reporter_path = args.reporter_path
   datastore_bucket = args.datastore_bucket
