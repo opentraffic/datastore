@@ -23,8 +23,9 @@ except ImportError:
   print 'You need to generate the flatbuffer source via: sed -e "s/namespace.*/namespace dsfb;/g" ../src/main/fbs/histogram-tile.fbs > schema.fbs && flatc --python schema.fbs'
   sys.exit(1)
 
-#try this fat tile: wget https://s3.amazonaws.com/datastore_output_prod/2017/1/1/0/0/2415.fb
 
+
+#try this fat tile: wget https://s3.amazonaws.com/datastore_output_prod/2017/1/1/0/0/2415.fb
 ###############################################################################
 LEVEL_BITS = 3
 TILE_INDEX_BITS = 22
@@ -110,8 +111,8 @@ def processSegment(segments, segment, length):
     totals['queue'] += (e.Queue()/255.0) * length * e.Count()
 
 ###############################################################################
+# length in meters, rounded to the nearest meter
 def getLengths(fileName):
-  print 'getLengths ###############################################################################'
   osmlr = tile_pb2.Tile()
   with open(fileName, 'rb') as f:
     osmlr.ParseFromString(f.read())
@@ -135,7 +136,6 @@ def getLengths(fileName):
 ###############################################################################
 def remove(path):
   try:
-    print 'Removing ' + path
     os.remove(path)
   except OSError as e:
     if e.errno != errno.ENOENT:
@@ -146,14 +146,11 @@ def write(name, count, tile, should_remove):
   name += '.' + str(count)
   if should_remove:
     remove(name)
-  print 'writing subtile to ' + name
   with open(name, 'ab') as f:
     f.write(tile.SerializeToString())
-  print 'wrote subtile to ' + name
 
 ###############################################################################
 def next(startIndex, total, nextName, subtileSegments):
-  print 'creating new subtile starting at ' + str(startIndex)
   tile = speedtile_pb2.SpeedTile()
   subtile = tile.subtiles.add()
   if nextName:
@@ -178,6 +175,7 @@ def next(startIndex, total, nextName, subtileSegments):
   return tile, subtile, nextTile, nextSubtile
 
 ###############################################################################
+#method simulates generation of speed data by populating with random data
 def simulate(lengths, fileName, subTileSize, nextName, separate):
   random.seed(0)
 
@@ -243,6 +241,8 @@ def prevalance(val):
   return int(round(val / 10.0) * 10)
 
 ###############################################################################
+#method simulates generation of speed data by populating with real data from osmlr
+#and reporter results converted to fb output
 def createSpeedTiles(lengths, fileName, subTileSize, nextName, separate, segments):
   #DEBUG
   print 'createSpeedTiles ###############################################################################'
@@ -258,9 +258,6 @@ def createSpeedTiles(lengths, fileName, subTileSize, nextName, separate, segment
   subTileCount = 0
   first = True
   for k, length in enumerate(lengths):
-    #DEBUG
-    #print 'segment index=' + str(k) + ' | length=' + str(length)
-
     #its time to write a subtile
     if k % subTileSize == 0:
       #writing tile
@@ -326,6 +323,8 @@ def createSpeedTiles(lengths, fileName, subTileSize, nextName, separate, segment
     del nextSubtile
     del nextTile
 
+
+#Read in OSMLR & flatbuffer tiles from the datastore output in AWS to read in the lengths, speeds & next segment ids and generate the segment speed files in proto output format
 if __name__ == "__main__":
   parser = argparse.ArgumentParser(description='Generate fake speed tiles', formatter_class=argparse.ArgumentDefaultsHelpFormatter)
   parser.add_argument('--output-prefix', type=str, help='The file name prefix to give to output tiles. The first tile will have no suffix, after that they will be numbered starting at 1. e.g. tile.spd, tile.spd.1, tile.spd.2', default='tile.spd')
@@ -350,7 +349,7 @@ if __name__ == "__main__":
   for k,v in segments.iteritems():
     print k, v
   print 'DONE loop over segments ###############################################################################'
-  
+
   #print 'simulating 1 week of speeds at hourly intervals for ' + str(len(lengths)) + ' segments'
   #simulate(lengths, args.output_prefix, args.max_segments, args.separate_next_segments_prefix, not args.no_separate_subtiles)
   print 'creating 1 week of speeds at hourly intervals for ' + str(len(lengths)) + ' segments'
