@@ -63,7 +63,7 @@ def unquantise(val):
 
 ###############################################################################
 def getSegments(path, target_level, target_tile_id, lengths):
-  #GDG
+  #DEBUG
   print 'getSegments ###############################################################################'
   print 'Looking for level=' + str(target_level) + ' and tile_id=' + str(target_tile_id) + ' here:' + path
   segments = {}
@@ -89,19 +89,13 @@ def getSegments(path, target_level, target_tile_id, lengths):
 
 ###############################################################################
 def processSegment(segments, segment, length):
-  print 'processSegment ###############################################################################'
-  print 'e.EpochHour(), segment.SegmentId(), e.NextSegmentIdx(), e.Count(), e.DurationBucket(), unquantise(e.DurationBucket()), e.Queue()'
   for i in range(0, segment.EntriesLength()):
     #TODO: measure variance
     e = segment.Entries(i)
-    #GDG
-    print e.EpochHour(), segment.SegmentId(), e.NextSegmentIdx(), e.Count(), e.DurationBucket(), unquantise(e.DurationBucket()), e.Queue()
     #get the right segment
     if segment.SegmentId() not in segments:
       segments[segment.SegmentId()] = { }
     hours = segments[segment.SegmentId()]
-    #GDG
-    print 'hours=' + str(hours)
     #get the right hour in there
     if e.EpochHour() not in hours:
        hours[e.EpochHour()] = { }
@@ -114,8 +108,6 @@ def processSegment(segments, segment, length):
     totals['count'] += e.Count()
     totals['duration'] += unquantise(e.DurationBucket()) * e.Count()
     totals['queue'] += (e.Queue()/255.0) * length * e.Count()
-    #GDG
-    print '>>>>>>>>>>>>>>>> totals=' + str(totals)
 
 ###############################################################################
 def getLengths(fileName):
@@ -252,12 +244,12 @@ def prevalance(val):
 
 ###############################################################################
 def createSpeedTiles(lengths, fileName, subTileSize, nextName, separate, segments):
-  #GDG
+  #DEBUG
   print 'createSpeedTiles ###############################################################################'
 
   #find the minimum hour
   minHour = min([int(hour) for k,v in segments.iteritems() for hour in v.keys()])
-  #GDG
+  #DEBUG
   print 'minHour=' + str(minHour)
 
   #fake a segment for each entry in the osmlr
@@ -266,8 +258,8 @@ def createSpeedTiles(lengths, fileName, subTileSize, nextName, separate, segment
   subTileCount = 0
   first = True
   for k, length in enumerate(lengths):
-    #GDG
-    print 'k=' + str(k) + ' | length=' + str(length)
+    #DEBUG
+    #print 'segment index=' + str(k) + ' | length=' + str(length)
 
     #its time to write a subtile
     if k % subTileSize == 0:
@@ -297,37 +289,27 @@ def createSpeedTiles(lengths, fileName, subTileSize, nextName, separate, segment
     #do all the entries
     for i in range(0 + minHour, subtile.unitSize/subtile.entrySize + minHour):
       #if we have data get it
-      s = segments[k][i] if k in segments and i in segments[k] else None
+      nextSegments = segments[k][i] if k in segments and i in segments[k] else None
       #compute the averages
-      if s:
-        for nid, n in s.iteritems():
-          #GDG
-          print 'BEFORE nid=' + str(nid) + ' | n=' + str(n)
+      if nextSegments:
+        for nid, n in nextSegments.iteritems():
           n['duration'] /= float(n['count'])
           n['queue'] /= float(n['count'])          
-          print 'AFTER nid=' + str(nid) + ' | n=' + str(n)
       
       #any time its a dead one we put in 0's for the data
-      minDuration = min([n['duration'] for nid, n in s.iteritems()]) if s else 0
-      #GDG
-      print 'minDuration=' + str(minDuration) + ' | s=' + str(s)
-      subtile.speeds.append(int(round(length / minDuration * 3.6 if s else 0)))
-      #GDG
-      print 'length=' + str(length) + ' | minDuration=' + str(minDuration) + ' | speed=' + str((int(round(length / minDuration * 3.6 if s else 0))))
-      print 'subtile.speed=' + str(subtile.speeds[len(subtile.speeds)-1])
-      #subtile.speedVariances.append(TODO if s else 0)
-      subtile.prevalences.append(prevalance(sum([n['count'] for nid, n in s.iteritems()]) if s else 0))
+      minDuration = min([n['duration'] for nid, n in nextSegments.iteritems()]) if nextSegments else 0
+      # assign speed as kph instead of meters per sec
+      subtile.speeds.append(int(round(length / minDuration * 3.6 if nextSegments else 0)))
+      #DEBUG
+      if nextSegments:
+        print 'segmentId=' + str((k<<25)|(args.tile_id<<3)|args.level) + ' | nextSegments=' + str(nextSegments) + ' | length=' + str(length) + ' | minDuration=' + str(minDuration) + ' | speed=' + str((int(round(length / minDuration * 3.6 if nextSegments else 0))))
+      #subtile.speedVariances.append(TODO if nextSegments else 0)
+      subtile.prevalences.append(prevalance(sum([n['count'] for nid, n in nextSegments.iteritems()]) if nextSegments else 0))
       subtile.nextSegmentIndices.append(len(subtile.nextSegmentIds) if 1 else 0)
-      subtile.nextSegmentCounts.append(len(s) if s else 0)
+      subtile.nextSegmentCounts.append(len(nextSegments) if nextSegments else 0)
 
-      #import json
-      #from google.protobuf.json_format import MessageToJson
-      #print(json.dumps(MessageToJson(subtile)))
-      #GDG
-      #print 'After json.dumps'
-
-      if s:
-        for nid, n in s.iteritems():
+      if nextSegments:
+        for nid, n in nextSegments.iteritems():
           nextSubtile.nextSegmentIds.append(nid)
           nextSubtile.nextSegmentDelays.append(int(round(n['duration'] - minDuration)))
           #nextSubtile.nextSegmentDelayVariances.append(TODO)
@@ -363,7 +345,7 @@ if __name__ == "__main__":
   print 'getting speed averages from fb Histogram'
   segments = getSegments(args.fb_path, args.level, args.tile_id, lengths)
 
-  #GDG
+  #DEBUG
   print 'loop over segments ###############################################################################'
   for k,v in segments.iteritems():
     print k, v
