@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Traffic Segments</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="https://npmcdn.com/leaflet@1.0.0-rc.2/dist/leaflet.css" />
+  <link rel="stylesheet" href="json.css" />
+</head>
+<body>
+
+  <div style="width:100%">
+    <div style="float:left; width:75%">
+      <div id="map" style="height: 800px"></div>
+      <script src="https://npmcdn.com/leaflet@1.0.0-rc.2/dist/leaflet.js"></script>
+      <script src="https://code.jquery.com/jquery-2.2.4.min.js" integrity="sha256-BbhdlvQf/xTY9gja0Dq3HiwQF8LaCRTXxZKRutelT44=" crossorigin="anonymous"></script>
+      <script src="https://cdn.rawgit.com/dcodeIO/protobuf.js/6.8.0/dist/protobuf.js"></script>
+
+      <script>
+        //make a map using osm tiles
+        var map = L.map('map').setView([14.65739,120.98994], 13);
+        L.tileLayer('http://b.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          maxZoom: 19,
+          attribution: '&copy; <a href="http://openstreetmap.org">OpenStreetMap</a> contributers'
+        }).addTo(map);
+      </script>
+
+Radius: <input id="radius" type="range" min="0" max="1000" value="100" step="1" onchange="document.getElementById('radius_text').value=this.value;" />
+<input type="text" id="radius_text" value="0" maxlength="4" size="4" /></br>
+Reachibility: <input id="reach" type="range" min="0" max="1000" value="0" step="1" onchange="document.getElementById('reach_text').value=this.value;" />
+<input type="text" id="reach_text" value="0" maxlength="4" size="4" /></br>
+Heading: <input id="heading" type="range" min="-1" max="359" value="-1" step="1" onchange="document.getElementById('heading_text').value=this.value;" />
+<input type="text" id="heading_text" value="-1" maxlength="4" size="4" /></br>
+Costing: <select id="costing">
+  <option>none</option>
+  <option selected>auto</option>
+  <option>pedestrian</option>
+  <option>bicycle</option>
+</select></br>
+
+    </div>
+    <div id="sidebar" style="float:right; width:25%">
+      <pre id="properties"></pre>
+    </div>
+  </div>
+
+
+  <script>
+    //update the properties
+    var pretty = {
+      replacer: function(match, pIndent, pKey, pVal, pEnd) {
+        var key = '<span class=json-key>';
+        var num = '<span class=json-number>';
+        var str = '<span class=json-string>';
+        var con = '<span class=json-constant>';
+        var r = pIndent || '';
+        if (pKey)
+          r = r + key + pKey.replace(/: +$/g, '') + '</span>: ';
+        if (pVal) {
+          var which = pVal[0] == '"' ? str : (isNaN(pVal) ? num : con);
+          r = r + which + pVal + '</span>';
+        }
+        return r + (pEnd || '');
+      },
+      print: function(obj) {
+        var line = /^( *)("[\w]+": )?("[^"]*"|[\w.+-]*)?([,[{]|\[\],?|{},?)?$/mg;
+        var html = JSON.stringify(obj, null, 2)
+          .replace(/&/g, '&amp;').replace(/\\"/g, '&quot;')
+          .replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        var y = html.replace(line, pretty.replacer);
+        return y;
+      }
+    };
+
+    //keep an object around to parse protos with
+    var SpeedTile;
+    protobuf.load('https://s3.amazonaws.com/speed-extracts/speedtile.proto', function(err, root) {
+      //couldnt parse proto definition
+      if(err) throw err;
+      //get the message type
+      SpeedTile = root.lookupType('SpeedTile');
+    });
+
+    //download a file as a byte buffer
+    var getByteBufferUrl = function(url, callback) {
+      var xhr = new XMLHttpRequest();
+      xhr.open('GET', url, true);
+      xhr.responseType = 'arraybuffer';
+      xhr.onload = function(e) {
+        if(this.status == 200) {
+          //let the callback do something with the blob
+          callback(new Uint8Array(this.response));
+        }
+      };
+      xhr.send();
+    }
+
+    var LEVEL_BITS = 3;
+    var TILE_INDEX_BITS = 22;
+    var SEGMENT_INDEX_BITS = 21;
+    var LEVEL_MASK = Math.pow(2, LEVEL_BITS) - 1;
+    var TILE_INDEX_MASK = Math.pow(2, TILE_INDEX_BITS) - 1;
+    var SEGMENT_INDEX_MASK = Math.pow(2, SEGMENT_INDEX_BITS) - 1;
+    var VALHALLA_TILES = [
+      { level: 2, size: 0.25 },
+      { level: 1, size: 1.0 },
+      { level: 0, size: 4.0 }
+    ];
+
+    //js has 53bits of precision but if you need to get values out
+    //that are passed the 32nd bit, you cant use bitwise operators
+    function get_level(segment_id){
+      return segment_id & LEVEL_MASK;
+    }
+    function get_tile_index(segment_id){
+      return (segment_id >> LEVEL_BITS) & TILE_INDEX_MASK;
+    }
+    function get_segment_index(segment_id){
+      return (segment_id / Math.pow(2, LEVEL_BITS + TILE_INDEX_BITS)) & SEGMENT_INDEX_MASK;
+    }
+    function tile_url(level, tile_index) {
+      var tile_set;
+      for(var ts of VALHALLA_TILES)
+        if(ts.level == level)
+          tile_set = ts;
+      var max_id = (360.0 / tile_set.size * 180.0 / tile_set.size) - 1;
+      var num_dirs = Math.ceil(max_id.toString().length / 3);
+      var suffix = tile_index.toString().padStart(3 * num_dirs, 0);
+      const temp = [];
+      while (suffix.length) {
+        var part = suffix.substr(0, 3);
+        temp.push(part);
+        suffix = suffix.substr(3);
+      }
+      return level + '/' + temp.join('/');
+    }
+
+    var fetch_segments = function(segments) {
+      if(segments.length == 0)
+        return;
+      //TODO: get more than the first segment
+      var level = get_level(segments[0]);
+      var tile_index = get_tile_index(segments[0]);
+      var idx = get_segment_index(segments[0]);
+      var subtile_index = (idx / 10000) | 0;
+      //data please
+      getByteBufferUrl('https://s3.amazonaws.com/speed-extracts/2017/0/' + tile_url(level, tile_index) + '.spd.' + subtile_index + '.gz', function(bytes) {
+        //parse the binary data into an object
+        var speedTile = SpeedTile.decode(bytes);
+        var subtile = speedTile.subtiles[0];
+        //get all the entries of speed for this segment
+        idx = idx - (subtile_index * 10000);
+        var entries = subtile.unitSize / subtile.entrySize;
+        var speeds = {};
+        speeds[segments[0]] = [];
+        subtile.speeds.slice(idx * entries, idx * entries + entries).forEach(function (speed, hour) {
+          //show only non 0 speeds, as 0 is no data
+          if(speed > 0)
+            speeds[segments[0]].push({'speed': speed, 'hour': hour}); 
+        });
+        var printed = pretty.print(speeds);
+        $('#properties').html(printed);
+      });
+    };
+
+    //click on a single locate result
+    function clickGroup(event) {
+      var segments = new Set();
+      for (var edge of event.target.feature.properties.edges)
+        for (var segment of edge.traffic_segments)
+          segments.add(segment.segment_id);
+      segments = Array.from(segments);
+      //show something while we wait
+      var printed = pretty.print(segments);
+      $('#properties').html(printed);
+      L.DomEvent.stopPropagation(event);
+      //go get protobuf data      
+      fetch_segments(segments)
+    }
+
+    //form the request url
+    var input;
+    function build_url(ll) {
+      //build url
+      var url = 'https://routing-prod.opentraffic.io/locate?json=';
+      var json = {
+        locations: [{
+          lat: ll.lat,
+          lon: ll.lng,
+          minimum_reachability: parseInt(document.getElementById('reach').value),
+          radius: parseInt(document.getElementById('radius').value),
+          heading: parseInt(document.getElementById('heading').value)
+        }],
+        verbose: true
+      };
+      //remove negative heading
+      if(json.locations[0].heading < 0)
+        delete json.locations[0].heading;
+      //optional costing
+      var costing = document.getElementById('costing').value;
+      if(costing != 'none')
+        json['costing'] = costing;
+      //mark where they clicked
+      if(input != null)
+        input.removeFrom(map);
+      input = new L.CircleMarker(ll, { color: '#99dd99', radius: 10, fillOpacity: 0.75 });
+      //let them see the request that was made
+      input.on('click', function (event) {
+        var printed = pretty.print(json);
+        $('#properties').html(printed);
+        L.DomEvent.stopPropagation(event);
+      });
+      input.addTo(map);
+      //give back the string
+      url += escape(JSON.stringify(json));
+      return url;
+    }
+
+    //convert the locate result into geojson
+    function build_geojson(result, ll) {
+      var fc = { type:'FeatureCollection', features: [] };
+      try {
+        //group edges by lat lon
+        var grouped_edges = {};
+        result[0].edges.forEach(function (edge) {
+          cll = JSON.stringify([edge.correlated_lon, edge.correlated_lat]);
+          if(cll in grouped_edges)
+            grouped_edges[cll].push(edge);
+          else
+            grouped_edges[cll] = [edge];
+        });
+        //create geojson from those grouped results
+        Object.keys(grouped_edges).forEach(function (cll) {
+          fc.features.push({
+            type: 'Feature',
+            geometry: {
+              type: 'Point',
+              coordinates: JSON.parse(cll)
+            },
+            properties: { 'edges': grouped_edges[cll] }
+          });
+        });
+        //update the properties panel with summary info
+        $('#properties').html(pretty.print({ result_count: Object.keys(grouped_edges).length }));
+      }//something went wrong likely the result was borked
+      catch(e) {
+        //show something in the properties panel
+        $('#properties').html(pretty.print(result));
+        fc.features = [ {
+          type: 'Feature',
+          geometry: {
+            type: 'Point',
+            coordinates: [ll.lng, ll.lat]
+          },
+          properties: { 'error': result }
+        } ];
+      }
+      //give back the feature collection
+      return fc;
+    }
+
+    //fit the results in the map
+    function fitResults(features) {
+      var coords = [];
+      features.forEach(function (feature) {
+        coords.push(feature.geometry.coordinates);
+      });
+      map.fitBounds(L.GeoJSON.coordsToLatLngs(coords), { maxZoom: 19 });
+    }
+
+    //map click callback
+    var geojson = null;
+    function onClick(event) {
+      //update the map with the results
+      var url = build_url(event.latlng);
+      //grab the url
+      $.getJSON(url,function(result){
+        //clear this if its not null
+        if(geojson != null)
+          geojson.removeFrom(map);
+        //turn the result into geojson
+        located = build_geojson(result, event.latlng)
+        //make a leaflet geojson object with style and click events per result
+        geojson = L.geoJson(located, {
+          style: function(feature) { return { color: '#dd99dd' }; },
+          pointToLayer: function(feature, ll) { return new L.CircleMarker(ll, { radius: 5, fillOpacity: 0.75 }); },
+          onEachFeature: function(feature, layer) { layer.on('click', clickGroup) }
+        });
+        //render the geojson
+        geojson.addTo(map);
+        //fit it in view
+        fitResults(located.features);
+      });
+    };
+
+    //hook up the callback for the text box changing
+    map.on('click', onClick);
+  </script>
+</body>
+</html>

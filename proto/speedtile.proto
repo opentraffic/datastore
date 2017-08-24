@@ -1,0 +1,45 @@
+syntax = "proto2";
+package SizeTest;
+
+message SpeedTile {
+  
+  //this allows us to chunk up large tiles into smaller pieces
+  repeated SubTile subtiles = 1;
+  message SubTile {
+    //tile information, where this is
+    optional uint32 level = 1;  //the tile level
+    optional uint32 index = 2;  //the tile index
+
+    //what segments will be found in this tile
+    optional uint32 startSegmentIndex = 3; //the first segment index in the subtile
+                                           //makes up the highest 21 bits of of the segment id
+    optional uint32 totalSegments = 4;     //how many segments there are across all subtiles in this tile
+                                           //these may be in this message or in another proto message
+    optional uint32 subtileSegments = 5;   //the total number of segments in this subtile should be the same
+                                           //for all subtiles except the last one might have less
+
+    //time information, when this is
+    //Note: that it represent both a single ordinal unit in time (if rangeEnd - rangeStart == unitSize)
+    //but also be an average unit over a longer period of time (if rangeEnd - rangeStart > unitSize)
+    optional uint32 rangeStart = 6; //epoch start time (inclusive) seconds
+    optional uint32 rangeEnd = 7;   //epoch end time (exclusive) seconds
+    optional uint32 unitSize = 8;   //target time range seconds, a week would be 604800
+    optional uint32 entrySize = 9;  //target time range granularity seconds, an hour would be 3600
+
+    optional string description = 10; //text describing the time period this covers
+
+    repeated uint32 referenceSpeeds = 11 [packed=true];   //the default speed of the each segment
+    repeated uint32 speeds = 12 [packed=true];            //the average speed of each segment of each entry
+    repeated uint32 speedVariances = 13 [packed=true];    //the variance between samples of each segment of each entry, also fixed precision
+    repeated uint32 prevalences = 14 [packed=true];       //a rough indication of how many samples of ecah segment of each entry
+    repeated uint32 nextSegmentIndices = 15 [packed=true];//an index into the next segment array of a given entry of a given segment
+    repeated uint32 nextSegmentCounts = 16 [packed=true]; //total next segments for this segment of a given entry of a given segment
+
+    repeated uint64 nextSegmentIds = 17 [packed=true];                  //full mask of tile and level and id from corresponding  entry
+    repeated uint32 nextSegmentDelays = 18 [packed=true];               //delay in seconds from average speed from corresponding entry
+    repeated uint32 nextSegmentDelayVariances = 19 [packed=true];       //variance of delay samples from corresponding entry
+    repeated uint32 nextSegmentQueueLengths = 20 [packed=true];         //length of any queue on segment from corresponding entry
+    repeated uint32 nextSegmentQueueLengthVariances = 21 [packed=true]; //variance of queue length samples from corresponding entry
+  }
+
+}

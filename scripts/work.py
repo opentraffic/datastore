@@ -84,7 +84,7 @@ if __name__ == "__main__":
     parser.add_argument('tile_index', type=int, help='The tile index')
     args = parser.parse_args()
 
-    print('[INFO] reporter intput bucket: ' + args.s3_reporter_bucket)
+    print('[INFO] reporter input bucket: ' + args.s3_reporter_bucket)
     print('[INFO] datastore output bucket: ' + args.s3_datastore_bucket)
     print('[INFO] time bucket: ' + str(args.time_bucket))
     print('[INFO] tile id: ' + str(args.tile_id))
