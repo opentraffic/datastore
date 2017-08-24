@@ -14,53 +14,143 @@ except ImportError:
   sys.exit(1)
 
 try:
-  import Entry
-  import Histogram
-  import Segment
-  import VehicleType
+  import flatbuffers
+  from dsfb.Histogram import Histogram
+  from dsfb.Segment import Segment
+  from dsfb.Entry import Entry
+  from dsfb.VehicleType import VehicleType
 except ImportError:
-  print 'You need to generate the flatbuffer source via: sed -e "/namespace.*/d" ../src/main/fbs/histogram-tile.fbs > schema.fbs && flatc --python schema.fbs'
+  print 'You need to generate the flatbuffer source via: sed -e "s/namespace.*/namespace dsfb;/g" ../src/main/fbs/histogram-tile.fbs > schema.fbs && flatc --python schema.fbs'
   sys.exit(1)
 
-#try this fat tile: wget https://s3.amazonaws.com/osmlr-tiles/v0.1/pbf/2/000/724/159.osmlr
 
-def getIds(fileName):
+
+#try this fat tile: wget https://s3.amazonaws.com/datastore_output_prod/2017/1/1/0/0/2415.fb
+###############################################################################
+LEVEL_BITS = 3
+TILE_INDEX_BITS = 22
+SEGMENT_INDEX_BITS = 21
+
+LEVEL_MASK = (2**LEVEL_BITS) - 1
+TILE_INDEX_MASK = (2**TILE_INDEX_BITS) - 1
+SEGMENT_INDEX_MASK = (2**SEGMENT_INDEX_BITS) - 1
+
+def get_level(segment_id):
+  return segment_id & LEVEL_MASK
+def get_tile_index(segment_id):
+  return (segment_id >> LEVEL_BITS) & TILE_INDEX_MASK
+def get_segment_index(segment_id):
+  return (segment_id >> (LEVEL_BITS + TILE_INDEX_BITS)) & SEGMENT_INDEX_MASK
+
+
+###############################################################################
+#the step sizes, which increase as the high 2 bits increase to provide variable precision.
+STEP_SIZES = [ 1, 2, 5, 10 ]#offset of each step, derived from the above.
+#STEP_OFFSET[i] = STEP_OFFSET[i-1] + 2^6 * STEP_SIZES[i-1]
+STEP_OFFSETS = [ 0, 64, 192, 512, 1152 ]
+
+def unquantise(val):
+  hi = 0
+  lo = 0
+  if val < 0:
+    hi = 2 | (((-val) & 64) >> 6)
+    lo = (-val) & 63
+  else:
+    hi = (val & 192) >> 6
+    lo = val & 63
+  if hi >= 0 and hi < 4 and lo >= 0 and lo < 64:
+    return STEP_OFFSETS[hi] + STEP_SIZES[hi] * lo
+  raise (hi, lo)
+
+###############################################################################
+def getSegments(path, target_level, target_tile_id, lengths):
+  #DEBUG
+  print 'getSegments ###############################################################################'
+  print 'Looking for level=' + str(target_level) + ' and tile_id=' + str(target_tile_id) + ' here:' + path
+  segments = {}
+  for root, dirs, files in os.walk(path):
+    for file in files:
+      if (root + os.sep + file).endswith('.fb'):
+        with open(root + os.sep + file, 'rb') as filehandle:
+          print 'Loading ' + (root + os.sep + file) + '...'
+          hist = Histogram.GetRootAsHistogram(bytearray(filehandle.read()), 0)
+        level = get_level(hist.TileId())
+        tile_index = get_tile_index(hist.TileId())
+        if (level == target_level) and (tile_index == target_tile_id):
+          print 'Processing ' + (root + os.sep + file) + '...'
+          #for each segment
+          for i in range(0, hist.SegmentsLength()):
+            segment = hist.Segments(i)
+            #has to be one we know about and its not tombstoned/markered
+            if segment.EntriesLength() > 0 and segment.SegmentId() < len(lengths) and lengths[segment.SegmentId()] > 0:
+              length = lengths[segment.SegmentId()]
+              processSegment(segments, segment, length)
+        del hist
+  return segments
+
+###############################################################################
+def processSegment(segments, segment, length):
+  for i in range(0, segment.EntriesLength()):
+    #TODO: measure variance
+    e = segment.Entries(i)
+    #get the right segment
+    if segment.SegmentId() not in segments:
+      segments[segment.SegmentId()] = { }
+    hours = segments[segment.SegmentId()]
+    #get the right hour in there
+    if e.EpochHour() not in hours:
+       hours[e.EpochHour()] = { }
+    nexts = hours[e.EpochHour()]
+    #if you dont have the right next segment in there
+    if segment.NextSegmentIds(e.NextSegmentIdx()) not in nexts:
+      nexts[segment.NextSegmentIds(e.NextSegmentIdx())] = {'count': 0, 'duration': 0, 'queue': 0 }
+    totals = nexts[segment.NextSegmentIds(e.NextSegmentIdx())]
+    #continuing a previous pair
+    totals['count'] += e.Count()
+    totals['duration'] += unquantise(e.DurationBucket()) * e.Count()
+    totals['queue'] += (e.Queue()/255.0) * length * e.Count()
+
+###############################################################################
+# length in meters, rounded to the nearest meter
+def getLengths(fileName):
   osmlr = tile_pb2.Tile()
   with open(fileName, 'rb') as f:
     osmlr.ParseFromString(f.read())
 
-  #get out the segment ids
-  segId = 0
-  segmentIds = []
+  #get out the length
+  lengths = []
   for entry in osmlr.entries:
+    length = 0
     if entry.segment:
-      segmentIds.append(segId)
+      for loc_ref in entry.segment.lrps:
+        if loc_ref.length:
+          length = length + loc_ref.length
+
+      lengths.append(length)
     else:
-      segmentIds.append(-1)
-    segId += 1
+      lengths.append(-1)
 
   del osmlr
-  return segmentIds
+  return lengths
 
+###############################################################################
 def remove(path):
   try:
-    print 'Removing ' + path
     os.remove(path)
   except OSError as e:
     if e.errno != errno.ENOENT:
       raise
 
+###############################################################################
 def write(name, count, tile, should_remove):
   name += '.' + str(count)
   if should_remove:
     remove(name)
-  print 'writing subtile to ' + name
   with open(name, 'ab') as f:
     f.write(tile.SerializeToString())
-  print 'wrote subtile to ' + name
 
+###############################################################################
 def next(startIndex, total, nextName, subtileSegments):
-  print 'creating new subtile starting at ' + str(startIndex)
   tile = speedtile_pb2.SpeedTile()
   subtile = tile.subtiles.add()
   if nextName:
@@ -71,8 +161,8 @@ def next(startIndex, total, nextName, subtileSegments):
     nextSubtile = subtile
   for st in [subtile, nextSubtile]:
     #geo stuff
-    st.level = 0      #TODO: get from osmlr
-    st.index = 2415   #TODO: get from osmlr
+    st.level = args.level      #TODO: get from osmlr
+    st.index = args.tile_id   #TODO: get from osmlr
     st.startSegmentIndex = startIndex
     st.totalSegments = total
     st.subtileSegments = subtileSegments
@@ -84,7 +174,9 @@ def next(startIndex, total, nextName, subtileSegments):
     st.description = '168 ordinal hours of week 0 of year 2017' #TODO: get from input
   return tile, subtile, nextTile, nextSubtile
 
-def simulate(segmentIds, fileName, subTileSize, nextName, separate):
+###############################################################################
+#method simulates generation of speed data by populating with random data
+def simulate(lengths, fileName, subTileSize, nextName, separate):
   random.seed(0)
 
   #fake a segment for each entry in the osmlr
@@ -92,9 +184,9 @@ def simulate(segmentIds, fileName, subTileSize, nextName, separate):
   nextTile = None
   subTileCount = 0
   first = True
-  for i, sid in enumerate(segmentIds):
+  for k, sid in enumerate(lengths):
     #its time to write a subtile
-    if i % subTileSize == 0:
+    if k % subTileSize == 0:
       #writing tile
       if tile is not None:
         write(fileName, subTileCount, tile, first or separate)
@@ -112,7 +204,7 @@ def simulate(segmentIds, fileName, subTileSize, nextName, separate):
         del nextSubtile
         del nextTile
       #set up new pbf messages to write into
-      tile, subtile, nextTile, nextSubtile = next(i, len(segmentIds), nextName, subTileSize)
+      tile, subtile, nextTile, nextSubtile = next(k, len(lengths), nextName, subTileSize)
 
     #continue making fake data
     subtile.referenceSpeeds.append(random.randint(20, 100) if sid != -1 else 0)
@@ -143,6 +235,96 @@ def simulate(segmentIds, fileName, subTileSize, nextName, separate):
     del nextSubtile
     del nextTile
 
+###############################################################################
+#TODO: figure out how to measure this for real
+def prevalance(val):
+  return int(round(val / 10.0) * 10)
+
+###############################################################################
+#method simulates generation of speed data by populating with real data from osmlr
+#and reporter results converted to fb output
+def createSpeedTiles(lengths, fileName, subTileSize, nextName, separate, segments):
+  #DEBUG
+  print 'createSpeedTiles ###############################################################################'
+
+  #find the minimum hour
+  minHour = min([int(hour) for k,v in segments.iteritems() for hour in v.keys()])
+  #DEBUG
+  print 'minHour=' + str(minHour)
+
+  #fake a segment for each entry in the osmlr
+  tile = None
+  nextTile = None
+  subTileCount = 0
+  first = True
+  for k, length in enumerate(lengths):
+    #its time to write a subtile
+    if k % subTileSize == 0:
+      #writing tile
+      if tile is not None:
+        write(fileName, subTileCount, tile, first or separate)
+        #writing next data if its separated
+        if nextTile is not tile:
+          write(nextName, subTileCount, nextTile, first or separate)
+        #dont delete the files from this point on
+        first = False
+        #if the subtiles are to be separate increment
+        if separate:
+          subTileCount += 1
+        #release all memory
+        del subtile
+        del tile
+        del nextSubtile
+        del nextTile
+      #set up new pbf messages to write into
+      tile, subtile, nextTile, nextSubtile = next(k, len(lengths), nextName, subTileSize)
+
+
+    #continue making fake data
+    #subtile.referenceSpeeds.append(random.randint(20, 100) if length > 0 else 0)
+
+    #do all the entries
+    for i in range(0 + minHour, subtile.unitSize/subtile.entrySize + minHour):
+      #if we have data get it
+      nextSegments = segments[k][i] if k in segments and i in segments[k] else None
+      #compute the averages
+      if nextSegments:
+        for nid, n in nextSegments.iteritems():
+          n['duration'] /= float(n['count'])
+          n['queue'] /= float(n['count'])          
+      
+      #any time its a dead one we put in 0's for the data
+      minDuration = min([n['duration'] for nid, n in nextSegments.iteritems()]) if nextSegments else 0
+      # assign speed as kph instead of meters per sec
+      subtile.speeds.append(int(round(length / minDuration * 3.6 if nextSegments else 0)))
+      #DEBUG
+      if nextSegments:
+        print 'segmentId=' + str((k<<25)|(args.tile_id<<3)|args.level) + ' | nextSegments=' + str(nextSegments) + ' | length=' + str(length) + ' | minDuration=' + str(minDuration) + ' | speed=' + str((int(round(length / minDuration * 3.6 if nextSegments else 0))))
+      #subtile.speedVariances.append(TODO if nextSegments else 0)
+      subtile.prevalences.append(prevalance(sum([n['count'] for nid, n in nextSegments.iteritems()]) if nextSegments else 0))
+      subtile.nextSegmentIndices.append(len(subtile.nextSegmentIds) if 1 else 0)
+      subtile.nextSegmentCounts.append(len(nextSegments) if nextSegments else 0)
+
+      if nextSegments:
+        for nid, n in nextSegments.iteritems():
+          nextSubtile.nextSegmentIds.append(nid)
+          nextSubtile.nextSegmentDelays.append(int(round(n['duration'] - minDuration)))
+          #nextSubtile.nextSegmentDelayVariances.append(TODO)
+          nextSubtile.nextSegmentQueueLengths.append(int(round(n['queue'])))
+          #nextSubtile.nextSegmentQueueLengthVariances.append(TODO)
+
+  #get the last one written
+  if tile is not None:
+    write(fileName, subTileCount, tile, first or separate)
+    if nextTile is not tile:
+      write(nextName, subTileCount, nextTile, first or separate)
+    del subtile
+    del tile
+    del nextSubtile
+    del nextTile
+
+
+#Read in OSMLR & flatbuffer tiles from the datastore output in AWS to read in the lengths, speeds & next segment ids and generate the segment speed files in proto output format
 if __name__ == "__main__":
   parser = argparse.ArgumentParser(description='Generate fake speed tiles', formatter_class=argparse.ArgumentDefaultsHelpFormatter)
   parser.add_argument('--output-prefix', type=str, help='The file name prefix to give to output tiles. The first tile will have no suffix, after that they will be numbered starting at 1. e.g. tile.spd, tile.spd.1, tile.spd.2', default='tile.spd')
@@ -150,15 +332,27 @@ if __name__ == "__main__":
   parser.add_argument('--no-separate-subtiles', help='If present all subtiles will be in the same tile', action='store_true')
   parser.add_argument('--separate-next-segments-prefix', type=str, help='The prefix for the next segments output tiles if they should be separated from the primary speed entries. If omitted they will not be separate')
   parser.add_argument('--osmlr', type=str, help='The osmlr tile containing the relevant segments definitions')
-  parser.add_argument('flatbuffers', metavar='N', type=str, nargs='+', help='The flatbuffer tiles for the time period in question')
+  parser.add_argument('--fb-path', type=str, help='The flatbuffer tile path to load the files necessary for the time period given')
+  parser.add_argument('--level', type=int, help='The level to target')
+  parser.add_argument('--tile-id', type=int, help='The tile id to target')
   #TODO: add the time period argument
-  #TODO: add the tile id argument until we can get it from osmlr
   args = parser.parse_args()
 
-  print 'getting osmlr segments'
-  ids = getIds(args.osmlr)
-  
-  print 'simulating 1 week of speeds at hourly intervals for ' + str(len(ids)) + ' segments'
-  simulate(ids, args.output_prefix, args.max_segments, args.separate_next_segments_prefix, not args.no_separate_subtiles)
+  print 'getting osmlr lengths'
+  lengths = getLengths(args.osmlr)
+
+  print 'getting speed averages from fb Histogram'
+  segments = getSegments(args.fb_path, args.level, args.tile_id, lengths)
+
+  #DEBUG
+  print 'loop over segments ###############################################################################'
+  for k,v in segments.iteritems():
+    print k, v
+  print 'DONE loop over segments ###############################################################################'
+
+  #print 'simulating 1 week of speeds at hourly intervals for ' + str(len(lengths)) + ' segments'
+  #simulate(lengths, args.output_prefix, args.max_segments, args.separate_next_segments_prefix, not args.no_separate_subtiles)
+  print 'creating 1 week of speeds at hourly intervals for ' + str(len(lengths)) + ' segments'
+  createSpeedTiles(lengths, args.output_prefix, args.max_segments, args.separate_next_segments_prefix, not args.no_separate_subtiles, segments)
 
   print 'done'
