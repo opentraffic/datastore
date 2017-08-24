@@ -18,7 +18,7 @@ def upload(time_key, s3_datastore_bucket):
     print('[INFO] uploading data to bucket: ' + s3_datastore_bucket)
     s3_client = boto3.client('s3')
 
-    uploads = ['.fb', '.orc']
+    uploads = ['.fb']
     for file_extension in uploads:
         key = time_key + file_extension
 
@@ -36,11 +36,10 @@ def convert(tile_index, time_bucket, tile_id):
     sys.stdout.flush()
 
     fb_out_file = str(tile_index) + '.fb'
-    orc_out_file = str(tile_index) + '.orc'
 
     # TODO: no idea if the exception handling works
     try:
-        subprocess.check_output(['datastore-histogram-tile-writer', '-b', str(time_bucket), '-t', str(tile_id), '-v', '-f', fb_out_file, '-o', orc_out_file] + glob.glob('*'), timeout=180, universal_newlines=True, stderr=subprocess.STDOUT)
+        subprocess.check_output(['datastore-histogram-tile-writer', '-b', str(time_bucket), '-t', str(tile_id), '-v', '-f', fb_out_file] + glob.glob('*'), timeout=180, universal_newlines=True, stderr=subprocess.STDOUT)
     except subprocess.CalledProcessError as tilewriter:
         print('[ERROR] Failed running datastore-histogram-tile-writer:', tilewriter.returncode, tilewriter.output)
         sys.exit([tilewriter.returncode])
