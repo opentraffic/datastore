@@ -280,7 +280,7 @@ def createSpeedTiles(lengths, fileName, subTileSize, nextName, separate, segment
       tile, subtile, nextTile, nextSubtile = next(k, len(lengths), nextName, subTileSize)
 
 
-    #continue making fake data
+    #TODO
     #subtile.referenceSpeeds.append(random.randint(20, 100) if length > 0 else 0)
 
     #do all the entries
