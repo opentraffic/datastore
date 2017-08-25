@@ -291,16 +291,26 @@ def createSpeedTiles(lengths, fileName, subTileSize, nextName, separate, segment
       if nextSegments:
         for nid, n in nextSegments.iteritems():
           n['duration'] /= float(n['count'])
-          n['queue'] /= float(n['count'])          
-      
+          n['queue'] /= float(n['count'])
+
+      # Compute the speed and speed variance
+      if nextSegments:
+        # create speed list in kph instead of meters per second
+        speeds = [int(round(length / n['duration'] * 3.6)) for nid, n in nextSegments.iteritems()]
+        # calculate mean speed
+        meanSpeed = sum(speeds) / float(len(speeds))
+        # calculate speed variance
+        varSpeed = int(round(sum([(xi - meanSpeed)**2 for xi in speeds]) / len(speeds)))
+    
       #any time its a dead one we put in 0's for the data
       minDuration = min([n['duration'] for nid, n in nextSegments.iteritems()]) if nextSegments else 0
-      # assign speed as kph instead of meters per sec
-      subtile.speeds.append(int(round(length / minDuration * 3.6 if nextSegments else 0)))
+      # assign speed in kph
+      subtile.speeds.append(max(speeds) if nextSegments else 0)
+
       #DEBUG
       if nextSegments:
-        print 'segmentId=' + str((k<<25)|(args.tile_id<<3)|args.level) + ' | nextSegments=' + str(nextSegments) + ' | length=' + str(length) + ' | minDuration=' + str(minDuration) + ' | speed=' + str((int(round(length / minDuration * 3.6 if nextSegments else 0))))
-      #subtile.speedVariances.append(TODO if nextSegments else 0)
+        print 'segmentId=' + str((k<<25)|(args.tile_id<<3)|args.level) + ' | nextSegments=' + str(nextSegments) + ' | length=' + str(length) + ' | minDuration=' + str(minDuration) + ' | speed=' + str(max(speeds)) + ' | varSpeed=' + str(varSpeed)
+      subtile.speedVariances.append(varSpeed if nextSegments else 0)
       subtile.prevalences.append(prevalance(sum([n['count'] for nid, n in nextSegments.iteritems()]) if nextSegments else 0))
       subtile.nextSegmentIndices.append(len(subtile.nextSegmentIds) if 1 else 0)
       subtile.nextSegmentCounts.append(len(nextSegments) if nextSegments else 0)
