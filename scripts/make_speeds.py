@@ -91,7 +91,6 @@ def getSegments(path, target_level, target_tile_id, lengths):
 ###############################################################################
 def processSegment(segments, segment, length):
   for i in range(0, segment.EntriesLength()):
-    #TODO: measure variance
     e = segment.Entries(i)
     #get the right segment
     if segment.SegmentId() not in segments:
@@ -241,6 +240,14 @@ def prevalance(val):
   return int(round(val / 10.0) * 10)
 
 ###############################################################################
+# calculate and return the variance of the specified list
+def variance(items):
+  # calculate mean
+  mean = sum(items) / float(len(items))
+  # calculate and return the variance
+  return int(round(sum([(xi - mean)**2 for xi in items]) / len(items)))
+
+###############################################################################
 #method simulates generation of speed data by populating with real data from osmlr
 #and reporter results converted to fb output
 def createSpeedTiles(lengths, fileName, subTileSize, nextName, separate, segments):
@@ -293,15 +300,10 @@ def createSpeedTiles(lengths, fileName, subTileSize, nextName, separate, segment
           n['duration'] /= float(n['count'])
           n['queue'] /= float(n['count'])
 
-      # Compute the speed and speed variance
+      # create speed list in kph instead of meters per second
       if nextSegments:
-        # create speed list in kph instead of meters per second
         speeds = [int(round(length / n['duration'] * 3.6)) for nid, n in nextSegments.iteritems()]
-        # calculate mean speed
-        meanSpeed = sum(speeds) / float(len(speeds))
-        # calculate speed variance
-        varSpeed = int(round(sum([(xi - meanSpeed)**2 for xi in speeds]) / len(speeds)))
-    
+
       #any time its a dead one we put in 0's for the data
       minDuration = min([n['duration'] for nid, n in nextSegments.iteritems()]) if nextSegments else 0
       # assign speed in kph
@@ -309,17 +311,21 @@ def createSpeedTiles(lengths, fileName, subTileSize, nextName, separate, segment
 
       #DEBUG
       if nextSegments:
-        print 'segmentId=' + str((k<<25)|(args.tile_id<<3)|args.level) + ' | nextSegments=' + str(nextSegments) + ' | length=' + str(length) + ' | minDuration=' + str(minDuration) + ' | speed=' + str(max(speeds)) + ' | varSpeed=' + str(varSpeed)
-      subtile.speedVariances.append(varSpeed if nextSegments else 0)
+        print 'segmentId=' + str((k<<25)|(args.tile_id<<3)|args.level) + ' | nextSegments=' + str(nextSegments) + ' | length=' + str(length) + ' | minDuration=' + str(minDuration) + ' | speed=' + str(max(speeds)) + ' | varSpeed=' + str(variance(speeds))
+
+      subtile.speedVariances.append(variance(speeds) if nextSegments else 0)
       subtile.prevalences.append(prevalance(sum([n['count'] for nid, n in nextSegments.iteritems()]) if nextSegments else 0))
       subtile.nextSegmentIndices.append(len(subtile.nextSegmentIds) if 1 else 0)
       subtile.nextSegmentCounts.append(len(nextSegments) if nextSegments else 0)
 
       if nextSegments:
+        # create delay list
+        delays = [int(round(n['duration'] - minDuration)) for nid, n in nextSegments.iteritems()]
+        # assign next segment attributes
         for nid, n in nextSegments.iteritems():
           nextSubtile.nextSegmentIds.append(nid)
           nextSubtile.nextSegmentDelays.append(int(round(n['duration'] - minDuration)))
-          #nextSubtile.nextSegmentDelayVariances.append(TODO)
+          nextSubtile.nextSegmentDelayVariances.append(variance(delays))
           nextSubtile.nextSegmentQueueLengths.append(int(round(n['queue'])))
           #nextSubtile.nextSegmentQueueLengthVariances.append(TODO)
 
