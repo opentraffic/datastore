@@ -321,13 +321,15 @@ def createSpeedTiles(lengths, fileName, subTileSize, nextName, separate, segment
       if nextSegments:
         # create delay list
         delays = [int(round(n['duration'] - minDuration)) for nid, n in nextSegments.iteritems()]
+        # create queue length list
+        queueLengths = [float(n['queue']) for nid, n in nextSegments.iteritems()]
         # assign next segment attributes
         for nid, n in nextSegments.iteritems():
           nextSubtile.nextSegmentIds.append(nid)
           nextSubtile.nextSegmentDelays.append(int(round(n['duration'] - minDuration)))
           nextSubtile.nextSegmentDelayVariances.append(variance(delays))
           nextSubtile.nextSegmentQueueLengths.append(int(round(n['queue'])))
-          #nextSubtile.nextSegmentQueueLengthVariances.append(TODO)
+          nextSubtile.nextSegmentQueueLengthVariances.append(variance(queueLengths))
 
   #get the last one written
   if tile is not None:
