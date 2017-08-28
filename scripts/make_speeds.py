@@ -4,6 +4,7 @@ import random
 import os
 import errno
 import sys
+import logging as log
 
 try:
   import segment_pb2
@@ -64,20 +65,19 @@ def unquantise(val):
 
 ###############################################################################
 def getSegments(path, target_level, target_tile_id, lengths):
-  #DEBUG
-  print 'getSegments ###############################################################################'
-  print 'Looking for level=' + str(target_level) + ' and tile_id=' + str(target_tile_id) + ' here:' + path
+  log.debug('getSegments ###############################################################################')
+  log.debug('Looking for level=' + str(target_level) + ' and tile_id=' + str(target_tile_id) + ' here:' + path)
   segments = {}
   for root, dirs, files in os.walk(path):
     for file in files:
       if (root + os.sep + file).endswith('.fb'):
         with open(root + os.sep + file, 'rb') as filehandle:
-          print 'Loading ' + (root + os.sep + file) + '...'
+          log.info('Loading ' + (root + os.sep + file) + '...')
           hist = Histogram.GetRootAsHistogram(bytearray(filehandle.read()), 0)
         level = get_level(hist.TileId())
         tile_index = get_tile_index(hist.TileId())
         if (level == target_level) and (tile_index == target_tile_id):
-          print 'Processing ' + (root + os.sep + file) + '...'
+          log.info('Processing ' + (root + os.sep + file) + '...')
           #for each segment
           for i in range(0, hist.SegmentsLength()):
             segment = hist.Segments(i)
@@ -236,7 +236,7 @@ def simulate(lengths, fileName, subTileSize, nextName, separate):
 
 ###############################################################################
 #TODO: figure out how to measure this for real
-def prevalance(val):
+def prevalence(val):
   return int(round(val / 10.0) * 10)
 
 ###############################################################################
@@ -251,13 +251,11 @@ def variance(items):
 #method simulates generation of speed data by populating with real data from osmlr
 #and reporter results converted to fb output
 def createSpeedTiles(lengths, fileName, subTileSize, nextName, separate, segments):
-  #DEBUG
-  print 'createSpeedTiles ###############################################################################'
+  log.debug('createSpeedTiles ###############################################################################')
 
   #find the minimum hour
   minHour = min([int(hour) for k,v in segments.iteritems() for hour in v.keys()])
-  #DEBUG
-  print 'minHour=' + str(minHour)
+  log.debug('minHour=' + str(minHour))
 
   #fake a segment for each entry in the osmlr
   tile = None
@@ -309,12 +307,11 @@ def createSpeedTiles(lengths, fileName, subTileSize, nextName, separate, segment
       # assign speed in kph
       subtile.speeds.append(max(speeds) if nextSegments else 0)
 
-      #DEBUG
       if nextSegments:
-        print 'segmentId=' + str((k<<25)|(args.tile_id<<3)|args.level) + ' | nextSegments=' + str(nextSegments) + ' | length=' + str(length) + ' | minDuration=' + str(minDuration) + ' | speed=' + str(max(speeds)) + ' | varSpeed=' + str(variance(speeds))
+        log.debug('segmentId=' + str((k<<25)|(args.tile_id<<3)|args.level) + ' | nextSegments=' + str(nextSegments) + ' | length=' + str(length) + ' | minDuration=' + str(minDuration) + ' | speed=' + str(max(speeds)) + ' | varSpeed=' + str(variance(speeds)))
 
       subtile.speedVariances.append(variance(speeds) if nextSegments else 0)
-      subtile.prevalences.append(prevalance(sum([n['count'] for nid, n in nextSegments.iteritems()]) if nextSegments else 0))
+      subtile.prevalences.append(prevalence(sum([n['count'] for nid, n in nextSegments.iteritems()]) if nextSegments else 0))
       subtile.nextSegmentIndices.append(len(subtile.nextSegmentIds) if 1 else 0)
       subtile.nextSegmentCounts.append(len(nextSegments) if nextSegments else 0)
 
@@ -353,24 +350,32 @@ if __name__ == "__main__":
   parser.add_argument('--fb-path', type=str, help='The flatbuffer tile path to load the files necessary for the time period given')
   parser.add_argument('--level', type=int, help='The level to target')
   parser.add_argument('--tile-id', type=int, help='The tile id to target')
+  parser.add_argument('--verbose', '-v', help='Turn on verbose output i.e. DEBUG level logging', action='store_true')
   #TODO: add the time period argument
   args = parser.parse_args()
 
-  print 'getting osmlr lengths'
+  if args.verbose:
+    log.basicConfig(format='%(asctime)s - %(levelname)s - %(message)s', stream=sys.stdout, level=log.DEBUG)
+    log.info('Verbose output.')
+  else:
+    log.basicConfig(format='%(asctime)s - %(levelname)s - %(message)s', stream=sys.stdout)
+
+  log.info('getting osmlr lengths')
   lengths = getLengths(args.osmlr)
 
-  print 'getting speed averages from fb Histogram'
+  log.info('getting speed averages from fb Histogram')
   segments = getSegments(args.fb_path, args.level, args.tile_id, lengths)
 
-  #DEBUG
-  print 'loop over segments ###############################################################################'
-  for k,v in segments.iteritems():
-    print k, v
-  print 'DONE loop over segments ###############################################################################'
+  if args.verbose:
+    log.debug('loop over segments ###############################################################################')
+    for k,v in segments.iteritems():
+      log.debug('k=' + str(k) + ' | v=' + str(v))
+    log.debug('DONE loop over segments ###############################################################################')
 
   #print 'simulating 1 week of speeds at hourly intervals for ' + str(len(lengths)) + ' segments'
   #simulate(lengths, args.output_prefix, args.max_segments, args.separate_next_segments_prefix, not args.no_separate_subtiles)
-  print 'creating 1 week of speeds at hourly intervals for ' + str(len(lengths)) + ' segments'
+  log.info('creating 1 week of speeds at hourly intervals for ' + str(len(lengths)) + ' segments')
   createSpeedTiles(lengths, args.output_prefix, args.max_segments, args.separate_next_segments_prefix, not args.no_separate_subtiles, segments)
 
-  print 'done'
+  log.info('done')
+
