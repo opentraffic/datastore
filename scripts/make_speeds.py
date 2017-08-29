@@ -149,7 +149,7 @@ def write(name, count, tile, should_remove):
     f.write(tile.SerializeToString())
 
 ###############################################################################
-def next(startIndex, total, nextName, subtileSegments):
+def next(startIndex, total, nextName, subtileSegments, target_level, target_tile_id):
   tile = speedtile_pb2.SpeedTile()
   subtile = tile.subtiles.add()
   if nextName:
@@ -160,8 +160,8 @@ def next(startIndex, total, nextName, subtileSegments):
     nextSubtile = subtile
   for st in [subtile, nextSubtile]:
     #geo stuff
-    st.level = args.level      #TODO: get from osmlr
-    st.index = args.tile_id   #TODO: get from osmlr
+    st.level = target_level     #TODO: get from osmlr
+    st.index = target_tile_id   #TODO: get from osmlr
     st.startSegmentIndex = startIndex
     st.totalSegments = total
     st.subtileSegments = subtileSegments
@@ -187,7 +187,7 @@ def variance(items):
   return int(round(sum([(xi - mean)**2 for xi in items]) / len(items)))
 
 ###############################################################################
-def createSpeedTiles(lengths, fileName, subTileSize, nextName, separate, segments):
+def createSpeedTiles(lengths, fileName, subTileSize, nextName, separate, segments, target_level, target_tile_id):
   log.debug('createSpeedTiles ###############################################################################')
 
   #find the minimum hour
@@ -219,7 +219,7 @@ def createSpeedTiles(lengths, fileName, subTileSize, nextName, separate, segment
         del nextSubtile
         del nextTile
       #set up new pbf messages to write into
-      tile, subtile, nextTile, nextSubtile = next(k, len(lengths), nextName, subTileSize)
+      tile, subtile, nextTile, nextSubtile = next(k, len(lengths), nextName, subTileSize, target_level, target_tile_id)
 
 
     #TODO
@@ -245,7 +245,7 @@ def createSpeedTiles(lengths, fileName, subTileSize, nextName, separate, segment
       subtile.speeds.append(max(speeds) if nextSegments else 0)
 
       if nextSegments:
-        log.debug('segmentId=' + str((k<<25)|(args.tile_id<<3)|args.level) + ' | nextSegments=' + str(nextSegments) + ' | length=' + str(length) + ' | minDuration=' + str(minDuration) + ' | speed=' + str(max(speeds)) + ' | varSpeed=' + str(variance(speeds)))
+        log.debug('segmentId=' + str((k<<25)|(target_tile_id<<3)|target_level) + ' | nextSegments=' + str(nextSegments) + ' | length=' + str(length) + ' | minDuration=' + str(minDuration) + ' | speed=' + str(max(speeds)) + ' | varSpeed=' + str(variance(speeds)))
 
       subtile.speedVariances.append(variance(speeds) if nextSegments else 0)
       subtile.prevalences.append(prevalence(sum([n['count'] for nid, n in nextSegments.iteritems()]) if nextSegments else 0))
@@ -309,7 +309,7 @@ if __name__ == "__main__":
     log.debug('DONE loop over segments ###############################################################################')
 
   print 'creating 1 week of speeds at hourly intervals for ' + str(len(lengths)) + ' segments'
-  createSpeedTiles(lengths, args.output_prefix, args.max_segments, args.separate_next_segments_prefix, not args.no_separate_subtiles, segments)
+  createSpeedTiles(lengths, args.output_prefix, args.max_segments, args.separate_next_segments_prefix, not args.no_separate_subtiles, segments, args.level, args.tile_id)
 
   print 'done'
 
