@@ -72,12 +72,12 @@ def getSegments(path, target_level, target_tile_id, lengths):
     for file in files:
       if (root + os.sep + file).endswith('.fb'):
         with open(root + os.sep + file, 'rb') as filehandle:
-          log.info('Loading ' + (root + os.sep + file) + '...')
+          print 'Loading ' + (root + os.sep + file) + '...'
           hist = Histogram.GetRootAsHistogram(bytearray(filehandle.read()), 0)
         level = get_level(hist.TileId())
         tile_index = get_tile_index(hist.TileId())
         if (level == target_level) and (tile_index == target_tile_id):
-          log.info('Processing ' + (root + os.sep + file) + '...')
+          print 'Processing ' + (root + os.sep + file) + '...'
           #for each segment
           for i in range(0, hist.SegmentsLength()):
             segment = hist.Segments(i)
@@ -356,14 +356,13 @@ if __name__ == "__main__":
 
   if args.verbose:
     log.basicConfig(format='%(asctime)s - %(levelname)s - %(message)s', stream=sys.stdout, level=log.DEBUG)
-    log.info('Verbose output.')
   else:
     log.basicConfig(format='%(asctime)s - %(levelname)s - %(message)s', stream=sys.stdout)
 
-  log.info('getting osmlr lengths')
+  print 'getting osmlr lengths'
   lengths = getLengths(args.osmlr)
 
-  log.info('getting speed averages from fb Histogram')
+  print 'getting speed averages from fb Histogram'
   segments = getSegments(args.fb_path, args.level, args.tile_id, lengths)
 
   if args.verbose:
@@ -374,8 +373,8 @@ if __name__ == "__main__":
 
   #print 'simulating 1 week of speeds at hourly intervals for ' + str(len(lengths)) + ' segments'
   #simulate(lengths, args.output_prefix, args.max_segments, args.separate_next_segments_prefix, not args.no_separate_subtiles)
-  log.info('creating 1 week of speeds at hourly intervals for ' + str(len(lengths)) + ' segments')
+  print 'creating 1 week of speeds at hourly intervals for ' + str(len(lengths)) + ' segments'
   createSpeedTiles(lengths, args.output_prefix, args.max_segments, args.separate_next_segments_prefix, not args.no_separate_subtiles, segments)
 
-  log.info('done')
+  print 'done'
 
