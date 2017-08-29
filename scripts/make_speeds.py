@@ -174,67 +174,6 @@ def next(startIndex, total, nextName, subtileSegments):
   return tile, subtile, nextTile, nextSubtile
 
 ###############################################################################
-#method simulates generation of speed data by populating with random data
-def simulate(lengths, fileName, subTileSize, nextName, separate):
-  random.seed(0)
-
-  #fake a segment for each entry in the osmlr
-  tile = None
-  nextTile = None
-  subTileCount = 0
-  first = True
-  for k, sid in enumerate(lengths):
-    #its time to write a subtile
-    if k % subTileSize == 0:
-      #writing tile
-      if tile is not None:
-        write(fileName, subTileCount, tile, first or separate)
-        #writing next data if its separated
-        if nextTile is not tile:
-          write(nextName, subTileCount, nextTile, first or separate)
-        #dont delete the files from this point on
-        first = False
-        #if the subtiles are to be separate increment
-        if separate:
-          subTileCount += 1
-        #release all memory
-        del subtile
-        del tile
-        del nextSubtile
-        del nextTile
-      #set up new pbf messages to write into
-      tile, subtile, nextTile, nextSubtile = next(k, len(lengths), nextName, subTileSize)
-
-    #continue making fake data
-    subtile.referenceSpeeds.append(random.randint(20, 100) if sid != -1 else 0)
-    #dead osmlr ids have no next segment data
-    nextIds = [ (random.randint(0,2**21)<<25)|(subtile.index<<3)|subtile.level for i in range(0, random.randint(0,3)) ] if sid != -1 else []
-    #do all the entries
-    for i in range(0, subtile.unitSize/subtile.entrySize):
-      #any time its a dead one we put in 0's for the data
-      subtile.speeds.append(random.randint(20, 100) if sid != -1 else 0)
-      subtile.speedVariances.append(int(random.uniform(0,127.5) * 2 if sid != -1 else 0))
-      subtile.prevalences.append(random.randint(1, 100) if sid != -1 else 0)
-      subtile.nextSegmentIndices.append(len(subtile.nextSegmentIds) if sid != -1 else 0)
-      subtile.nextSegmentCounts.append(len(nextIds) if sid != -1 else 0)
-      for nid in nextIds:
-        nextSubtile.nextSegmentIds.append(nid)
-        nextSubtile.nextSegmentDelays.append(random.randint(0,30))
-        nextSubtile.nextSegmentDelayVariances.append(int(random.uniform(0,100)))
-        nextSubtile.nextSegmentQueueLengths.append(random.randint(0,200))
-        nextSubtile.nextSegmentQueueLengthVariances.append(int(random.uniform(0,200)))
-
-  #get the last one written
-  if tile is not None:
-    write(fileName, subTileCount, tile, first or separate)
-    if nextTile is not tile:
-      write(nextName, subTileCount, nextTile, first or separate)
-    del subtile
-    del tile
-    del nextSubtile
-    del nextTile
-
-###############################################################################
 #TODO: figure out how to measure this for real
 def prevalence(val):
   return int(round(val / 10.0) * 10)
@@ -248,8 +187,6 @@ def variance(items):
   return int(round(sum([(xi - mean)**2 for xi in items]) / len(items)))
 
 ###############################################################################
-#method simulates generation of speed data by populating with real data from osmlr
-#and reporter results converted to fb output
 def createSpeedTiles(lengths, fileName, subTileSize, nextName, separate, segments):
   log.debug('createSpeedTiles ###############################################################################')
 
@@ -371,8 +308,6 @@ if __name__ == "__main__":
       log.debug('k=' + str(k) + ' | v=' + str(v))
     log.debug('DONE loop over segments ###############################################################################')
 
-  #print 'simulating 1 week of speeds at hourly intervals for ' + str(len(lengths)) + ' segments'
-  #simulate(lengths, args.output_prefix, args.max_segments, args.separate_next_segments_prefix, not args.no_separate_subtiles)
   print 'creating 1 week of speeds at hourly intervals for ' + str(len(lengths)) + ' segments'
   createSpeedTiles(lengths, args.output_prefix, args.max_segments, args.separate_next_segments_prefix, not args.no_separate_subtiles, segments)
 
