@@ -53,8 +53,9 @@ def download_data(keys_array, s3_reporter_bucket, s3_datastore_bucket, time_key)
     for key in keys_array:
         # download the new reporter data
         object_id = key.rsplit('/', 1)[-1]
+        object_last_modified = key.last_modified
 
-        print('[INFO] downloading ' + object_id + ' from s3 bucket: ' + s3_reporter_bucket)
+        print('[INFO] downloading ' + object_id + ' with last modified time of ' + object_last_modified + ' from s3 bucket: ' + s3_reporter_bucket)
         try:
             s3_resource.Object(s3_reporter_bucket, key).download_file(object_id)
         except ClientError as e:
