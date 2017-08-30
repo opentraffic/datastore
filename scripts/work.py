@@ -58,7 +58,7 @@ def download_data(keys_array, s3_reporter_bucket, s3_datastore_bucket, time_key)
             object = s3_resource.Object(s3_reporter_bucket, key)
 
             object.download_file(object_id)
-            last_modified = object.last_modified
+            last_modified = str(object.last_modified)
 
             print('[INFO] downloaded ' + object_id + ' with last modified timestamp ' + last_modified + ' from s3 bucket: ' + s3_reporter_bucket)
         except ClientError as e:
