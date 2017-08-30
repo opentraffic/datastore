@@ -54,9 +54,13 @@ def download_data(keys_array, s3_reporter_bucket, s3_datastore_bucket, time_key)
         # download the new reporter data
         object_id = key.rsplit('/', 1)[-1]
 
-        print('[INFO] downloading ' + object_id + ' from s3 bucket: ' + s3_reporter_bucket)
         try:
-            s3_resource.Object(s3_reporter_bucket, key).download_file(object_id)
+            object = s3_resource.Object(s3_reporter_bucket, key)
+
+            object.download_file(object_id)
+            last_modified = object.last_modified
+
+            print('[INFO] downloaded ' + object_id + ' with last modified timestamp ' + last_modified + ' from s3 bucket: ' + s3_reporter_bucket)
         except ClientError as e:
             print('[ERROR] failed to download key: %s' % e)
 
