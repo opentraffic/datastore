@@ -47,7 +47,6 @@ def get_segment_index(segment_id):
 ###############################################################################
 #the step sizes, which increase as the high 2 bits increase to provide variable precision.
 STEP_SIZES = [ 1, 2, 5, 10 ]#offset of each step, derived from the above.
-#STEP_OFFSET[i] = STEP_OFFSET[i-1] + 2^6 * STEP_SIZES[i-1]
 STEP_OFFSETS = [ 0, 64, 192, 512, 1152 ]
 
 def unquantise(val):
@@ -149,7 +148,7 @@ def write(name, count, tile, should_remove):
     f.write(tile.SerializeToString())
 
 ###############################################################################
-def next(startIndex, total, nextName, subtileSegments, target_level, target_tile_id):
+def next(startIndex, total, nextName, subtileSegments, extractInfo):
   tile = speedtile_pb2.SpeedTile()
   subtile = tile.subtiles.add()
   if nextName:
@@ -160,17 +159,17 @@ def next(startIndex, total, nextName, subtileSegments, target_level, target_tile
     nextSubtile = subtile
   for st in [subtile, nextSubtile]:
     #geo stuff
-    st.level = target_level     #TODO: get from osmlr
-    st.index = target_tile_id   #TODO: get from osmlr
+    st.level = extractInfo['level']   #TODO: get from osmlr
+    st.index = extractInfo['index']   #TODO: get from osmlr
     st.startSegmentIndex = startIndex
     st.totalSegments = total
     st.subtileSegments = subtileSegments
     #time stuff
-    st.rangeStart = 1483228800 #TODO: get from input
-    st.rangeEnd = 1483833600   #TODO: get from input
-    st.unitSize = 604800       #TODO: get from input
-    st.entrySize = 3600        #TODO: get from input
-    st.description = '168 ordinal hours of week 0 of year 2017' #TODO: get from input
+    st.rangeStart = extractInfo['rangeStart']
+    st.rangeEnd = extractInfo['rangeEnd']
+    st.unitSize = extractInfo['unitSize']
+    st.entrySize = extractInfo['entrySize']
+    st.description = extractInfo['description']
   return tile, subtile, nextTile, nextSubtile
 
 ###############################################################################
@@ -187,7 +186,7 @@ def variance(items):
   return int(round(sum([(xi - mean)**2 for xi in items]) / len(items)))
 
 ###############################################################################
-def createSpeedTiles(lengths, fileName, subTileSize, nextName, separate, segments, target_level, target_tile_id):
+def createSpeedTiles(lengths, fileName, subTileSize, nextName, separate, segments, extractInfo):
   log.debug('createSpeedTiles ###############################################################################')
 
   #find the minimum hour
@@ -219,7 +218,7 @@ def createSpeedTiles(lengths, fileName, subTileSize, nextName, separate, segment
         del nextSubtile
         del nextTile
       #set up new pbf messages to write into
-      tile, subtile, nextTile, nextSubtile = next(k, len(lengths), nextName, subTileSize, target_level, target_tile_id)
+      tile, subtile, nextTile, nextSubtile = next(k, len(lengths), nextName, subTileSize, extractInfo)
 
 
     #TODO
@@ -245,7 +244,7 @@ def createSpeedTiles(lengths, fileName, subTileSize, nextName, separate, segment
       subtile.speeds.append(max(speeds) if nextSegments else 0)
 
       if nextSegments:
-        log.debug('segmentId=' + str((k<<25)|(target_tile_id<<3)|target_level) + ' | nextSegments=' + str(nextSegments) + ' | length=' + str(length) + ' | minDuration=' + str(minDuration) + ' | speed=' + str(max(speeds)) + ' | varSpeed=' + str(variance(speeds)))
+        log.debug('segmentId=' + str((k<<25)|(extractInfo['index']<<3)|extractInfo['level']) + ' | nextSegments=' + str(nextSegments) + ' | length=' + str(length) + ' | minDuration=' + str(minDuration) + ' | speed=' + str(max(speeds)) + ' | varSpeed=' + str(variance(speeds)))
 
       subtile.speedVariances.append(variance(speeds) if nextSegments else 0)
       subtile.prevalences.append(prevalence(sum([n['count'] for nid, n in nextSegments.iteritems()]) if nextSegments else 0))
@@ -278,21 +277,44 @@ def createSpeedTiles(lengths, fileName, subTileSize, nextName, separate, segment
 
 #Read in OSMLR & flatbuffer tiles from the datastore output in AWS to read in the lengths, speeds & next segment ids and generate the segment speed files in proto output format
 if __name__ == "__main__":
-  parser = argparse.ArgumentParser(description='Generate fake speed tiles', formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+  parser = argparse.ArgumentParser(description='Generate speed tiles', formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+  parser.add_argument('--osmlr', type=str, help='The osmlr tile containing the relevant segments definitions', required=True)
+  parser.add_argument('--fb-path', type=str, help='The flatbuffer tile path to load the files necessary for the time period given', required=True)
   parser.add_argument('--output-prefix', type=str, help='The file name prefix to give to output tiles. The first tile will have no suffix, after that they will be numbered starting at 1. e.g. tile.spd, tile.spd.1, tile.spd.2', default='tile.spd')
   parser.add_argument('--max-segments', type=int, help='The maximum number of segments to have in a single subtile message', default=10000)
   parser.add_argument('--no-separate-subtiles', help='If present all subtiles will be in the same tile', action='store_true')
   parser.add_argument('--separate-next-segments-prefix', type=str, help='The prefix for the next segments output tiles if they should be separated from the primary speed entries. If omitted they will not be separate')
-  parser.add_argument('--osmlr', type=str, help='The osmlr tile containing the relevant segments definitions')
-  parser.add_argument('--fb-path', type=str, help='The flatbuffer tile path to load the files necessary for the time period given')
-  parser.add_argument('--level', type=int, help='The level to target')
-  parser.add_argument('--tile-id', type=int, help='The tile id to target')
+  parser.add_argument('--time-range-start', type=int, help='The epoch start time (inclusive) in seconds', required=True)
+  parser.add_argument('--time-range-end', type=int, help='The epoch end time (exclusive) in seconds', required=True)
+  parser.add_argument('--time-unit-size', type=int, help='The target time range in seconds, a week would be 604800', required=True)
+  parser.add_argument('--time-entry-size', type=int, help='The target time range granularity in seconds, an hour would be 3600', required=True)
+  parser.add_argument('--time-range-description', type=str, help='The text describing the time period this run covers', required=True)
+  parser.add_argument('--level', type=int, help='The level to target', required=True)
+  parser.add_argument('--tile-id', type=int, help='The tile id to target', required=True)
   parser.add_argument('--verbose', '-v', help='Turn on verbose output i.e. DEBUG level logging', action='store_true')
-  #TODO: add the time period argument
+
+  # parse the arguments
   args = parser.parse_args()
+
+  # set the extract info from the specified arguments
+  extractInfo = {}
+  extractInfo['rangeStart'] = args.time_range_start
+  extractInfo['rangeEnd'] = args.time_range_end
+  extractInfo['unitSize'] = args.time_unit_size
+  extractInfo['entrySize'] = args.time_entry_size
+  extractInfo['description'] = args.time_range_description
+  extractInfo['level'] = args.level
+  extractInfo['index'] = args.tile_id
 
   if args.verbose:
     log.basicConfig(format='%(asctime)s - %(levelname)s - %(message)s', stream=sys.stdout, level=log.DEBUG)
+    log.debug('rangeStart=' + str(extractInfo['rangeStart']))
+    log.debug('rangeEnd=' + str(extractInfo['rangeEnd']))
+    log.debug('unitSize=' + str(extractInfo['unitSize']))
+    log.debug('entrySize=' + str(extractInfo['entrySize']))
+    log.debug('description=' + extractInfo['description'])
+    log.debug('level=' + str(extractInfo['level']))
+    log.debug('index=' + str(extractInfo['index']))
   else:
     log.basicConfig(format='%(asctime)s - %(levelname)s - %(message)s', stream=sys.stdout)
 
@@ -309,7 +331,7 @@ if __name__ == "__main__":
     log.debug('DONE loop over segments ###############################################################################')
 
   print 'creating 1 week of speeds at hourly intervals for ' + str(len(lengths)) + ' segments'
-  createSpeedTiles(lengths, args.output_prefix, args.max_segments, args.separate_next_segments_prefix, not args.no_separate_subtiles, segments, args.level, args.tile_id)
+  createSpeedTiles(lengths, args.output_prefix, args.max_segments, args.separate_next_segments_prefix, not args.no_separate_subtiles, segments, extractInfo)
 
   print 'done'
 
