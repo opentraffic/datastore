@@ -20,6 +20,7 @@ except ImportError:
 ### segment0{refspdlist[hour0:avgspd, hour1:avgspd, hour2:avgspd, etc]} -> sort lo to hi, index in to get refspd20:int, refspd40:int, refspd60:int, refspd80:int
 ### segment1{refspdlist[hour0:avgspd, hour1:avgspd, hour2:avgspd, etc]}
 # get the avg speeds for a given segment for each hour (168 hr/day) over 52 weeks
+<<<<<<< HEAD
 def createAvgSpeedList(fileNameList):
   #each segment has its own list of speeds, we dont know how many segments for the avg speed list to start with
   speedListPerSegment = []
