@@ -35,17 +35,16 @@ def createAvgSpeedList(fileNameList):
     for subtile in spdtile.subtiles:
 
       #make sure that there are enough lists in the list for all segments
-      print 'total # of segments in subtile ' + str(subtile.totalSegments)
       print 'length of avg speed list per segment ' + str(len(speedListPerSegment))
       missing = len(speedListPerSegment) - subtile.totalSegments
       if missing > 0:
         speedListPerSegment.extend([ [] for i in range(0, missing) ])
  
-      print '# of speeds for a subtile ' + str(len(subtile.speeds))
+      print 'total # of segments ' + str(subtile.totalSegments) 
       for i, speed in enumerate(subtile.speeds):
-        if speed > 0:
-          print str(subtile.startSegmentIndex + i) + ',' +str(speed)
-          speedListPerSegment[subtile.startSegmentIndex + i].append(speed)
+        if speedListPerSegment[subtile.startSegmentIndex + i]:
+          if speed is not 0:
+            speedListPerSegment[subtile.startSegmentIndex + i].append(speed)
 
 
     #sort each list of speeds per segment
