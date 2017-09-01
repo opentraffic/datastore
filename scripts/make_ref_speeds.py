@@ -57,54 +57,35 @@ def createAvgSpeedList(fileNameList):
   return speedListPerSegment
   
 ###############################################################################
-  
-def remove(path):
-  try:
-    os.remove(path)
-  except OSError as e:
-    if e.errno != errno.ENOENT:
-      raise
-
-###############################################################################
-def write(path, name, tile):
-  print path + name  
-  with open(path + name, 'ab') as f:
-    f.write(tile.SerializeToString())
-
-###############################################################################
-
-def createReferenceSpeedTiles(path, fileName, avgspdlist):
-  #bucketize avg speeds into 20%, 40%, 60% and 80% reference speed buckets
-  size = len(avgspdlist)
-  p20 = avgspdlist[int(math.ceil((size * 20) / 100)) - 1]
-  p40 = avgspdlist[int(math.ceil((size * 40) / 100)) - 1]
-  p60 = avgspdlist[int(math.ceil((size * 60) / 100)) - 1]
-  p80 = avgspdlist[int(math.ceil((size * 80) / 100)) - 1]
-  
-  print ('for '+ fileName + ' :: reference speeds(20/40/60/80) :: ' + str(p20) + ',' + str(p40) + ',' + str(p60) + ',' + str(p80))
-  createRefSpeedTiles(path, fileName, p20, p40, p60, p80)
-  
-
-def createRefSpeedTiles(path, fileName, p20, p40, p60, p80):
+def createRefSpeedTile(path, fileName, avgspdlist):
   log.debug('createRefSpeedTiles ###############################################################################')
 
-  subtile=None
   tile = speedtile_pb2.SpeedTile()
-  subtile = tile.subtiles.add()
-  #calculate 4 ref speeds for each segment
-  subtile.referenceSpeed20.append(p20)
-  subtile.referenceSpeed40.append(p40)
-  subtile.referenceSpeed60.append(p60)
-  subtile.referenceSpeed80.append(p80)
+  st = tile.subtiles.add()
+  st.level = #TODO: get from osmlr
+  st.index = #TODO: get from osmlr
+  st.startSegmentIndex = 0
+  st.totalSegments = len(avgspdlist)
+  st.subtileSegments = len(avgspdlist)
+  #time stuff
+  st.rangeStart = #TODO: first second since epoch of first week you have data for
+  st.rangeEnd = #TODO: last second since epoch of last week you have data for
+  st.unitSize = st.rangeEnd - st.rangeStart
+  st.entrySize = st.unitSize
+  st.description = 'Reference speeds over 1 year from 08.2016 through 07.2017' #TODO: get this from range start and end
 
-  print subtile
 
-  #get the last one written
-  if subtile is not None:
-    write(path, fileName, subtile)
-    del subtile
-    del tile
+  #for each segment
+  for segment in avgspdlist:
+    size = len(segment)
+    st.referenceSpeed20(segment[round(size * .2)])
+    st.referenceSpeed40(segment[round(size * .2)])
+    st.referenceSpeed60(segment[round(size * .2)])
+    st.referenceSpeed80(segment[round(size * .2)])
 
+  #write it out
+  with open(path + fileName, 'ab') as f:
+    f.write(tile.SerializeToString())
 
 #Read in protobuf files from the datastore output in AWS to read in the lengths, speeds & next segment ids and generate the segment speed files in proto output format
 if __name__ == "__main__":
@@ -121,12 +102,12 @@ if __name__ == "__main__":
   avgspdlist = createAvgSpeedList(args.speedtile_list)
   
   #print 'create reference speed tiles for each segment'
-  createReferenceSpeedTiles(args.ref_tile_path, args.output_prefix, avgspdlist)
+  createRefSpeedTile(args.ref_tile_path, args.output_prefix, avgspdlist)
 
   if args.verbose:
     log.debug('loop over segments ###############################################################################')
-    for k,v in segments.iteritems():
-      log.debug('k=' + str(k) + ' | v=' + str(v))
+    for i,speeds in enumerate(segments):
+      log.debug('index=' + str(i) + ' | speeds=' + str(speeds))
     log.debug('DONE loop over segments ###############################################################################')
 
   print 'done'
