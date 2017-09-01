@@ -20,25 +20,39 @@ except ImportError:
 ### segment0{refspdlist[hour0:avgspd, hour1:avgspd, hour2:avgspd, etc]} -> sort lo to hi, index in to get refspd20:int, refspd40:int, refspd60:int, refspd80:int
 ### segment1{refspdlist[hour0:avgspd, hour1:avgspd, hour2:avgspd, etc]}
 # get the avg speeds for a given segment for each hour (168 hr/day) over 52 weeks
-def createAvgSpeedList(fileName):
-  spdtile = speedtile_pb2.SpeedTile()
-  with open(fileName, 'rb') as f:
-    spdtile.ParseFromString(f.read())
-    
-  #get out the average speed
-  avgspdlist = []
-  for subtile in spdtile.subtiles:
-    print 'total # of segments ' + str(subtile.totalSegments) 
-    print '# of speeds for a subtile ' + str(len(subtile.speeds))
-    for speed in subtile.speeds:
-      if speed > 0:
-        avgspdlist.append(speed)
-  del spdtile
-    
-  print '# of valid average speeds in list ' + str(len(avgspdlist))
-  #sort lo to hi
-  avgspdlist.sort()  
-  return avgspdlist
+def createAvgSpeedList(fileNames):
+  #each segment has its own list of speeds, we dont know how many segments to start with
+  segments = []
+
+  #for each subtile/time
+  for fileName in fileNames:
+
+    #load the tile
+    spdtile = speedtile_pb2.SpeedTile()
+    with open(fileName, 'rb') as f:
+      spdtile.ParseFromString(f.read())
+      
+    #get out the speeds for the segments in this subtile
+    for subtile in spdtile.subtiles:
+
+      #make sure that there are enough lists in the list for all segments
+      missing = spdtile.subtiles[0].totalSegments - len(segments)
+      if missing > 0:
+        segments.extend([ [] for i in range(0, missing) ])
+
+      print 'total # of segments ' + str(subtile.totalSegments) 
+      for i, speed in enumerate(subtile.speeds):
+        if speed > 0:
+          segments[subtile.startSegmentIndex + i].append(speed)
+
+    #probably dont need this
+    del spdtile
+
+    #sort each list of speeds per segment
+    for i, segment in enumerate(segments):
+      print '# of valid average speeds in segment ' + str(i) ' is ' + str(len(segment))
+      segment.sort()
+  return segments
   
 ###############################################################################
   
