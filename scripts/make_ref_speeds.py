@@ -41,10 +41,12 @@ def createAvgSpeedList(fileNameList):
         speedListPerSegment.extend([ [] for i in range(0, missing) ])
       #print 'total # created in speedListPerSegment ' + str(len(speedListPerSegment))
 
+      entries = subtile.unitSize / subtile.entrySize
+
       for i, speed in enumerate(subtile.speeds):
         if speed and speed > 0:
-          speedListPerSegment.insert(subtile.startSegmentIndex + i, speed)
-          #print 'index=' + str(i) + ' | speeds=' + str(speed) + '| startSegmentIndex+1= ' + str(subtile.startSegmentIndex + i)
+          speedListPerSegment[subtile.startSegmentIndex + (i%entries)].append(speed)
+          print 'index=' + str(i) + ' | speeds=' + str(speed) + '| startSegmentIndex+i= ' + str(subtile.startSegmentIndex + (i%entries))
 
       speedListPerSegment = filter(None, speedListPerSegment)
       #sort hi to lo
@@ -70,19 +72,20 @@ def createRefSpeedTile(path, fileName, speedListPerSegment):
   st.entrySize = st.unitSize
   st.description = 'Reference speeds over 1 year from 08.2016 through 07.2017' #TODO: get this from range start and end
 
-
-  #for each segment
   print 'speedListPerSegment length: ' + str(len(speedListPerSegment))
   #bucketize avg speeds into 20%, 40%, 60% and 80% reference speed buckets
-  size = len(speedListPerSegment)
-  print speedListPerSegment[int(size * .2)]
-  print speedListPerSegment[int(size * .4)]
-  print speedListPerSegment[int(size * .6)]
-  print speedListPerSegment[int(size * .8)]
-  st.referenceSpeed20.append(speedListPerSegment[int(size * .2)])
-  st.referenceSpeed40.append(speedListPerSegment[int(size * .4)])
-  st.referenceSpeed60.append(speedListPerSegment[int(size * .6)])
-  st.referenceSpeed80.append(speedListPerSegment[int(size * .8)])
+  #for each segment
+  for segment in speedListPerSegment:
+    size = len(segment)
+    st.referenceSpeed20.append(segment[int(size * .2)])
+    st.referenceSpeed40.append(segment[int(size * .4)])
+    st.referenceSpeed60.append(segment[int(size * .6)])
+    st.referenceSpeed80.append(segment[int(size * .8)])
+
+  print str(st.referenceSpeed20)
+  print str(st.referenceSpeed40)
+  print str(st.referenceSpeed60)
+  print str(st.referenceSpeed80)
 
   #write it out
   with open(path + fileName, 'ab') as f:
