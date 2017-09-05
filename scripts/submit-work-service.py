@@ -240,7 +240,7 @@ else:
                         itertools.repeat(work_bucket, len(s3_data)),
                         itertools.repeat(reporter_bucket, len(s3_data))
                         )
-        pool.map(s3_move_data, move_tuples)
+        pool.map(s3_move_data, *move_tuples)
 
         dictionary = build_dictionary(s3_data, bucket_interval)
         build_jobs(dictionary, batch_client, job_queue, job_def, work_bucket, datastore_bucket)
