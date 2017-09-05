@@ -71,7 +71,7 @@ def s3_get_data(s3_client, reporter_bucket, max_keys):
 
     return keys_array
 
-def s3_move_data((key, s3_client, work_bucket, reporter_bucket)):
+def s3_move_data(key, s3_client, work_bucket, reporter_bucket):
     """ move data to working bucket """
 
     flush('[INFO] Moving key: ' + key + ' from ' + reporter_bucket + ' to ' + work_bucket + '.')
