@@ -23,7 +23,7 @@ except ImportError:
 
 def createAvgSpeedList(fileNameList):
   #each segment has its own list of speeds, we dont know how many segments for the avg speed list to start with
-  speedListPerSegment = []
+  segments = []
 
   #need to loop thru all of the speed tiles for a given tile id
   for fileName in fileNameList:
@@ -36,23 +36,24 @@ def createAvgSpeedList(fileNameList):
     for subtile in spdtile.subtiles:
 
       #make sure that there are enough lists in the list for all segments
-      missing = subtile.totalSegments - len(speedListPerSegment)
+      missing = spdtile.subtiles[0].totalSegments - len(segments)
       if missing > 0:
-        speedListPerSegment.extend([ [] for i in range(0, missing) ])
-      #print 'total # created in speedListPerSegment ' + str(len(speedListPerSegment))
-
+        segments.extend([ [] for i in range(0, missing) ])
+      
+      print 'total # created in segments ' + str(subtile.totalSegments)
       entries = subtile.unitSize / subtile.entrySize
-
       for i, speed in enumerate(subtile.speeds):
-        if speed and speed > 0:
-          speedListPerSegment[subtile.startSegmentIndex + (i%entries)].append(speed)
-          print 'index=' + str(i) + ' | speeds=' + str(speed) + '| startSegmentIndex+i= ' + str(subtile.startSegmentIndex + (i%entries))
+        if speed > 0:
+          segments[subtile.startSegmentIndex + (i%entries)].append(speed)
+          #print 'index=' + str(i) + ' | speeds=' + str(speed) + '| startSegmentIndex+i= ' + str(subtile.startSegmentIndex + (i%entries))
 
-      speedListPerSegment = filter(None, speedListPerSegment)
-      #sort hi to lo
-      speedListPerSegment.sort()
+  #sort each list of speeds per segment
+  for i, segment in enumerate(segments):
+    if len(segment) > 0:
+      print '# of valid average speeds in segment ' + str(i) + ' is ' + str(len(segment))
+    segment.sort()
 
-  return speedListPerSegment
+  return segments
 
 ###############################################################################
 def createRefSpeedTile(path, fileName, speedListPerSegment):
@@ -77,10 +78,10 @@ def createRefSpeedTile(path, fileName, speedListPerSegment):
   #for each segment
   for segment in speedListPerSegment:
     size = len(segment)
-    st.referenceSpeed20.append(segment[int(size * .2)])
-    st.referenceSpeed40.append(segment[int(size * .4)])
-    st.referenceSpeed60.append(segment[int(size * .6)])
-    st.referenceSpeed80.append(segment[int(size * .8)])
+    st.referenceSpeed20.append(segment[int(size * .2)] if size > 0 else 0) #0 here represents no data
+    st.referenceSpeed40.append(segment[int(size * .4)] if size > 0 else 0) #0 here represents no data
+    st.referenceSpeed60.append(segment[int(size * .6)] if size > 0 else 0) #0 here represents no data
+    st.referenceSpeed80.append(segment[int(size * .8)] if size > 0 else 0) #0 here represents no data
 
   print str(st.referenceSpeed20)
   print str(st.referenceSpeed40)
