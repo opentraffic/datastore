@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """ push units of work to AWS Batch """
 
 import os
@@ -94,10 +95,10 @@ def s3_move_data((key, s3_client, work_bucket, reporter_bucket)):
 
 def build_dictionary(keys_array, bucket_interval):
     """ create a dictionary with a key of type tuple of (time bucket,
-
     tile_level, tile_index), with the value as a list of
     files: dictionary = {(23, 32, 43): 'tuple as key'}
     dictionary[time_bucket, tile_level, tile_index] = ['/path/1', '/path/2'] """
+
     dictionary = {}
     for path in keys_array:
         # parse epoch
