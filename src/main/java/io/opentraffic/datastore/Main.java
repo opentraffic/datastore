@@ -63,8 +63,10 @@ public class Main {
             new FlatBufferSource(file, timeBucket, tileId) :
             new MeasurementSource(cmd, file, timeBucket, tileId);
         //get the measurements
+        int size = measurements.size();
         for (Measurement measurement : source)
           measurements.add(measurement);
+        logger.info("Added " + (measurements.size() - size) + " from " + fileName);
         source.close();
       }// failed for some other reason
       catch (Exception e) {      
@@ -73,6 +75,7 @@ public class Main {
     }
     //TODO: sort them
     Collections.sort(measurements);
+    logger.info("Total measurements " + measurements.size());
 
     // flatbuffer
     final String fbFile = cmd.getOptionValue("output-flatbuffers");
