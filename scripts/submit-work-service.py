@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 """ push units of work to AWS Batch """
 
 import os
@@ -71,7 +71,7 @@ def s3_get_data(s3_client, reporter_bucket, max_keys):
 
     return keys_array
 
-def s3_move_data(key, s3_client, work_bucket, reporter_bucket):
+def s3_move_data((key, s3_client, work_bucket, reporter_bucket)):
     """ move data to working bucket """
 
     flush('[INFO] Moving key: ' + key + ' from ' + reporter_bucket + ' to ' + work_bucket + '.')
@@ -240,7 +240,7 @@ else:
                         itertools.repeat(work_bucket, len(s3_data)),
                         itertools.repeat(reporter_bucket, len(s3_data))
                         )
-        pool.map(s3_move_data, *move_tuples)
+        pool.map(s3_move_data, move_tuples)
 
         dictionary = build_dictionary(s3_data, bucket_interval)
         build_jobs(dictionary, batch_client, job_queue, job_def, work_bucket, datastore_bucket)

@@ -5,7 +5,9 @@ MAINTAINER Grant Heffernan <grant@mapzen.com>
 ENV DEBIAN_FRONTEND noninteractive
 
 # install dependencies
-RUN apt-get update && apt-get install -y default-jdk python3 python3-pip maven
+RUN apt-get update && apt-get install -y default-jdk python python3 python3-pip maven
+RUN pip install --upgrade pip
+RUN pip install boto3 argparse
 RUN pip3 install --upgrade pip
 RUN pip3 install boto3 argparse
 
