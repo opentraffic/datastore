@@ -192,6 +192,7 @@ def build_jobs(dictionary, batch_client, job_queue, job_def, work_bucket, datast
 """ the aws lambda entry point """
 
 env = os.getenv('DATASTORE_ENV', 'BOGUS') # required, 'prod' or 'dev'
+sleep_between_runs = os.getenv('SLEEP_BETWEEN_RUNS', 120) # optional
 max_keys = os.getenv('MAX_KEYS', 100) # optional
 bucket_interval = os.getenv('BUCKET_INTERVAL', 3600) # optional
 
@@ -217,7 +218,7 @@ batch_queue_status = batch_check_queue(batch_client, job_queue)
 if batch_queue_status == 'processing':
     flush('[INFO] Run complete!')
     flush('[INFO] Sleeping before next run...')
-    time.sleep(60)
+    time.sleep(sleep_between_runs)
 else:
     flush('[INFO] No jobs in the queue.')
 
@@ -231,7 +232,7 @@ else:
         flush('[NOTICE] Found no keys! Passing on this run.')
         flush('[INFO] Run complete!')
         flush('[INFO] Sleeping before next run...')
-        time.sleep(60)
+        time.sleep(sleep_between_runs)
     else:
         # move data
         pool = ThreadPool(processes=10)
@@ -248,4 +249,4 @@ else:
         flush('[INFO] Run complete!')
         flush('[INFO] Sleeping before next run...')
 
-        time.sleep(60)
+        time.sleep(sleep_between_runs)
