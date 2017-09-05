@@ -216,33 +216,36 @@ batch_client = boto3.client('batch')
 batch_queue_status = batch_check_queue(batch_client, job_queue)
 if batch_queue_status == 'processing':
     flush('[INFO] Run complete!')
-    sys.exit(0)
-
-flush('[INFO] No jobs in the queue.')
-
-# get down to work
-s3_clean_work_bucket(s3_resource, work_bucket)
-
-s3_data = s3_get_data(s3_client, reporter_bucket, max_keys)
-
-# if the array is empty, abort
-if not s3_data:
-    flush('[NOTICE] Found no keys! Passing on this run.')
-    flush('[INFO] Run complete!')
-else:
-    # move data
-    pool = ThreadPool(processes=10)
-    move_tuples = zip(s3_data,
-                    itertools.repeat(s3_client, len(s3_data)),
-                    itertools.repeat(work_bucket, len(s3_data)),
-                    itertools.repeat(reporter_bucket, len(s3_data))
-                    )
-    pool.map(s3_move_data, move_tuples)
-
-    dictionary = build_dictionary(s3_data, bucket_interval)
-    build_jobs(dictionary, batch_client, job_queue, job_def, work_bucket, datastore_bucket)
-
-    flush('[INFO] Run complete!')
     flush('[INFO] Sleeping before next run...')
-
     time.sleep(60)
+else:
+    flush('[INFO] No jobs in the queue.')
+
+    # get down to work
+    s3_clean_work_bucket(s3_resource, work_bucket)
+
+    s3_data = s3_get_data(s3_client, reporter_bucket, max_keys)
+
+    # if the array is empty, abort
+    if not s3_data:
+        flush('[NOTICE] Found no keys! Passing on this run.')
+        flush('[INFO] Run complete!')
+        flush('[INFO] Sleeping before next run...')
+        time.sleep(60)
+    else:
+        # move data
+        pool = ThreadPool(processes=10)
+        move_tuples = zip(s3_data,
+                        itertools.repeat(s3_client, len(s3_data)),
+                        itertools.repeat(work_bucket, len(s3_data)),
+                        itertools.repeat(reporter_bucket, len(s3_data))
+                        )
+        pool.map(s3_move_data, move_tuples)
+
+        dictionary = build_dictionary(s3_data, bucket_interval)
+        build_jobs(dictionary, batch_client, job_queue, job_def, work_bucket, datastore_bucket)
+
+        flush('[INFO] Run complete!')
+        flush('[INFO] Sleeping before next run...')
+
+        time.sleep(60)
