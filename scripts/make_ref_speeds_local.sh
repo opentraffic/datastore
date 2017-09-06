@@ -22,7 +22,7 @@ echo "level=${level} tile_index=${tile_index}"
 echo "Removing ${extract}.ref..."
 rm -f ${extract}.ref
 
-./make_ref_speeds.py --speedtile-list ${speedtile_list} --bucket ${bucket} --year ${year} --level ${level} --tile-id ${tile_index} --ref-tile-path ${extract_path} --ref-tile-file ${y}.ref --verbose
+./make_ref_speeds.py --speedtile-list ${speedtile_list} --bucket ${bucket} --year ${year} --level ${level} --tile-id ${tile_index} --ref-tile-path ${extract_path} --ref-tile-file ${y}.ref --local --verbose
 
 ######################################################################
 x=037
@@ -37,7 +37,7 @@ echo "level=${level} tile_index=${tile_index}"
 echo "Removing ${extract}.ref..."
 rm -f ${extract}.ref
 
-./make_ref_speeds.py --speedtile-list ${speedtile_list} --bucket ${bucket} --year ${year} --level ${level} --tile-id ${tile_index} --ref-tile-path ${extract_path} --ref-tile-file ${y}.ref --verbose
+./make_ref_speeds.py --speedtile-list ${speedtile_list} --bucket ${bucket} --year ${year} --level ${level} --tile-id ${tile_index} --ref-tile-path ${extract_path} --ref-tile-file ${y}.ref --local --verbose
 
 ######################################################################
 x=037
@@ -52,5 +52,5 @@ echo "level=${level} tile_index=${tile_index}"
 echo "Removing ${extract}.ref..."
 rm -f ${extract}.ref
 
-./make_ref_speeds.py --speedtile-list ${speedtile_list} --bucket ${bucket} --year ${year} --level ${level} --tile-id ${tile_index} --ref-tile-path ${extract_path} --ref-tile-file ${y}.ref --verbose
+./make_ref_speeds.py --speedtile-list ${speedtile_list} --bucket ${bucket} --year ${year} --level ${level} --tile-id ${tile_index} --ref-tile-path ${extract_path} --ref-tile-file ${y}.ref --local --verbose
 
