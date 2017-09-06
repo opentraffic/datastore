@@ -17,7 +17,20 @@ except ImportError:
   print 'You need to generate protobuffer source via: protoc --python_out . --proto_path ../proto ../proto/*.proto'
   sys.exit(1)
 
-#wget https://s3.amazonaws.com/speed-extracts/2017/0/0/002/415.spd.*.gz
+###############################################################################
+#world bb
+minx_ = -180
+miny_ = -90
+maxx_ = 180
+maxy_ = 90
+
+def get_tile_count(filename):
+  #lets load the protobuf speed tile
+  spdtile = speedtile_pb2.SpeedTile()
+  with open(directory + key, 'rb') as f:
+    spdtile.ParseFromString(f.read())
+  # 0 based so subtract 1
+  return int(round(spdtile.subtiles[0].totalSegments / (spdtile.subtiles[0].subtileSegments * 1.0))) - 1
 
 ###############################################################################
 ### tile 2415
@@ -98,13 +111,6 @@ def createRefSpeedTile(path, fileName, speedListPerSegment):
   with open(path + fileName, 'ab') as f:
     f.write(tile.SerializeToString())
 
-###############################################################################
-#world bb
-minx_ = -180
-miny_ = -90
-maxx_ = 180
-maxy_ = 90
-
 class BoundingBox(object):
 
   def __init__(self, min_x, min_y, max_x, max_y):
@@ -177,6 +183,7 @@ if __name__ == "__main__":
   parser.add_argument('--level', type=int, help='The level to target', required=True)
   parser.add_argument('--tile-id', type=int, help='The tile id to target', required=True)
   parser.add_argument('--no-separate-subtiles', help='If present all subtiles will be in the same tile', action='store_true')
+  parser.add_argument('--local', help='Enable local file processing', action='store_true')
   parser.add_argument('--verbose', '-v', help='Turn on verbose output i.e. DEBUG level logging', action='store_true')
 
   # parse the arguments
@@ -193,50 +200,54 @@ if __name__ == "__main__":
   else:
     log.basicConfig(format='%(asctime)s - %(levelname)s - %(message)s', stream=sys.stdout)
 
-################################################################################
-
+  ################################################################################
   # download the speed tiles from aws and decompress
-  spdFileNames = []
-  directory = "ref_working_dir/"
-  shutil.rmtree(directory, ignore_errors=True)
-  tile_hierarchy = TileHierarchy()
-  key_prefix = args.year + "/"
+  if not args.local:
+    log.debug('Download the speed tiles from AWS and decompress...')
+    spdFileNames = []
+    directory = "ref_working_dir/"
+    shutil.rmtree(directory, ignore_errors=True)
+    tile_hierarchy = TileHierarchy()
+    key_prefix = args.year + "/"
 
-  s3 = boto3.client('s3')
+    s3 = boto3.client('s3')
 
-  weeks_per_year = 52
-  week = 0
-  while ( week < weeks_per_year):
-    key = key_prefix + str(week) + "/"
-    file_name = tile_hierarchy.levels[args.level].GetFile(args.tile_id, args.level)
-    key += file_name
-    try:
-      file_path = os.path.dirname(key + ".gz" )
-      if not os.path.exists(directory + file_path):
-        try:
-          os.makedirs(directory + file_path)
-        except OSError as e:
-          if e.errno != errno.EEXIST:
-            raise
-      with open(directory + key + ".gz" , "wb") as f:
-        s3.download_fileobj(args.bucket, key + ".gz", f)
-    except botocore.exceptions.ClientError as e:
-      if e.response['Error']['Code'] != "404":
-        raise
-    decompressedFile = gzip.GzipFile(directory + key + ".gz", mode='rb')
-    with open(directory + key , 'w') as outfile:
-      outfile.write(decompressedFile.read())
+    weeks_per_year = 52
+    week = 0
+    while ( week < weeks_per_year):
+      key = key_prefix + str(week) + "/"
+      file_name = tile_hierarchy.levels[args.level].GetFile(args.tile_id, args.level)
+      key += file_name
+      try:
+        file_path = os.path.dirname(key + ".gz" )
+        if not os.path.exists(directory + file_path):
+          try:
+            os.makedirs(directory + file_path)
+          except OSError as e:
+            if e.errno != errno.EEXIST:
+              raise
+        with open(directory + key + ".gz" , "wb") as f:
+          s3.download_fileobj(args.bucket, key + ".gz", f)
+      except botocore.exceptions.ClientError as e:
+        if e.response['Error']['Code'] != "404":
+          raise
+      decompressedFile = gzip.GzipFile(directory + key + ".gz", mode='rb')
+      with open(directory + key , 'w') as outfile:
+        outfile.write(decompressedFile.read())
 
-    spdFileNames.append(outfile.name)
-    week += 1
-
-################################################################################
+      spdFileNames.append(outfile.name)
+      week += 1
+  ################################################################################
 
   print 'getting avg speeds from list of protobuf speed tile extracts'
-  speedListPerSegment = createAvgSpeedList(spdFileNames)
-  #speedListPerSegment = createAvgSpeedList(args.speedtile_list)
+  if not args.local:
+    log.debug('AWS speed processing...')
+    speedListPerSegment = createAvgSpeedList(spdFileNames)
+  else:
+    log.debug('LOCAL speed processing...')
+    speedListPerSegment = createAvgSpeedList(args.speedtile_list)
   
-  #print 'create reference speed tiles for each segment'
+  print 'create reference speed tiles for each segment'
   createRefSpeedTile(args.ref_tile_path, args.ref_tile_file, speedListPerSegment)
 
   if args.verbose:
