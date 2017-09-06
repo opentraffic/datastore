@@ -221,9 +221,6 @@ def createSpeedTiles(lengths, fileName, subTileSize, nextName, separate, segment
       tile, subtile, nextTile, nextSubtile = next(k, len(lengths), nextName, subTileSize, extractInfo)
 
 
-    #TODO
-    #subtile.referenceSpeeds.append(random.randint(20, 100) if length > 0 else 0)
-
     #do all the entries
     for i in range(0 + minHour, subtile.unitSize/subtile.entrySize + minHour):
       #if we have data get it
@@ -244,7 +241,7 @@ def createSpeedTiles(lengths, fileName, subTileSize, nextName, separate, segment
       subtile.speeds.append(max(speeds) if nextSegments else 0)
 
       if nextSegments:
-        log.debug('segmentId=' + str((k<<25)|(extractInfo['index']<<3)|extractInfo['level']) + ' | nextSegments=' + str(nextSegments) + ' | length=' + str(length) + ' | minDuration=' + str(minDuration) + ' | speed=' + str(max(speeds)) + ' | varSpeed=' + str(variance(speeds)))
+        log.debug('segmentId=' + str((k<<25)|(extractInfo['index']<<3)|extractInfo['level']) + ' | hour=' + str(i) + ' | nextSegments=' + str(nextSegments) + ' | length=' + str(length) + ' | minDuration=' + str(minDuration) + ' | speed=' + str(max(speeds)) + ' | varSpeed=' + str(variance(speeds)))
 
       subtile.speedVariances.append(variance(speeds) if nextSegments else 0)
       subtile.prevalences.append(prevalence(sum([n['count'] for nid, n in nextSegments.iteritems()]) if nextSegments else 0))
