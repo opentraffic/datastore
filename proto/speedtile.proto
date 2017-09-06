@@ -40,10 +40,10 @@ message SpeedTile {
     repeated uint32 nextSegmentQueueLengths = 20 [packed=true];         //length of any queue on segment from corresponding entry
     repeated uint32 nextSegmentQueueLengthVariances = 21 [packed=true]; //variance of queue length samples from corresponding entry
 
-    repeated uint32 referenceSpeed20 = 22 [packed=true]; //20% are this or slower than this specific ref speed for each segment
-    repeated uint32 referenceSpeed40 = 23 [packed=true]; //40% are this or slower than this specific ref speed for each segment
-    repeated uint32 referenceSpeed60 = 24 [packed=true]; //60% are this or slower than this specific ref speed for each segment
-    repeated uint32 referenceSpeed80 = 25 [packed=true]; //80% are this or slower than this specific ref speed for each segment
+    repeated uint32 referenceSpeeds20 = 22 [packed=true]; //20% are this speed or slower than this specific ref speed for each segment
+    repeated uint32 referenceSpeeds40 = 23 [packed=true]; //40% are this speed or slower than this specific ref speed for each segment
+    repeated uint32 referenceSpeeds60 = 24 [packed=true]; //60% are this speed or slower than this specific ref speed for each segment
+    repeated uint32 referenceSpeeds80 = 25 [packed=true]; //80% are this speed or slower than this specific ref speed for each segment
 
   }
 
