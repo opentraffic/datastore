@@ -39,7 +39,7 @@ def convert(tile_index, time_bucket, tile_id):
 
     # TODO: no idea if the exception handling works
     try:
-        output = subprocess.check_output(['datastore-histogram-tile-writer', '-b', str(time_bucket), '-t', str(tile_id), '-f', fb_out_file, fb_out_file] + glob.glob('*'), timeout=180, universal_newlines=True, stderr=subprocess.STDOUT)
+        output = subprocess.check_output(['datastore-histogram-tile-writer', '-b', str(time_bucket), '-t', str(tile_id), '-f', fb_out_file] + glob.glob('*'), timeout=180, universal_newlines=True, stderr=subprocess.STDOUT)
         for line in output.splitlines():
             print('[INFO]', line)
     except subprocess.CalledProcessError as tilewriter:
