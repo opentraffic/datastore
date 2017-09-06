@@ -152,20 +152,20 @@ class Tiles(object):
     if level == 0:
       file_suffix = '{:,}'.format(int(pow(10, max_length)) + tile_id).replace(',', '/')
       file_suffix += "."
-      file_suffix += "spd.0.gz"
+      file_suffix += "spd.0"
       file_suffix = "0" + file_suffix[1:]
       return file_suffix
 
     #it was something else
     file_suffix = '{:,}'.format(level * int(pow(10, max_length)) + tile_id).replace(',', '/')
     file_suffix += "."
-    file_suffix += "spd.0.gz"
+    file_suffix += "spd.0"
 
     return file_suffix
 
 ###############################################################################
 
-#Read in protobuf files from the datastore output in AWS to read in the lengths, speeds & next segment ids and generate the segment speed files in proto output format
+# Read in protobuf files from the datastore output in AWS to read in the lengths, speeds & next segment ids and generate the segment speed files in proto output format
 if __name__ == "__main__":
   parser = argparse.ArgumentParser(description='Generate speed tiles', formatter_class=argparse.ArgumentDefaultsHelpFormatter)
   parser.add_argument('--speedtile-list', type=str, nargs='+', help='A list of the PDE speed tiles containing the average speeds per segment per hour of day for one week')
@@ -192,7 +192,10 @@ if __name__ == "__main__":
   else:
     log.basicConfig(format='%(asctime)s - %(levelname)s - %(message)s', stream=sys.stdout)
 
+################################################################################
 
+  # download the speed tiles from aws and decompress
+  spdFileNames = []
   directory = "ref_working_dir/"
   shutil.rmtree(directory, ignore_errors=True)
   tile_hierarchy = TileHierarchy()
@@ -206,7 +209,6 @@ if __name__ == "__main__":
     key = key_prefix + str(week) + "/"
     file_name = tile_hierarchy.levels[args.level].GetFile(args.tile_id, args.level)
     key += file_name
-    #print key
     try:
       file_path = os.path.dirname(key + ".gz" )
       if not os.path.exists(directory + file_path):
@@ -224,13 +226,14 @@ if __name__ == "__main__":
     with open(directory + key , 'w') as outfile:
       outfile.write(decompressedFile.read())
 
+    spdFileNames.append(outfile.name)
     week += 1
 
 ################################################################################
 
   print 'getting avg speeds from list of protobuf speed tile extracts'
-  #speedListPerSegment = createAvgSpeedList(fileNames)
-  speedListPerSegment = createAvgSpeedList(args.speedtile_list)
+  speedListPerSegment = createAvgSpeedList(spdFileNames)
+  #speedListPerSegment = createAvgSpeedList(args.speedtile_list)
   
   #print 'create reference speed tiles for each segment'
   createRefSpeedTile(args.ref_tile_path, args.ref_tile_file, speedListPerSegment)
