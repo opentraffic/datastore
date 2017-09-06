@@ -5,6 +5,10 @@ import math
 import os
 import errno
 import sys
+import boto3
+import botocore
+import shutil
+import gzip
 import logging as log
 
 try:
@@ -94,7 +98,7 @@ def createRefSpeedTile(path, fileName, speedListPerSegment):
     f.write(tile.SerializeToString())
 
 ###############################################################################
-    #world bb
+#world bb
 minx_ = -180
 miny_ = -90
 maxx_ = 180
@@ -148,14 +152,14 @@ class Tiles(object):
     if level == 0:
       file_suffix = '{:,}'.format(int(pow(10, max_length)) + tile_id).replace(',', '/')
       file_suffix += "."
-      file_suffix += "spd.*.gz"
+      file_suffix += "spd.0.gz"
       file_suffix = "0" + file_suffix[1:]
       return file_suffix
 
     #it was something else
     file_suffix = '{:,}'.format(level * int(pow(10, max_length)) + tile_id).replace(',', '/')
     file_suffix += "."
-    file_suffix += "spd.*.gz"
+    file_suffix += "spd.0.gz"
 
     return file_suffix
 
@@ -177,20 +181,38 @@ if __name__ == "__main__":
   # parse the arguments
   args = parser.parse_args()
 
+  directory = "ref_working_dir/"
+  shutil.rmtree(directory, ignore_errors=True)
   tile_hierarchy = TileHierarchy()
+  key_prefix = args.year + "/"
 
-  url_prefix = "https://s3.amazonaws.com/" + args.bucket + "/" + args.year + "/"
+  s3 = boto3.client('s3')
 
   weeks_per_year = 52
   week = 0
-  #urls = []
   while ( week < weeks_per_year):
-    url = url_prefix + str(week) + "/"
+    key = key_prefix + str(week) + "/"
     file_name = tile_hierarchy.levels[args.level].GetFile(args.tile_id, args.level)
-    url += file_name
+    key += file_name
+    #print key
+    try:
+      file_path = os.path.dirname(key + ".gz" )
+      if not os.path.exists(directory + file_path):
+        try:
+          os.makedirs(directory + file_path)
+        except OSError as e:
+          if e.errno != errno.EEXIST:
+            raise
+      with open(directory + key + ".gz" , "wb") as f:
+        s3.download_fileobj(args.bucket, key + ".gz", f)
+    except botocore.exceptions.ClientError as e:
+      if e.response['Error']['Code'] != "404":
+        raise
+    decompressedFile = gzip.GzipFile(directory + key + ".gz", mode='rb')
+    with open(directory + key , 'w') as outfile:
+      outfile.write(decompressedFile.read())
+
     week += 1
-    #urls.append(url)
-    print url
 
 ################################################################################
 
