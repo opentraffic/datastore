@@ -17,6 +17,13 @@ except ImportError:
   print 'You need to generate protobuffer source via: protoc --python_out . --proto_path ../proto ../proto/*.proto'
   sys.exit(1)
 
+###############################################################################
+#world bb
+minx_ = -180
+miny_ = -90
+maxx_ = 180
+maxy_ = 90
+
 def get_tile_count(filename):
   #lets load the protobuf speed tile
   spdtile = speedtile_pb2.SpeedTile()
@@ -102,13 +109,6 @@ def createRefSpeedTile(path, fileName, speedListPerSegment):
   #write it out
   with open(path + fileName, 'ab') as f:
     f.write(tile.SerializeToString())
-
-###############################################################################
-#world bb
-minx_ = -180
-miny_ = -90
-maxx_ = 180
-maxy_ = 90
 
 class BoundingBox(object):
 
