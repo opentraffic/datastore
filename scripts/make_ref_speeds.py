@@ -152,14 +152,14 @@ class Tiles(object):
     if level == 0:
       file_suffix = '{:,}'.format(int(pow(10, max_length)) + tile_id).replace(',', '/')
       file_suffix += "."
-      file_suffix += "spd.0.gz"
+      file_suffix += "spd.0"
       file_suffix = "0" + file_suffix[1:]
       return file_suffix
 
     #it was something else
     file_suffix = '{:,}'.format(level * int(pow(10, max_length)) + tile_id).replace(',', '/')
     file_suffix += "."
-    file_suffix += "spd.0.gz"
+    file_suffix += "spd.0"
 
     return file_suffix
 
