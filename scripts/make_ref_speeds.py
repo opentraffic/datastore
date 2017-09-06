@@ -166,16 +166,27 @@ if __name__ == "__main__":
   parser = argparse.ArgumentParser(description='Generate speed tiles', formatter_class=argparse.ArgumentDefaultsHelpFormatter)
   parser.add_argument('--speedtile-list', type=str, nargs='+', help='A list of the PDE speed tiles containing the average speeds per segment per hour of day for one week')
   parser.add_argument('--ref-tile-path', type=str, help='The public data extract speed tile containing the average speeds per segment per hour of day for one week', required=True)
-  parser.add_argument('--output-prefix', type=str, help='The file name prefix to give to output tile.')
-  parser.add_argument('--verbose', '-v', help='Turn on verbose output i.e. DEBUG level logging', action='store_true')
+  parser.add_argument('--ref-tile-file', type=str, help='The ref tile file name.')
   parser.add_argument('--bucket', type=str, help='AWS bucket location', required=True)
   parser.add_argument('--year', type=str, help='The year you wish to get', required=True)
   parser.add_argument('--level', type=int, help='The level to target', required=True)
   parser.add_argument('--tile-id', type=int, help='The tile id to target', required=True)
   parser.add_argument('--no-separate-subtiles', help='If present all subtiles will be in the same tile', action='store_true')
+  parser.add_argument('--verbose', '-v', help='Turn on verbose output i.e. DEBUG level logging', action='store_true')
 
   # parse the arguments
   args = parser.parse_args()
+
+  # setup log
+  if args.verbose:
+    log.basicConfig(format='%(asctime)s - %(levelname)s - %(message)s', stream=sys.stdout, level=log.DEBUG)
+    log.debug('ref-tile-path=' + args.ref_tile_path)
+    log.debug('bucket=' + args.bucket)
+    log.debug('year=' + args.year)
+    log.debug('level=' + str(args.level))
+    log.debug('tile-id=' + str(args.tile_id))
+  else:
+    log.basicConfig(format='%(asctime)s - %(levelname)s - %(message)s', stream=sys.stdout)
 
   tile_hierarchy = TileHierarchy()
 
@@ -199,7 +210,7 @@ if __name__ == "__main__":
   speedListPerSegment = createAvgSpeedList(args.speedtile_list)
   
   #print 'create reference speed tiles for each segment'
-  createRefSpeedTile(args.ref_tile_path, args.output_prefix, speedListPerSegment)
+  createRefSpeedTile(args.ref_tile_path, args.ref_tile_file, speedListPerSegment)
 
   if args.verbose:
     log.debug('loop over segments ###############################################################################')
