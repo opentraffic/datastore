@@ -50,7 +50,8 @@ def createAvgSpeedList(fileNames):
       for i, speed in enumerate(subtile.speeds):
         if speed > 0:
           segments[subtile.startSegmentIndex + int(math.floor(i/entries))].append(speed)
-          #print 'index=' + str(i) + ' | speeds=' + str(speed) + '| startSegmentIndex+i= ' + str(subtile.startSegmentIndex + (i%entries))
+        if speed > 200:
+          log.debug('INVALID SPEED:: index=' + str(i) + ' | speeds=' + str(speed) + '| startSegmentIndex= ' + str(subtile.startSegmentIndex + int(math.floor(i/entries))))
 
   #sort each list of speeds per segment
   for i, segment in enumerate(segments):
