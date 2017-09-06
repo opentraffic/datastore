@@ -17,7 +17,13 @@ except ImportError:
   print 'You need to generate protobuffer source via: protoc --python_out . --proto_path ../proto ../proto/*.proto'
   sys.exit(1)
 
-#wget https://s3.amazonaws.com/speed-extracts/2017/0/0/002/415.spd.*.gz
+def get_tile_count(filename):
+  #lets load the protobuf speed tile
+  spdtile = speedtile_pb2.SpeedTile()
+  with open(directory + key, 'rb') as f:
+    spdtile.ParseFromString(f.read())
+  # 0 based so subtract 1
+  return int(round(spdtile.subtiles[0].totalSegments / (spdtile.subtiles[0].subtileSegments * 1.0))) - 1
 
 ###############################################################################
 ### tile 2415
