@@ -69,6 +69,7 @@ def s3_get_data(s3_client, reporter_bucket, max_keys):
             for key in page['Contents']:
                 keys_array.append(key['Key'])
 
+    keys_array.sort()
     return keys_array
 
 def s3_move_data((key, s3_client, work_bucket, reporter_bucket)):
@@ -234,6 +235,11 @@ else:
         flush('[INFO] Sleeping before next run...')
         time.sleep(sleep_between_runs)
     else:
+        # what have we got to work on
+        flush('[INFO] S3 keys in this batch:')
+        for key in s3_data:
+            flush('[INFO] ' + key)
+
         # move data
         pool = ThreadPool(processes=10)
         move_tuples = zip(s3_data,
