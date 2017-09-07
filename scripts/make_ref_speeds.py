@@ -212,7 +212,6 @@ if __name__ == "__main__":
   parser = argparse.ArgumentParser(description='Generate speed tiles', formatter_class=argparse.ArgumentDefaultsHelpFormatter)
   parser.add_argument('--speedtile-list', type=str, nargs='+', help='A list of the PDE speed tiles containing the average speeds per segment per hour of day for one week')
   parser.add_argument('--ref-tile-path', type=str, help='The public data extract speed tile containing the average speeds per segment per hour of day for one week', required=True)
-  parser.add_argument('--ref-tile-file', type=str, help='The ref tile file name.')
   parser.add_argument('--bucket', type=str, help='AWS bucket location', required=True)
   parser.add_argument('--year', type=str, help='The year you wish to get', required=True)
   parser.add_argument('--level', type=int, help='The level to target', required=True)
@@ -317,15 +316,23 @@ if __name__ == "__main__":
   ################################################################################
 
   print 'getting avg speeds from list of protobuf speed tile extracts'
+  ref_tile_file = None
   if not args.local:
     log.debug('AWS speed processing...')
     speedListPerSegment = createAvgSpeedList(spdFileNames)
+    ref_tile_file = os.path.splitext(os.path.splitext(os.path.basename(spdFileNames[0]))[0])[0]
+    ref_tile_file += ".ref"
   else:
     log.debug('LOCAL speed processing...')
     speedListPerSegment = createAvgSpeedList(args.speedtile_list)
-  
+    ref_tile_file = os.path.splitext(os.path.splitext(os.path.basename(args.speedtile_list[0]))[0])[0]
+    ref_tile_file += ".ref"
+
+  if args.verbose:
+    print("Ref output filename: " + ref_tile_file)
+
   print 'create reference speed tiles for each segment'
-  createRefSpeedTile(args.ref_tile_path, args.ref_tile_file, speedListPerSegment)
+  createRefSpeedTile(args.ref_tile_path, ref_tile_file, speedListPerSegment)
 
   if args.verbose:
     log.debug('loop over segments ###############################################################################')
