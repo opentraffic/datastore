@@ -132,7 +132,9 @@ def build_jobs(dictionary, batch_client, job_queue, job_def, work_bucket, datast
         tile_index = str(key[2])
         tile_id = str(((key[2]) << 3) | key[1])
         job_name = str(key[0]) + '_' + str(tile_id)
-        files = ','.join(val)
+        # just use the shared prefixes of the files up to the last directory
+        files = set([ f[:f.rfind('/') + 1] for f in val ])
+        files = ','.join(files)
 
         # set memory for the job based on how
         #   many files we need to process
