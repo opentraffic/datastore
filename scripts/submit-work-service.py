@@ -235,11 +235,6 @@ else:
         flush('[INFO] Sleeping before next run...')
         time.sleep(sleep_between_runs)
     else:
-        # what have we got to work on
-        flush('[INFO] S3 keys in this batch:')
-        for key in s3_data:
-            flush('[INFO] ' + key)
-
         # move data
         pool = ThreadPool(processes=10)
         move_tuples = zip(s3_data,
