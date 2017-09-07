@@ -238,7 +238,7 @@ def createSpeedTiles(lengths, fileName, subTileSize, nextName, separate, segment
         if 0 < maxSpeed and maxSpeed <= 200:
           subtile.speeds.append(maxSpeed if nextSegments else 0)
         else:
-          log.error('**********INVALID SPEEDS > 200 KPH' + str(maxSpeed))
+          log.error('**********INVALID SPEEDS > 200 KPH: ' + str(maxSpeed))
 
       #any time its a dead one we put in 0's for the data
       minDuration = min([n['duration'] for nid, n in nextSegments.iteritems()]) if nextSegments else 0
