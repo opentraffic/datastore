@@ -234,7 +234,6 @@ def createSpeedTiles(lengths, fileName, subTileSize, nextName, separate, segment
       if nextSegments:
         speeds = [int(round(length / n['duration'] * 3.6)) for nid, n in nextSegments.iteritems()]
         # assign speed in kph
-        subtile.speeds.append(max(speeds) if nextSegments else 0)
         #we do not want to include the invalid speeds
         if 0 < max(speeds) and max(speeds) <= 200:
           subtile.speeds.append(max(speeds) if nextSegments else 0)
