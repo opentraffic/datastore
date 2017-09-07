@@ -52,11 +52,16 @@ def createAvgSpeedList(fileNames):
     with open(fileName, 'rb') as f:
       spdtile.ParseFromString(f.read())
 
+    log.debug('Process ' + fileName)
+    subtileCount = 1;
     #we now need to retrieve all of the speeds for each segment in this tile
     for subtile in spdtile.subtiles:
+      log.debug('>>>>> subtileCount per file=' + str(subtileCount))
+      subtileCount += 1
 
       #make sure that there are enough lists in the list for all segments
       missing = spdtile.subtiles[0].totalSegments - len(segments)
+      log.debug('spdtile.subtiles[0].totalSegments=' + str(spdtile.subtiles[0].totalSegments) + ' | len(segments)=' + str(len(segments)) + ' | missing=' + str(missing))
       if missing > 0:
         segments.extend([ [] for i in range(0, missing) ])
       
@@ -64,16 +69,19 @@ def createAvgSpeedList(fileNames):
       entries = subtile.unitSize / subtile.entrySize
       print '# of entries per segment : ' + str(entries)
       for i, speed in enumerate(subtile.speeds):
+        segmentIndex = subtile.startSegmentIndex + int(math.floor(i/entries))
+        log.debug('SPEED: i=' + str(i) + ' | segmentIndex=' + str(segmentIndex) + ' | segmentId=' + str((segmentIndex<<25)|(subtile.index<<3)|subtile.level) + ' | speed=' + str(speed))
         if speed > 0:
-          segments[subtile.startSegmentIndex + int(math.floor(i/entries))].append(speed)
+          segments[segmentIndex].append(speed)
         if speed > 200:
-          log.debug('INVALID SPEED:: index=' + str(i) + ' | speeds=' + str(speed) + '| startSegmentIndex= ' + str(subtile.startSegmentIndex + int(math.floor(i/entries))))
+          log.error('INVALID SPEED: i=' + str(i) + ' | segmentIndex=' + str(segmentIndex) + ' | segmentId=' + str((segmentIndex<<25)|(subtile.index<<3)|subtile.level) + ' | speed=' + str(speed))
 
   #sort each list of speeds per segment
   for i, segment in enumerate(segments):
     if len(segment) > 0:
       print '# of valid average speeds in segment ' + str(i) + ' is ' + str(len(segment))
     segment.sort()
+    log.debug('SORTED SPEEDS: segmentIndex=' + str(i) + ' | speeds=' + str(segment))
 
   return segments
 
@@ -333,13 +341,6 @@ if __name__ == "__main__":
 
   print 'create reference speed tiles for each segment'
   createRefSpeedTile(args.ref_tile_path, ref_tile_file, speedListPerSegment)
-
-  if args.verbose:
-    log.debug('loop over segments ###############################################################################')
-    for i, speed in enumerate(speedListPerSegment):
-      log.debug('index=' + str(i) + ' | speeds=' + str(speed))
-
-    log.debug('DONE loop over segments ###############################################################################')
 
   print 'done'
 
