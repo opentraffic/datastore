@@ -59,9 +59,9 @@ def download_data(prefixes_array, s3_reporter_bucket, s3_datastore_bucket, time_
         first = True
         while first or token:
             if token:
-                objects = client.list_objects_v2(Bucket=s3_reporter_bucket, Delimiter='/', Prefix=prefix)
-            else:
                 objects = client.list_objects_v2(Bucket=s3_reporter_bucket, Delimiter='/', Prefix=prefix, ContinuationToken=token)
+            else:
+                objects = client.list_objects_v2(Bucket=s3_reporter_bucket, Delimiter='/', Prefix=prefix)
             keys_array.extend([ o['Key'] for o in objects['Contents']])
             token = objects.get('NextContinuationToken')
             first = False
