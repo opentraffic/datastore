@@ -235,18 +235,19 @@ def createSpeedTiles(lengths, fileName, subTileSize, nextName, separate, segment
         speeds = [int(round(length / n['duration'] * 3.6)) for nid, n in nextSegments.iteritems()]
         # assign speed in kph
         #we do not want to include the invalid speeds
-        if 0 < max(speeds) and max(speeds) <= 200:
+        if 0 <= max(speeds) and max(speeds) <= 160:
           subtile.speeds.append(max(speeds) if nextSegments else 0)
         else:
-          log.debug('**********INVALID SPEEDS > 200 KPH :: '+ str(max(speeds)))
+          log.debug('**********INVALID SPEEDS > 160 KPH :: '+ str(max(speeds)))
 
       #any time its a dead one we put in 0's for the data
       minDuration = min([n['duration'] for nid, n in nextSegments.iteritems()]) if nextSegments else 0
 
       if nextSegments:
-        log.debug('segmentId=' + str((k<<25)|(extractInfo['index']<<3)|extractInfo['level']) + ' | hour=' + str(i) + ' | nextSegments=' + str(nextSegments) + ' | length=' + str(length) + ' | minDuration=' + str(minDuration) + ' | speed=' + str(max(speeds)) + ' | varSpeed=' + str(variance(speeds)))
+        log.debug('segmentId=' + str((k<<25)|(extractInfo['index']<<3)|extractInfo['level']) + ' | hour=' + str(i) + ' | nextSegments=' + str(nextSegments) + ' | length=' + str(length) + ' | minDuration=' + str(minDuration) + ' | speed=' + str(max(subtile.speeds)) + ' | varSpeed=' + str(variance(subtile.speeds)))
 
-      subtile.speedVariances.append(variance(speeds) if nextSegments else 0)
+      #get variance on valid speeds
+      subtile.speedVariances.append(variance(subtile.speeds) if nextSegments else 0)
       subtile.prevalences.append(prevalence(sum([n['count'] for nid, n in nextSegments.iteritems()]) if nextSegments else 0))
       subtile.nextSegmentIndices.append(len(subtile.nextSegmentIds) if 1 else 0)
       subtile.nextSegmentCounts.append(len(nextSegments) if nextSegments else 0)
