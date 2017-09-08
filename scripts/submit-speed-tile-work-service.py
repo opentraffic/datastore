@@ -89,7 +89,8 @@ def submit_jobs(batch_client, job_queue, job_def, src_bucket, dest_bucket, week)
         'week': week
       },
       containerOverrides={
-        'memory': memory,
+        'memory': 8192,
+        'vcpus': 2,
         'command': [
           '/scripts/speed-tile-work.py',
           '--src-bucket',
