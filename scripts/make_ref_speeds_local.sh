@@ -54,3 +54,12 @@ rm -f ${extract}.ref
 
 ./make_ref_speeds.py --speedtile-list ${speedtile_list} --bucket ${bucket} --year ${year} --level ${level} --tile-id ${tile_index} --ref-tile-path ${extract_path} --local --verbose
 
+######################################################################
+# gzip the ref files
+files=`find ${extract_base_dir} -type f | grep ".ref$"`
+for i in ${files}
+do
+  echo "gzip ${i}..."
+  gzip -c ${i} > ${i}.gz
+done
+
