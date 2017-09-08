@@ -203,6 +203,7 @@ if env == 'BOGUS':
     flush('[ERROR] DATASTORE_ENV environment variable not set! Exiting.')
     sys.exit(1)
 else:
+    sleep_between_runs = int(sleep_between_runs)
     max_keys = int(max_keys)
     bucket_interval = int(bucket_interval)
     work_bucket = 'reporter-work-' + env
