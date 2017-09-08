@@ -39,17 +39,34 @@ def convert(tile_index, time_bucket, tile_id):
 
     # TODO: no idea if the exception handling works
     try:
-        subprocess.check_output(['datastore-histogram-tile-writer', '-b', str(time_bucket), '-t', str(tile_id), '-v', '-f', fb_out_file] + glob.glob('*'), timeout=180, universal_newlines=True, stderr=subprocess.STDOUT)
+        output = subprocess.check_output(['datastore-histogram-tile-writer', '-b', str(time_bucket), '-t', str(tile_id), '-f', fb_out_file] + glob.glob('*'), timeout=180, universal_newlines=True, stderr=subprocess.STDOUT)
+        for line in output.splitlines():
+            print('[INFO]', line)
     except subprocess.CalledProcessError as tilewriter:
         print('[ERROR] Failed running datastore-histogram-tile-writer:', tilewriter.returncode, tilewriter.output)
         sys.exit([tilewriter.returncode])
 
     print('[INFO] Finished running conversion')
 
-def download_data(keys_array, s3_reporter_bucket, s3_datastore_bucket, time_key):
+def download_data(prefixes_array, s3_reporter_bucket, s3_datastore_bucket, time_key):
     client = boto3.client('s3')
     s3_resource = boto3.resource('s3')
+    
+    # get the keys
+    keys_array = []
+    for prefix in prefixes_array:
+        token = None
+        first = True
+        while first or token:
+            if token:
+                objects = client.list_objects_v2(Bucket=s3_reporter_bucket, Delimiter='/', Prefix=prefix, ContinuationToken=token)
+            else:
+                objects = client.list_objects_v2(Bucket=s3_reporter_bucket, Delimiter='/', Prefix=prefix)
+            keys_array.extend([ o['Key'] for o in objects['Contents']])
+            token = objects.get('NextContinuationToken')
+            first = False
 
+    # download the files
     for key in keys_array:
         # download the new reporter data
         object_id = key.rsplit('/', 1)[-1]
