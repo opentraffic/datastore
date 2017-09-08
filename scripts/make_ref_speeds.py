@@ -86,13 +86,13 @@ def createAvgSpeedList(fileNames):
   return segments
 
 ###############################################################################
-def createRefSpeedTile(path, fileName, speedListPerSegment):
+def createRefSpeedTile(path, fileName, speedListPerSegment, level, index):
   log.debug('createRefSpeedTiles ###############################################################################')
 
   tile = speedtile_pb2.SpeedTile()
   st = tile.subtiles.add()
-  #st.level = 0 #TODO: get from osmlr
-  #st.index = 415 #TODO: get from osmlr
+  st.level = level
+  st.index = index
   st.startSegmentIndex = 0
   st.totalSegments = len(speedListPerSegment)
   st.subtileSegments = len(speedListPerSegment)
@@ -340,7 +340,7 @@ if __name__ == "__main__":
     print("Ref output filename: " + ref_tile_file)
 
   print 'create reference speed tiles for each segment'
-  createRefSpeedTile(args.ref_tile_path, ref_tile_file, speedListPerSegment)
+  createRefSpeedTile(args.ref_tile_path, ref_tile_file, speedListPerSegment, args.level, args.tile_id)
 
   print 'done'
 
