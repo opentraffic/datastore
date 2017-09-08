@@ -46,6 +46,7 @@ def s3_clean_work_bucket(s3_resource, work_bucket):
         s3_resource.Bucket(work_bucket).objects.delete()
     except ClientError as e:
         print('[ERROR] Failed to empty work bucket: ' + work_bucket + '. Aborting!')
+        time.sleep(300)
         sys.exit([1])
 
 def s3_get_data(s3_client, reporter_bucket, max_keys):
