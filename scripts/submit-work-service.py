@@ -160,8 +160,10 @@ def build_jobs(dictionary, batch_client, job_queue, job_def, work_bucket, datast
             + job_name \
             + ', containing ' \
             + str(len(val)) \
-            + ' file(s). Memory set to: ' \
+            + ' file(s). Memory: ' \
             + str(memory) \
+            + ', vcpus: ' \
+            + str(vcpus) \
             + '.')
 
         # NOTE on resources: these will generally run successfully with
