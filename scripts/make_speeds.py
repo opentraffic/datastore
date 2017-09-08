@@ -203,6 +203,12 @@ def createSpeedTiles(lengths, fileName, subTileSize, nextName, separate, segment
     if k % subTileSize == 0:
       #writing tile
       if tile is not None:
+        log.debug('len(subtile.speeds)=' + str(len(subtile.speeds)))
+        log.debug('len(subtile.speedVariances)=' + str(len(subtile.speedVariances)))
+        log.debug('len(subtile.prevalences)=' + str(len(subtile.prevalences)))
+        log.debug('len(subtile.nextSegmentIndices)=' + str(len(subtile.nextSegmentIndices)))
+        log.debug('len(subtile.nextSegmentCounts)=' + str(len(subtile.nextSegmentCounts)))
+
         write(fileName, subTileCount, tile, first or separate)
         #writing next data if its separated
         if nextTile is not tile:
@@ -231,23 +237,28 @@ def createSpeedTiles(lengths, fileName, subTileSize, nextName, separate, segment
           n['queue'] /= float(n['count'])
 
       # create speed list in kph instead of meters per second
+      maxSpeed = 0
       if nextSegments:
         speeds = [int(round(length / n['duration'] * 3.6)) for nid, n in nextSegments.iteritems()]
         maxSpeed = max(speeds)
         #we do not want to include the invalid speeds
-        if 0 <= maxSpeed and maxSpeed <= 160:
-          subtile.speeds.append(maxSpeed if nextSegments else 0)
-        else:
-          log.error('**********INVALID SPEEDS > 160 KPH: ' + str(maxSpeed))
+        if maxSpeed > 160:
+          # flag invalid speed and set to zero
+          log.error('**********INVALID SPEED > 160 KPH: ' + str(maxSpeed))
+          maxSpeed = 0;
+        elif maxSpeed < 0:
+          # flag invalid speed and set to zero
+          log.error('**********INVALID SPEED < 0 KPH: ' + str(maxSpeed))
+          maxSpeed = 0;
 
       #any time its a dead one we put in 0's for the data
       minDuration = min([n['duration'] for nid, n in nextSegments.iteritems()]) if nextSegments else 0
 
       if nextSegments:
-        log.debug('segmentId=' + str((k<<25)|(extractInfo['index']<<3)|extractInfo['level']) + ' | hour=' + str(i) + ' | nextSegments=' + str(nextSegments) + ' | length=' + str(length) + ' | minDuration=' + str(minDuration) + ' | speed=' + str(maxSpeed) + ' | varSpeed=' + str(variance(subtile.speeds)))
+        log.debug('segmentId=' + str((k<<25)|(extractInfo['index']<<3)|extractInfo['level']) + ' | hour=' + str(i) + ' | nextSegments=' + str(nextSegments) + ' | length=' + str(length) + ' | minDuration=' + str(minDuration) + ' | speed=' + str(maxSpeed) + ' | varSpeed=' + str(variance(speeds) if (maxSpeed > 0) else 0))
 
-      #get variance on valid speeds
-      subtile.speedVariances.append(variance(subtile.speeds) if nextSegments else 0)
+      subtile.speeds.append(maxSpeed if nextSegments else 0)
+      subtile.speedVariances.append(variance(speeds) if (maxSpeed > 0) else 0)
       subtile.prevalences.append(prevalence(sum([n['count'] for nid, n in nextSegments.iteritems()]) if nextSegments else 0))
       subtile.nextSegmentIndices.append(len(subtile.nextSegmentIds) if 1 else 0)
       subtile.nextSegmentCounts.append(len(nextSegments) if nextSegments else 0)
@@ -267,6 +278,12 @@ def createSpeedTiles(lengths, fileName, subTileSize, nextName, separate, segment
 
   #get the last one written
   if tile is not None:
+    log.debug('len(subtile.speeds)=' + str(len(subtile.speeds)))
+    log.debug('len(subtile.speedVariances)=' + str(len(subtile.speedVariances)))
+    log.debug('len(subtile.prevalences)=' + str(len(subtile.prevalences)))
+    log.debug('len(subtile.nextSegmentIndices)=' + str(len(subtile.nextSegmentIndices)))
+    log.debug('len(subtile.nextSegmentCounts)=' + str(len(subtile.nextSegmentCounts)))
+
     write(fileName, subTileCount, tile, first or separate)
     if nextTile is not tile:
       write(nextName, subTileCount, nextTile, first or separate)
