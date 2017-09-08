@@ -137,18 +137,23 @@ def build_jobs(dictionary, batch_client, job_queue, job_def, work_bucket, datast
         files = set([ f[:f.rfind('/') + 1] for f in val ])
         files = ','.join(files)
 
-        # set memory for the job based on how
-        #   many files we need to process
+        # set memory/vcpus for the job based
+        #   on how many files we need to process
         if len(val) < 30:
             memory = 512
+            vcpus = 1
         elif 30 <= len(val) < 100:
             memory = 1024
+            vcpus = 1
         elif 100 <= len(val) < 300:
             memory = 2048
+            vcpus = 1
         elif 300 <= len(val) < 500:
             memory = 3072
+            vcpus = 2
         else:
             memory = 4096
+            vcpus = 2
         
         # create our batch job
         flush('[INFO] Submitting a new job: ' \
@@ -178,6 +183,7 @@ def build_jobs(dictionary, batch_client, job_queue, job_def, work_bucket, datast
             },
             containerOverrides={
                 'memory': memory,
+                'vcpus': vcpus,
                 'command': [
                     '/scripts/work.py',
                     'Ref::s3_reporter_bucket',
@@ -190,9 +196,6 @@ def build_jobs(dictionary, batch_client, job_queue, job_def, work_bucket, datast
                 ]
             }
         )
-
-
-""" the aws lambda entry point """
 
 env = os.getenv('DATASTORE_ENV', 'BOGUS') # required, 'prod' or 'dev'
 sleep_between_runs = os.getenv('SLEEP_BETWEEN_RUNS', 120) # optional
