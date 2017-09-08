@@ -25,10 +25,9 @@ message SpeedTile {
     optional uint32 rangeEnd = 7;   //epoch end time (exclusive) seconds
     optional uint32 unitSize = 8;   //target time range seconds, a week would be 604800
     optional uint32 entrySize = 9;  //target time range granularity seconds, an hour would be 3600
-
     optional string description = 10; //text describing the time period this covers
+    optional uint32 deprecated=11;
 
-    repeated uint32 referenceSpeeds = 11 [packed=true];   //the default speed of the each segment
     repeated uint32 speeds = 12 [packed=true];            //the average speed of each segment of each entry
     repeated uint32 speedVariances = 13 [packed=true];    //the variance between samples of each segment of each entry, also fixed precision
     repeated uint32 prevalences = 14 [packed=true];       //a rough indication of how many samples of ecah segment of each entry
@@ -40,6 +39,12 @@ message SpeedTile {
     repeated uint32 nextSegmentDelayVariances = 19 [packed=true];       //variance of delay samples from corresponding entry
     repeated uint32 nextSegmentQueueLengths = 20 [packed=true];         //length of any queue on segment from corresponding entry
     repeated uint32 nextSegmentQueueLengthVariances = 21 [packed=true]; //variance of queue length samples from corresponding entry
+
+    repeated uint32 referenceSpeeds20 = 22 [packed=true]; //20% are this speed or slower than this specific ref speed for each segment
+    repeated uint32 referenceSpeeds40 = 23 [packed=true]; //40% are this speed or slower than this specific ref speed for each segment
+    repeated uint32 referenceSpeeds60 = 24 [packed=true]; //60% are this speed or slower than this specific ref speed for each segment
+    repeated uint32 referenceSpeeds80 = 25 [packed=true]; //80% are this speed or slower than this specific ref speed for each segment
+
   }
 
 }
