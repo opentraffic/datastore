@@ -46,6 +46,7 @@ def s3_clean_work_bucket(s3_resource, work_bucket):
         s3_resource.Bucket(work_bucket).objects.delete()
     except ClientError as e:
         print('[ERROR] Failed to empty work bucket: ' + work_bucket + '. Aborting!')
+        time.sleep(300)
         sys.exit([1])
 
 def s3_get_data(s3_client, reporter_bucket, max_keys):
@@ -137,26 +138,33 @@ def build_jobs(dictionary, batch_client, job_queue, job_def, work_bucket, datast
         files = set([ f[:f.rfind('/') + 1] for f in val ])
         files = ','.join(files)
 
-        # set memory for the job based on how
-        #   many files we need to process
+        # set memory/vcpus for the job based
+        #   on how many files we need to process
         if len(val) < 30:
             memory = 512
+            vcpus = 1
         elif 30 <= len(val) < 100:
             memory = 1024
+            vcpus = 1
         elif 100 <= len(val) < 300:
             memory = 2048
+            vcpus = 1
         elif 300 <= len(val) < 500:
             memory = 3072
+            vcpus = 2
         else:
             memory = 4096
+            vcpus = 2
         
         # create our batch job
         flush('[INFO] Submitting a new job: ' \
             + job_name \
             + ', containing ' \
             + str(len(val)) \
-            + ' file(s). Memory set to: ' \
+            + ' file(s). Memory: ' \
             + str(memory) \
+            + ', vcpus: ' \
+            + str(vcpus) \
             + '.')
 
         # NOTE on resources: these will generally run successfully with
@@ -178,6 +186,7 @@ def build_jobs(dictionary, batch_client, job_queue, job_def, work_bucket, datast
             },
             containerOverrides={
                 'memory': memory,
+                'vcpus': vcpus,
                 'command': [
                     '/scripts/work.py',
                     'Ref::s3_reporter_bucket',
@@ -191,9 +200,6 @@ def build_jobs(dictionary, batch_client, job_queue, job_def, work_bucket, datast
             }
         )
 
-
-""" the aws lambda entry point """
-
 env = os.getenv('DATASTORE_ENV', 'BOGUS') # required, 'prod' or 'dev'
 sleep_between_runs = os.getenv('SLEEP_BETWEEN_RUNS', 120) # optional
 max_keys = os.getenv('MAX_KEYS', 100) # optional
@@ -203,6 +209,7 @@ if env == 'BOGUS':
     flush('[ERROR] DATASTORE_ENV environment variable not set! Exiting.')
     sys.exit(1)
 else:
+    sleep_between_runs = int(sleep_between_runs)
     max_keys = int(max_keys)
     bucket_interval = int(bucket_interval)
     work_bucket = 'reporter-work-' + env

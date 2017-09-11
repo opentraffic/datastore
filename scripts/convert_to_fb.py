@@ -21,7 +21,7 @@ def convert(dictionary):
     level = str(key[1])
     tile_index = str(key[2])
     tile_id = str((int(tile_index) << 3) | int(level))
-    date = "/2017/1/2/"
+    date = "/2017/1/1/"
     file_path = args.datastore_bucket + date + hour + "/" + level + '/' 
     out_dir = os.path.dirname(file_path)
     if not os.path.exists(out_dir):
@@ -37,7 +37,6 @@ def convert(dictionary):
     except subprocess.CalledProcessError as tilewriter:
       print('[ERROR] Failed running datastore-histogram-tile-writer:', tilewriter.returncode, tilewriter.output)
       sys.exit([tilewriter.returncode])
-
     print('[INFO] Finished running conversion')
 
 
