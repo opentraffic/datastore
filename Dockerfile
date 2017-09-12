@@ -7,7 +7,7 @@ ENV DEBIAN_FRONTEND noninteractive
 # install dependencies
 RUN apt-get update && apt-get install -y software-properties-common
 RUN add-apt-repository -y ppa:valhalla-core/opentraffic
-RUN apt-get update && apt-get install -y default-jdk python python-pip python3 python3-pip maven protoc python-protobuf flatbuffers
+RUN apt-get update && apt-get install -y default-jdk python python-pip python3 python3-pip maven protobuf-compiler python-protobuf flatbuffers
 RUN pip install --upgrade pip
 RUN pip install boto3 argparse flatbuffers
 RUN pip3 install --upgrade pip
