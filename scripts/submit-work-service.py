@@ -189,12 +189,19 @@ def build_jobs(dictionary, batch_client, job_queue, job_def, work_bucket, datast
                 'vcpus': vcpus,
                 'command': [
                     '/scripts/work.py',
+                    '--s3-reporter-bucket',
                     'Ref::s3_reporter_bucket',
+                    '--s3-datastore-bucket',
                     'Ref::s3_datastore_bucket',
+                    '--s3-reporter-keys',
                     'Ref::s3_reporter_keys',
+                    '--time-bucket',
                     'Ref::time_bucket',
+                    '--tile-id',
                     'Ref::tile_id',
+                    '--tile-level',
                     'Ref::tile_level',
+                    '--tile-index',
                     'Ref::tile_index'
                 ]
             }
