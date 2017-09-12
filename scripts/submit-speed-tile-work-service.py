@@ -7,12 +7,13 @@ import time
 import boto3
 import re
 import datetime
+import logging
 
-def flush(string):
-  """ flush output """
-
-  sys.stdout.write(string + os.linesep)
-  sys.stdout.flush()
+logger = logging.getLogger('make_speeds')
+logger.setLevel(logging.DEBUG)
+handler = logging.StreamHandler()
+handler.setFormatter(logging.Formatter(fmt='%(asctime)s %(levelname)s %(message)s'))
+logger.addHandler(handler)
 
 def natural_sorted(l):
   exp = re.compile('([0-9]+)')
@@ -39,55 +40,59 @@ def get_prefixes_keys(client, bucket, prefixes):
 
 def get_week(client, src_bucket, dest_bucket):
   #what source data do we have
-  flush('[INFO] Getting time range for source ' + src_bucket)
+  logger.info('Getting time range for source ' + src_bucket)
   years = natural_sorted(get_prefixes_keys(client, src_bucket, [''])[0])
   min_month = natural_sorted(get_prefixes_keys(client, src_bucket, years[:1])[0])[0]
   max_month = natural_sorted(get_prefixes_keys(client, src_bucket, years[-1:])[0])[-1]
+
   min_day = natural_sorted(get_prefixes_keys(client, src_bucket, [min_month])[0])[0]
   min_date = datetime.datetime.strptime(min_day, '%Y/%m/%d/').date()
+  min_date = min_date - datetime.timedelta(days=min_date.weekday())
+
   max_day = natural_sorted(get_prefixes_keys(client, src_bucket, [max_month])[0])[-1]
-  max_date = min_date = datetime.datetime.strptime(max_day, '%Y/%m/%d/').date()
-  flush('[INFO] Source data ranges from ' + min_day + ' to ' + max_day)
+  max_date = datetime.datetime.strptime(max_day, '%Y/%m/%d/').date()
+  max_date = max_date + datetime.timedelta(days=(6 - max_date.weekday()))
+  logger.info('Source data ranges from ' + min_day + ' to ' + max_day)
+  logger.info('From the week starting on ' + str(min_date) + ' through the week ending on ' + str(max_date))
 
   #what dest data did we already create
-  flush('[INFO] Getting week for destination ' + dest_bucket)
-  max_year = natural_sorted(get_prefixes_keys(client, dest_bucket, [''])[0])[-1]
-  if len(max_year):
-    week = natural_sorted(get_prefixes_keys(client, dest_bucket, [max_year])[0])[-1]
-    parts = [ p for p in week.split('/') if p ]
-    week = int(parts[-1]) + 1
-    parts[-1] = str(week)
+  logger.info('Getting week for destination ' + dest_bucket)
+  
+  years = natural_sorted(get_prefixes_keys(client, dest_bucket, [''])[0])
+  if len(years):
+    week = natural_sorted(get_prefixes_keys(client, dest_bucket, years[-1:])[0])[-1]
+    date = datetime.datetime.strptime(week + '1','%Y/%W/%w').date()
+    date = date + datetime.timedelta(days=7)
     #this week falls too far in the future
-    if week < int(min_date.strftime("%W")) and week > int(max_date.strftime("%W")):
-      flush('[INFO] No coverage for the week of ' + '/'.join(parts) + '/')
+    if date < min_date or date > max_date:
+      logger.info('No coverage for the week of ' + str(date))
       return None
-    week = '/'.join(parts) + '/'
+    return date.strftime("%Y/%W")
   else:
-    week = int(min_date.strftime("%W"))
-    week = years[0] + str(week) + '/'
-
-  #do we have source data available for this target week
-  return week
+    return min_date.strftime("%Y/%W")
 
 def submit_jobs(batch_client, job_queue, job_def, src_bucket, dest_bucket, week):
-  flush('[INFO] Creating speed tiles for the week of ' + week)
+  logger.info('Creating speed tiles for the week of ' + week)
 
   #loop over all tiles, level 0 are 4 degrees
   tile_level = 0
   for tile_id in range(0, (360 * 180) / 4):
-    job_name = week + '_' + str(tile_level) + '_' + str(tile_id)
-    flush('[INFO] Submitting speed tile job ' + job_name)
-    batch_client.submit_job(
-      jobName = job_name,
-      jobQueue = job_queue,
-      jobDefinition = job_def,
-      parameters = {
+    job_name = '/'.join([week, str(tile_level), str(tile_id)])
+    job = {
         'src_bucket': src_bucket,
         'dest_bucket': dest_bucket,
         'tile_level': tile_level,
         'tile_index': tile_id,
         'week': week
-      },
+      }
+    logger.info('Submitting speed tile job ' + job_name)
+    logger.debug(str(job))
+    continue
+    batch_client.submit_job(
+      jobName = job_name,
+      jobQueue = job_queue,
+      jobDefinition = job_def,
+      parameters = job,
       containerOverrides={
         'memory': 8192,
         'vcpus': 2,
@@ -109,15 +114,14 @@ def submit_jobs(batch_client, job_queue, job_def, src_bucket, dest_bucket, week)
 
 
 """ the aws lambda entry point """
-
 env = os.getenv('DATASTORE_ENV', 'BOGUS') # required, 'prod' or 'dev'
 
 if env == 'BOGUS':
-  flush('[ERROR] DATASTORE_ENV environment variable not set! Exiting.')
+  logger.error('DATASTORE_ENV environment variable not set! Exiting.')
   sys.exit(1)
 else:
   src_bucket = 'datastore-output-' + env
-  dest_bucket = 'speed-extracts'# + env
+  dest_bucket = 'speedtiles-' + env
   job_queue = 'speedtiles-' + env
   job_def = 'speedtiles-' + env
 
@@ -128,6 +132,6 @@ batch_client = boto3.client('batch')
 week = get_week(client, src_bucket, dest_bucket)
 
 #send the jobs to batch service
-submit_jobs(batch_client, job_queue, job_def, week)
+submit_jobs(batch_client, job_queue, job_def, src_bucket, dest_bucket, week)
 
-flush('[INFO] Run complete!')
+logger.info('Run complete!')
