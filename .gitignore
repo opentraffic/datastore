@@ -4,7 +4,7 @@ target
 .settings
 .classpath
 scripts/*.pyc
-srcipts/*.fbs
+scripts/*.fbs
 scripts/segment_pb2.py
 scripts/speedtile_pb2.py
 scripts/tile_pb2.py
