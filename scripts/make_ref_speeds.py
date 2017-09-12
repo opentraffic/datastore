@@ -12,6 +12,9 @@ import gzip
 import logging as log
 from Queue import Queue
 from threading import Thread
+from datetime import date, timedelta
+import datetime
+import time
 
 try:
   import speedtile_pb2
@@ -25,6 +28,20 @@ minx_ = -180
 miny_ = -90
 maxx_ = 180
 maxy_ = 90
+
+#begin dow is inclusive
+#end dow is exclusive
+def get_week_days(year, week):
+  d = datetime.datetime(year,1,1,0,0)
+  if(d.weekday()>3):
+    d = d+timedelta(7-d.weekday())
+  else:
+    d = d - timedelta(d.weekday())
+  dlt = timedelta(days = (week-1)*7)
+  epoch = datetime.datetime(1970,1,1)
+  begin = ((d + dlt) - epoch).total_seconds()
+  end = ((d + dlt + timedelta(days=7)) - epoch).total_seconds()
+  return int(begin), int(end)
 
 def make_tags(tags):
   tag_list = []
@@ -93,7 +110,7 @@ def createAvgSpeedList(fileNames):
   return segments
 
 ###############################################################################
-def createRefSpeedTile(path, fileName, speedListPerSegment, level, index):
+def createRefSpeedTile(path, fileName, speedListPerSegment, level, index, year, min_week, max_week):
   log.debug('createRefSpeedTiles ###############################################################################')
 
   tile = speedtile_pb2.SpeedTile()
@@ -104,8 +121,8 @@ def createRefSpeedTile(path, fileName, speedListPerSegment, level, index):
   st.totalSegments = len(speedListPerSegment)
   st.subtileSegments = len(speedListPerSegment)
   #time stuff
-  st.rangeStart = 0#TODO: first second since epoch of first week you have data for
-  st.rangeEnd = 0#TODO: last second since epoch of last week you have data for
+  st.rangeStart = get_week_days(year, min_week)[0]
+  st.rangeEnd = get_week_days(year, max_week)[1]
   st.unitSize = st.rangeEnd - st.rangeStart
   st.entrySize = st.unitSize
   st.description = 'Reference speeds over 1 year from 08.2016 through 07.2017' #TODO: get this from range start and end
@@ -282,8 +299,8 @@ if __name__ == "__main__":
     #get the first tile *.0.gz so that we can determine the number of subtiles we have
     # if they are separated into subtiles
     print('[INFO] starting download from s3 speed bucket: ' + args.speed_bucket)
-    weeks_per_year = 52
-    week = 0
+    weeks_per_year = 52 #TODO change to 53
+    week = 0 #TODO change to 1
     # for every week in the year
     while ( week < weeks_per_year):
       key = key_prefix + str(week) + "/"
@@ -335,8 +352,19 @@ if __name__ == "__main__":
 
   print 'getting avg speeds from list of protobuf speed tile extracts'
   ref_tile_file = None
+  min_week = 0 #TODO change to 1
+  max_week = 0 #TODO change to 1
   if not args.local:
     log.debug('AWS speed processing...')
+
+    for f in spdFileNames:
+      path_list = f.split(os.sep)
+      the_week = int(path_list[path_list.index(args.year)+1])
+      if the_week < min_week:
+        min_week = the_week
+      elif the_week > max_week:
+        max_week = the_week
+
     speedListPerSegment = createAvgSpeedList(spdFileNames)
     ref_tile_file = os.path.splitext(os.path.splitext(os.path.basename(spdFileNames[0]))[0])[0]
     ref_tile_file += ".ref"
@@ -346,15 +374,23 @@ if __name__ == "__main__":
     ref_tile_file = os.path.splitext(os.path.splitext(os.path.basename(args.speedtile_list[0]))[0])[0]
     ref_tile_file += ".ref"
 
+    for f in args.speedtile_list:
+      path_list = f.split(os.sep)
+      the_week = int(path_list[path_list.index(args.year)+1])
+      if the_week < min_week:
+        min_week = the_week
+      elif the_week > max_week:
+        max_week = the_week
+
   if args.verbose:
     print("Ref output filename: " + ref_tile_file)
 
   print 'create reference speed tiles for each segment'
-  tagset = createRefSpeedTile(args.ref_tile_path, ref_tile_file, speedListPerSegment, args.level, args.tile_id)
+  tagset = createRefSpeedTile(args.ref_tile_path, ref_tile_file, speedListPerSegment, args.level, args.tile_id, int(args.year), int(min_week), int(max_week))
 
   if args.ref_speed_bucket:
     s3 = boto3.resource('s3')
-    s3.meta.client.upload_file(ref_tile_file, args.ref_speed_bucket,os.path.basename(ref_tile_file))
+    s3.meta.client.upload_file(args.ref_tile_path + "/" + ref_tile_file, args.ref_speed_bucket,os.path.basename(ref_tile_file))
 
     print tagset
   print 'done'
