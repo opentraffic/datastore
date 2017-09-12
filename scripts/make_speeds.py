@@ -6,6 +6,8 @@ import errno
 import sys
 import logging
 
+log = logging.getLogger('make_speeds')
+
 try:
   import segment_pb2
   import tile_pb2
@@ -23,8 +25,6 @@ try:
 except ImportError:
   print 'You need to generate the flatbuffer source via: sed -e "s/namespace.*/namespace dsfb;/g" ../src/main/fbs/histogram-tile.fbs > schema.fbs && flatc --python schema.fbs'
   sys.exit(1)
-
-
 
 #try this fat tile: wget https://s3.amazonaws.com/datastore_output_prod/2017/1/1/0/0/2415.fb
 ###############################################################################
@@ -330,7 +330,6 @@ if __name__ == "__main__":
   extractInfo['level'] = args.level
   extractInfo['index'] = args.tile_id
 
-  log = logging.getLogger('make_speeds')
   if log.level == logging.NOTSET:
     log.setLevel(logging.DEBUG if args.verbose else logging.WARN)
     handler = logging.StreamHandler()
