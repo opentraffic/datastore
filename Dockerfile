@@ -17,7 +17,9 @@ RUN pip3 install boto3 argparse flatbuffers
 ADD ./scripts /scripts
 
 # install proto and flatbuffer definitions
-ADD ./proto /proto
+ADD ./proto/speedtile.proto /proto
+ADD ./osmlr-tile-spec/tile.proto /proto
+ADD ./osmlr-tile-spec/segment.proto /proto
 ADD ./src/main/fbs/histogram-tile.fbs /flatbuffer/schema.fbs
 
 # install java code
