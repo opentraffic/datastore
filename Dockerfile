@@ -5,7 +5,8 @@ MAINTAINER Grant Heffernan <grant@mapzen.com>
 ENV DEBIAN_FRONTEND noninteractive
 
 # install dependencies
-RUN add-apt-repository ppa:valhalla-core/opentraffic
+RUN apt-get install -y software-properties-common
+RUN add-apt-repository -y ppa:valhalla-core/opentraffic
 RUN apt-get update && apt-get install -y default-jdk python python-pip python3 python3-pip maven protoc python-protobuf flatbuffers
 RUN pip install --upgrade pip
 RUN pip install boto3 argparse flatbuffers
