@@ -46,7 +46,7 @@ def s3_clean_work_bucket(s3_resource, work_bucket):
     try:
         s3_resource.Bucket(work_bucket).objects.delete()
     except ClientError as e:
-        print('[ERROR] Failed to empty work bucket: ' + work_bucket + '. Aborting!')
+        logger.error('Failed to empty work bucket: ' + work_bucket + '. Aborting!')
         time.sleep(300)
         sys.exit([1])
 
@@ -87,7 +87,7 @@ def s3_move_data(keys, work_bucket, reporter_bucket):
                 CopySource=reporter_bucket + '/' + key
                 )
         except ClientError as e:
-            print('[ERROR] Failed to copy key ' + key + ': %s' % e + '.')
+            logger.error('Failed to copy key ' + key + ': %s' % e + '.')
 
         logger.info('Deleting key: ' + key + ' from ' + reporter_bucket + '.')
         try:
@@ -96,7 +96,7 @@ def s3_move_data(keys, work_bucket, reporter_bucket):
                 Key=key
                 )
         except ClientError as e:
-            print('[ERROR] Failed to delete key: ' + key + ': %s' % e + '.')
+            logger.error('Failed to delete key: ' + key + ': %s' % e + '.')
 
 def build_dictionary(keys_array, bucket_interval):
     """ create a dictionary with a key of type tuple of (time bucket,
