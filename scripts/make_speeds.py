@@ -4,7 +4,9 @@ import random
 import os
 import errno
 import sys
-import logging as log
+import logging
+
+log = logging.getLogger('make_speeds')
 
 try:
   import segment_pb2
@@ -23,8 +25,6 @@ try:
 except ImportError:
   print 'You need to generate the flatbuffer source via: sed -e "s/namespace.*/namespace dsfb;/g" ../src/main/fbs/histogram-tile.fbs > schema.fbs && flatc --python schema.fbs'
   sys.exit(1)
-
-
 
 #try this fat tile: wget https://s3.amazonaws.com/datastore_output_prod/2017/1/1/0/0/2415.fb
 ###############################################################################
@@ -71,12 +71,12 @@ def getSegments(path, extractInfo, lengths):
     for file in files:
       if (root + os.sep + file).endswith('.fb'):
         with open(root + os.sep + file, 'rb') as filehandle:
-          print 'Loading ' + (root + os.sep + file) + '...'
+          log.info('Loading ' + (root + os.sep + file) + '...')
           hist = Histogram.GetRootAsHistogram(bytearray(filehandle.read()), 0)
         level = get_level(hist.TileId())
         tile_index = get_tile_index(hist.TileId())
         if (level == extractInfo['level']) and (tile_index == extractInfo['index']):
-          print 'Processing ' + (root + os.sep + file) + '...'
+          log.info('Processing ' + (root + os.sep + file) + '...')
           #for each segment
           for i in range(0, hist.SegmentsLength()):
             segment = hist.Segments(i)
@@ -156,6 +156,8 @@ def write(name, count, tile, should_remove):
     remove(name)
   with open(name, 'ab') as f:
     f.write(tile.SerializeToString())
+    log.info('Wrote ' + name)
+  return name
 
 ###############################################################################
 def next(startIndex, total, nextName, subtileSegments, extractInfo):
@@ -202,6 +204,7 @@ def createSpeedTiles(lengths, fileName, subTileSize, nextName, separate, segment
   #find the minimum hour
   minHour = min([int(hour) for k,v in segments.iteritems() for hour in v.keys()])
   log.debug('minHour=' + str(minHour))
+  written = []
 
   #fake a segment for each entry in the osmlr
   tile = None
@@ -219,10 +222,10 @@ def createSpeedTiles(lengths, fileName, subTileSize, nextName, separate, segment
         log.debug('len(subtile.nextSegmentIndices)=' + str(len(subtile.nextSegmentIndices)))
         log.debug('len(subtile.nextSegmentCounts)=' + str(len(subtile.nextSegmentCounts)))
 
-        write(fileName, subTileCount, tile, first or separate)
+        written.append(write(fileName, subTileCount, tile, first or separate))
         #writing next data if its separated
         if nextTile is not tile:
-          write(nextName, subTileCount, nextTile, first or separate)
+          written.append(write(nextName, subTileCount, nextTile, first or separate))
         #dont delete the files from this point on
         first = False
         #if the subtiles are to be separate increment
@@ -294,13 +297,16 @@ def createSpeedTiles(lengths, fileName, subTileSize, nextName, separate, segment
     log.debug('len(subtile.nextSegmentIndices)=' + str(len(subtile.nextSegmentIndices)))
     log.debug('len(subtile.nextSegmentCounts)=' + str(len(subtile.nextSegmentCounts)))
 
-    write(fileName, subTileCount, tile, first or separate)
+    written.append(write(fileName, subTileCount, tile, first or separate))
     if nextTile is not tile:
-      write(nextName, subTileCount, nextTile, first or separate)
+      written.append(write(nextName, subTileCount, nextTile, first or separate))
     del subtile
     del tile
     del nextSubtile
     del nextTile
+
+  #give back the list of tiles that were written
+  return written
 
 
 #Read in OSMLR & flatbuffer tiles from the datastore output in AWS to read in the lengths, speeds & next segment ids and generate the segment speed files in proto output format
@@ -308,10 +314,6 @@ if __name__ == "__main__":
   parser = argparse.ArgumentParser(description='Generate speed tiles', formatter_class=argparse.ArgumentDefaultsHelpFormatter)
   parser.add_argument('--osmlr', type=str, help='The osmlr tile containing the relevant segments definitions', required=True)
   parser.add_argument('--fb-path', type=str, help='The flatbuffer tile path to load the files necessary for the time period given', required=True)
-  parser.add_argument('--output-prefix', type=str, help='The file name prefix to give to output tiles. The first tile will have no suffix, after that they will be numbered starting at 1. e.g. tile.spd, tile.spd.1, tile.spd.2', default='tile.spd')
-  parser.add_argument('--max-segments', type=int, help='The maximum number of segments to have in a single subtile message', default=10000)
-  parser.add_argument('--no-separate-subtiles', help='If present all subtiles will be in the same tile', action='store_true')
-  parser.add_argument('--separate-next-segments-prefix', type=str, help='The prefix for the next segments output tiles if they should be separated from the primary speed entries. If omitted they will not be separate')
   parser.add_argument('--time-range-start', type=int, help='The epoch start time (inclusive) in seconds', required=True)
   parser.add_argument('--time-range-end', type=int, help='The epoch end time (exclusive) in seconds', required=True)
   parser.add_argument('--time-unit-size', type=int, help='The target time range in seconds, a week would be 604800', required=True)
@@ -319,6 +321,11 @@ if __name__ == "__main__":
   parser.add_argument('--time-range-description', type=str, help='The text describing the time period this run covers', required=True)
   parser.add_argument('--level', type=int, help='The level to target', required=True)
   parser.add_argument('--tile-id', type=int, help='The tile id to target', required=True)
+
+  parser.add_argument('--output-prefix', type=str, help='The file name prefix to give to output tiles. The first tile will have no suffix, after that they will be numbered starting at 0. e.g. tile.spd.0, tile.spd.1, tile.spd.2', default='tile.spd')
+  parser.add_argument('--separate-next-segments-prefix', type=str, help='The prefix for the next segments output tiles if they should be separated from the primary speed entries. If omitted they will not be separate')
+  parser.add_argument('--max-segments', type=int, help='The maximum number of segments to have in a single subtile message', default=10000)
+  parser.add_argument('--no-separate-subtiles', help='If present all subtiles will be in the same tile', action='store_true')
   parser.add_argument('--verbose', '-v', help='Turn on verbose output i.e. DEBUG level logging', action='store_true')
 
   # parse the arguments
@@ -334,8 +341,13 @@ if __name__ == "__main__":
   extractInfo['level'] = args.level
   extractInfo['index'] = args.tile_id
 
+  if log.level == logging.NOTSET:
+    log.setLevel(logging.DEBUG if args.verbose else logging.WARN)
+    handler = logging.StreamHandler()
+    handler.setFormatter(logging.Formatter(fmt='%(asctime)s %(levelname)s %(message)s'))
+    log.addHandler(handler)
+
   if args.verbose:
-    log.basicConfig(format='%(asctime)s - %(levelname)s - %(message)s', stream=sys.stdout, level=log.DEBUG)
     log.debug('rangeStart=' + str(extractInfo['rangeStart']))
     log.debug('rangeEnd=' + str(extractInfo['rangeEnd']))
     log.debug('unitSize=' + str(extractInfo['unitSize']))
@@ -343,8 +355,6 @@ if __name__ == "__main__":
     log.debug('description=' + extractInfo['description'])
     log.debug('level=' + str(extractInfo['level']))
     log.debug('index=' + str(extractInfo['index']))
-  else:
-    log.basicConfig(format='%(asctime)s - %(levelname)s - %(message)s', stream=sys.stdout)
 
   print 'getting osmlr lengths'
   lengths = getLengths(args.osmlr)
