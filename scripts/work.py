@@ -51,7 +51,7 @@ def convert(tile_index, time_bucket, tile_id):
         for line in output.splitlines():
             logger.info(line)
     except subprocess.CalledProcessError as tilewriter:
-        logger.error('Failed running datastore-histogram-tile-writer: ' + str(tilewriter.returncode) + ' ' str(tilewriter.output))
+        logger.error('Failed running datastore-histogram-tile-writer: ' + str(tilewriter.returncode) + ' ' + str(tilewriter.output))
         sys.exit(tilewriter.returncode)
     logger.info('Finished running conversion')
 
