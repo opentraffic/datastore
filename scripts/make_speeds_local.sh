@@ -4,15 +4,15 @@
 ### YEAR/WEEK/X/Y.file contains all the hour-by-hour speeds and count indexes
 ### 2017/<week>/<level/<tileid>
 year=2017
-week=0
-osmlr_base_dir="/data/opentraffic/osmlr-tiles/v1.0/pbf"
-fb_path="/data/opentraffic/datastore_output_local"
+week=01
+osmlr_base_dir="/data/opentraffic/osmlr-tiles/v0.1/pbf"
+fb_path="/data/opentraffic/datastore_output_prod"
 speed_output_base_dir="speed-extracts/${year}/${week}"
-time_range_start=1483228800
-time_range_end=1483833600
+time_range_start=1483315200
+time_range_end=1483920000
 time_unit_size=604800
 time_entry_size=3600
-time_range_description="168 ordinal hours of week 0 of year 2017"
+time_range_description="168 ordinal hours of week 1 of year 2017"
 
 rm -fr "${speed_output_base_dir}"
 

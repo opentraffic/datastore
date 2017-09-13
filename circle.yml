@@ -1,3 +1,8 @@
+checkout:
+  post:
+    - git submodule sync
+    - git submodule update --init
+
 machine:
   services:
     - docker
@@ -7,7 +12,7 @@ machine:
 dependencies:
   pre:
     - sudo apt-get update; sudo apt-get install git
-    - git clone git@github.com:opentraffic/hub-deploy
+    - git clone --recursive git@github.com:opentraffic/hub-deploy
   override:
     - docker info
     - docker build --rm=false -t datastore:latest .

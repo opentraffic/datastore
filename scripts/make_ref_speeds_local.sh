@@ -5,7 +5,7 @@
 ### 2017/<week>/<level/<tileid>
 bucket="speed-extracts"
 year=2017
-week=0
+week=01
 extract_base_dir="speed-extracts/${year}/${week}"
 
 
