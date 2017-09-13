@@ -4,16 +4,16 @@
 import os
 import sys
 import time
-import itertools
 from multiprocessing.pool import ThreadPool
 import boto3
+from functools import partial
 from botocore.exceptions import ClientError
 
-def flush(string):
-    """ flush output """
-
-    sys.stdout.write(string + os.linesep)
-    sys.stdout.flush()
+logger = logging.getLogger('make_histograms')
+logger.setLevel(logging.INFO)
+handler = logging.StreamHandler()
+handler.setFormatter(logging.Formatter(fmt='%(asctime)s %(levelname)s %(message)s'))
+logger.addHandler(handler)
 
 def batch_check_queue(batch_client, job_queue):
     """ check that the job queue is empty before submitting any new work """
@@ -21,7 +21,7 @@ def batch_check_queue(batch_client, job_queue):
     # set default queue status
     queue_status = 'idle'
 
-    flush('[INFO] Checking for existing jobs in the queue.')
+    logger.info('Checking for existing jobs in the queue.')
     statuses = ['RUNNING', 'RUNNABLE', 'SUBMITTED', 'PENDING', 'STARTING']
 
     for status in statuses:
@@ -32,7 +32,7 @@ def batch_check_queue(batch_client, job_queue):
             )
 
         if len(response['jobSummaryList']) > 0:
-            flush('[INFO] Found active jobs in state: ' + status)
+            logger.info('Found active jobs in state: ' + status)
             queue_status = 'processing'
 
     return queue_status
@@ -40,7 +40,7 @@ def batch_check_queue(batch_client, job_queue):
 def s3_clean_work_bucket(s3_resource, work_bucket):
     """ cull any old work data """
 
-    flush('[INFO] Emptying work bucket: ' + work_bucket + '.')
+    logger.info('Emptying work bucket: ' + work_bucket + '.')
 
     try:
         s3_resource.Bucket(work_bucket).objects.delete()
@@ -52,7 +52,7 @@ def s3_clean_work_bucket(s3_resource, work_bucket):
 def s3_get_data(s3_client, reporter_bucket, max_keys):
     """ check S3 for new data """
 
-    flush('[INFO] Getting contents of bucket: ' \
+    logger.info('Getting contents of bucket: ' \
         + reporter_bucket \
         + ', max keys: ' \
         + str(max_keys) \
@@ -73,10 +73,14 @@ def s3_get_data(s3_client, reporter_bucket, max_keys):
     keys_array.sort()
     return keys_array
 
-def s3_move_data((key, s3_client, work_bucket, reporter_bucket)):
+def s3_move_data(key, **kwargs):
+    work_bucket = kwargs['work']
+    reporter_bucket = kwargs['reporter']
+    session = boto3.session.Session()
+    s3_client = session.client('s3')
     """ move data to working bucket """
 
-    flush('[INFO] Moving key: ' + key + ' from ' + reporter_bucket + ' to ' + work_bucket + '.')
+    logger.info('Moving key: ' + key + ' from ' + reporter_bucket + ' to ' + work_bucket + '.')
     try:
         s3_client.copy_object(
             Bucket=work_bucket,
@@ -86,7 +90,7 @@ def s3_move_data((key, s3_client, work_bucket, reporter_bucket)):
     except ClientError as e:
         print('[ERROR] Failed to copy key ' + key + ': %s' % e + '.')
 
-    flush('[INFO] Deleting key: ' + key + ' from ' + reporter_bucket + '.')
+    logger.info('Deleting key: ' + key + ' from ' + reporter_bucket + '.')
     try:
         s3_client.delete_object(
             Bucket=reporter_bucket,
@@ -126,7 +130,7 @@ def build_dictionary(keys_array, bucket_interval):
 def build_jobs(dictionary, batch_client, job_queue, job_def, work_bucket, datastore_bucket):
     """ loop over the dictionary and create jobs """
 
-    flush('[INFO] Building jobs.')
+    logger.info('Building jobs.')
 
     for key, val in dictionary.items():
         time_bucket = str(key[0])
@@ -157,7 +161,7 @@ def build_jobs(dictionary, batch_client, job_queue, job_def, work_bucket, datast
             vcpus = 2
         
         # create our batch job
-        flush('[INFO] Submitting a new job: ' \
+        logger.info('Submitting a new job: ' \
             + job_name \
             + ', containing ' \
             + str(len(val)) \
@@ -213,7 +217,7 @@ max_keys = os.getenv('MAX_KEYS', 100) # optional
 bucket_interval = os.getenv('BUCKET_INTERVAL', 3600) # optional
 
 if env == 'BOGUS':
-    flush('[ERROR] DATASTORE_ENV environment variable not set! Exiting.')
+    logger.error('DATASTORE_ENV environment variable not set! Exiting.')
     sys.exit(1)
 else:
     sleep_between_runs = int(sleep_between_runs)
@@ -233,11 +237,11 @@ batch_client = boto3.client('batch')
 
 batch_queue_status = batch_check_queue(batch_client, job_queue)
 if batch_queue_status == 'processing':
-    flush('[INFO] Run complete!')
-    flush('[INFO] Sleeping before next run...')
+    logger.info('Run complete!')
+    logger.info('Sleeping before next run...')
     time.sleep(sleep_between_runs)
 else:
-    flush('[INFO] No jobs in the queue.')
+    logger.info('No jobs in the queue.')
 
     # get down to work
     s3_clean_work_bucket(s3_resource, work_bucket)
@@ -246,24 +250,19 @@ else:
 
     # if the array is empty, abort
     if not s3_data:
-        flush('[NOTICE] Found no keys! Passing on this run.')
-        flush('[INFO] Run complete!')
-        flush('[INFO] Sleeping before next run...')
+        logger.info('Found no keys! Passing on this run.')
+        logger.info('Run complete!')
+        logger.info('Sleeping before next run...')
         time.sleep(sleep_between_runs)
     else:
         # move data
         pool = ThreadPool(processes=10)
-        move_tuples = zip(s3_data,
-                        itertools.repeat(s3_client, len(s3_data)),
-                        itertools.repeat(work_bucket, len(s3_data)),
-                        itertools.repeat(reporter_bucket, len(s3_data))
-                        )
-        pool.map(s3_move_data, move_tuples)
+        pool.map(partial(s3_move_data, work=work_bucket, reporter=reporter_bucket), s3_data)
 
         dictionary = build_dictionary(s3_data, bucket_interval)
         build_jobs(dictionary, batch_client, job_queue, job_def, work_bucket, datastore_bucket)
 
-        flush('[INFO] Run complete!')
-        flush('[INFO] Sleeping before next run...')
+        logger.info('Run complete!')
+        logger.info('Sleeping before next run...')
 
         time.sleep(sleep_between_runs)
