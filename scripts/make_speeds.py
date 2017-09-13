@@ -63,9 +63,9 @@ def unquantise(val):
   raise (hi, lo)
 
 ###############################################################################
-def getSegments(path, target_level, target_tile_id, lengths):
+def getSegments(path, extractInfo, lengths):
   log.debug('getSegments ###############################################################################')
-  log.debug('Looking for level=' + str(target_level) + ' and tile_id=' + str(target_tile_id) + ' here:' + path)
+  log.debug('Looking for level=' + str(extractInfo['level']) + ' and tile_id=' + str(extractInfo['index']) + ' here:' + path)
   segments = {}
   for root, dirs, files in os.walk(path):
     for file in files:
@@ -75,7 +75,7 @@ def getSegments(path, target_level, target_tile_id, lengths):
           hist = Histogram.GetRootAsHistogram(bytearray(filehandle.read()), 0)
         level = get_level(hist.TileId())
         tile_index = get_tile_index(hist.TileId())
-        if (level == target_level) and (tile_index == target_tile_id):
+        if (level == extractInfo['level']) and (tile_index == extractInfo['index']):
           log.info('Processing ' + (root + os.sep + file) + '...')
           #for each segment
           for i in range(0, hist.SegmentsLength()):
@@ -83,26 +83,36 @@ def getSegments(path, target_level, target_tile_id, lengths):
             #has to be one we know about and its not tombstoned/markered
             if segment.EntriesLength() > 0 and segment.SegmentId() < len(lengths) and lengths[segment.SegmentId()] > 0:
               length = lengths[segment.SegmentId()]
-              processSegment(segments, segment, length)
+              processSegment(segments, segment, extractInfo, length)
         del hist
   return segments
 
 ###############################################################################
-def processSegment(segments, segment, length):
+def processSegment(segments, segment, extractInfo, length):
   for i in range(0, segment.EntriesLength()):
     e = segment.Entries(i)
+
+    # if entry is not within time range then skip
+    epochSec = e.EpochHour() * 3600
+    if epochSec < extractInfo['rangeStart'] or epochSec >= extractInfo['rangeEnd']:
+      log.warn('Entry time is not in range: ' + str(epochSec))
+      continue
+
     #get the right segment
     if segment.SegmentId() not in segments:
       segments[segment.SegmentId()] = { }
     hours = segments[segment.SegmentId()]
+
     #get the right hour in there
     if e.EpochHour() not in hours:
        hours[e.EpochHour()] = { }
     nexts = hours[e.EpochHour()]
+
     #if you dont have the right next segment in there
     if segment.NextSegmentIds(e.NextSegmentIdx()) not in nexts:
       nexts[segment.NextSegmentIds(e.NextSegmentIdx())] = {'count': 0, 'duration': 0, 'queue': 0 }
     totals = nexts[segment.NextSegmentIds(e.NextSegmentIdx())]
+
     #continuing a previous pair
     totals['count'] += e.Count()
     totals['duration'] += unquantise(e.DurationBucket()) * e.Count()
@@ -350,7 +360,7 @@ if __name__ == "__main__":
   lengths = getLengths(args.osmlr)
 
   print 'getting speed averages from fb Histogram'
-  segments = getSegments(args.fb_path, args.level, args.tile_id, lengths)
+  segments = getSegments(args.fb_path, extractInfo, lengths)
 
   if args.verbose:
     log.debug('loop over segments ###############################################################################')
