@@ -201,8 +201,8 @@ def variance(items):
 def createSpeedTiles(lengths, fileName, subTileSize, nextName, separate, segments, extractInfo):
   log.debug('createSpeedTiles ###############################################################################')
 
-  #find the minimum hour
-  minHour = min([int(hour) for k,v in segments.iteritems() for hour in v.keys()])
+  #find the minimum epoch hour for this time range
+  minHour = extractInfo['rangeStart'] / 3600
   log.debug('minHour=' + str(minHour))
   written = []
 
