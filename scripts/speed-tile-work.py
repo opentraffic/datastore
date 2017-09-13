@@ -60,14 +60,15 @@ def convert(level, index, week, histograms):
   logger.info('Getting segment lengths from osmlr')
   lengths = make_speeds.getLengths(osmlr)
 
-  logger.info('Accumulating segment speeds from histograms')
-  segments = make_speeds.getSegments('.', level, index, lengths)
-
-  logger.info('Creating speed tiles')
   date = datetime.datetime.strptime(week + '/1','%Y/%W/%w')
   start = calendar.timegm(date.timetuple())
   info = {'rangeStart': start, 'rangeEnd': start + 604800, 'unitSize': 604800, 'entrySize': 3600,
     'description': 'Hourly speeds for the week starting on ' + str(date), 'level': level, 'index': index}
+
+  logger.info('Accumulating segment speeds from histograms')
+  segments = make_speeds.getSegments('.', info, lengths)
+
+  logger.info('Creating speed tiles')
   prefix = url_suffix(int(level), int(index)).split('/')[-1]
   return make_speeds.createSpeedTiles(lengths, prefix + '.spd', 10000, prefix + '.nex', True, segments, info), osmlr
 
