@@ -266,9 +266,9 @@ else:
         time.sleep(sleep_between_runs)
     else:
         # copy delete data
-        s3_data = split(s3_data, 10)
+        chunks = split(s3_data, 10)
         threads = []
-        for chunk in s3_data:
+        for chunk in chunks:
             threads.append(threading.Thread(target=s3_move_data, args=(chunk, work_bucket, reporter_bucket)))
             threads[-1].start()
         for t in threads:
