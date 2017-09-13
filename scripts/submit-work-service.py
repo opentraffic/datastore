@@ -4,10 +4,10 @@
 import os
 import sys
 import time
-from multiprocessing.pool import ThreadPool
 import boto3
 import logging
-from functools import partial
+import threading
+import math
 from botocore.exceptions import ClientError
 
 logger = logging.getLogger('make_histograms')
@@ -46,7 +46,7 @@ def s3_clean_work_bucket(s3_resource, work_bucket):
     try:
         s3_resource.Bucket(work_bucket).objects.delete()
     except ClientError as e:
-        print('[ERROR] Failed to empty work bucket: ' + work_bucket + '. Aborting!')
+        logger.error('Failed to empty work bucket: ' + work_bucket + '. Aborting!')
         time.sleep(300)
         sys.exit([1])
 
@@ -74,31 +74,29 @@ def s3_get_data(s3_client, reporter_bucket, max_keys):
     keys_array.sort()
     return keys_array
 
-def s3_move_data(key, **kwargs):
-    work_bucket = kwargs['work']
-    reporter_bucket = kwargs['reporter']
+def s3_move_data(keys, work_bucket, reporter_bucket):
     session = boto3.session.Session()
     s3_client = session.client('s3')
     """ move data to working bucket """
+    for key in keys:
+        logger.info('Moving key: ' + key + ' from ' + reporter_bucket + ' to ' + work_bucket + '.')
+        try:
+            s3_client.copy_object(
+                Bucket=work_bucket,
+                Key=key,
+                CopySource=reporter_bucket + '/' + key
+                )
+        except ClientError as e:
+            logger.error('Failed to copy key ' + key + ': %s' % e + '.')
 
-    logger.info('Moving key: ' + key + ' from ' + reporter_bucket + ' to ' + work_bucket + '.')
-    try:
-        s3_client.copy_object(
-            Bucket=work_bucket,
-            Key=key,
-            CopySource=reporter_bucket + '/' + key
-            )
-    except ClientError as e:
-        print('[ERROR] Failed to copy key ' + key + ': %s' % e + '.')
-
-    logger.info('Deleting key: ' + key + ' from ' + reporter_bucket + '.')
-    try:
-        s3_client.delete_object(
-            Bucket=reporter_bucket,
-            Key=key
-            )
-    except ClientError as e:
-        print('[ERROR] Failed to delete key: ' + key + ': %s' % e + '.')
+        logger.info('Deleting key: ' + key + ' from ' + reporter_bucket + '.')
+        try:
+            s3_client.delete_object(
+                Bucket=reporter_bucket,
+                Key=key
+                )
+        except ClientError as e:
+            logger.error('Failed to delete key: ' + key + ': %s' % e + '.')
 
 def build_dictionary(keys_array, bucket_interval):
     """ create a dictionary with a key of type tuple of (time bucket,
@@ -212,6 +210,17 @@ def build_jobs(dictionary, batch_client, job_queue, job_def, work_bucket, datast
             }
         )
 
+def split(l, n):
+    size = int(math.ceil(len(l)/float(n)))
+    cutoff = len(l) % n
+    result = []
+    pos = 0
+    for i in range(0, n):
+        end = pos + size if i < cutoff else pos + size - 1
+        result.append(l[pos:end])
+        pos = end
+    return result
+
 env = os.getenv('DATASTORE_ENV', 'BOGUS') # required, 'prod' or 'dev'
 sleep_between_runs = os.getenv('SLEEP_BETWEEN_RUNS', 120) # optional
 max_keys = os.getenv('MAX_KEYS', 100) # optional
@@ -256,10 +265,14 @@ else:
         logger.info('Sleeping before next run...')
         time.sleep(sleep_between_runs)
     else:
-        # move data
-        pool = ThreadPool(processes=10)
-        pool.map(partial(s3_move_data, work=work_bucket, reporter=reporter_bucket), s3_data)
-
+        # copy delete data
+        s3_data = split(s3_data, 10)
+        threads = []
+        for chunk in s3_data:
+            threads.append(threading.Thread(target=s3_move_data, args=(chunk, work_bucket, reporter_bucket)))
+            threads[-1].start()
+        for t in threads:
+            t.join()
         dictionary = build_dictionary(s3_data, bucket_interval)
         build_jobs(dictionary, batch_client, job_queue, job_def, work_bucket, datastore_bucket)
 
