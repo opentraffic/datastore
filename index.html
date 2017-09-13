@@ -74,7 +74,7 @@ Costing: <select id="costing">
 
     //keep an object around to parse protos with
     var SpeedTile;
-    protobuf.load('https://s3.amazonaws.com/speed-extracts/speedtile.proto', function(err, root) {
+    protobuf.load('https://s3.amazonaws.com/speedtiles-prod/speedtile.proto', function(err, root) {
       //couldnt parse proto definition
       if(err) throw err;
       //get the message type
@@ -144,7 +144,7 @@ Costing: <select id="costing">
       var idx = get_segment_index(segments[0]);
       var subtile_index = (idx / 10000) | 0;
       //data please
-      getByteBufferUrl('https://s3.amazonaws.com/speed-extracts/2017/0/' + tile_url(level, tile_index) + '.spd.' + subtile_index + '.gz', function(bytes) {
+      getByteBufferUrl('https://s3.amazonaws.com/speedtiles-prod/2017/01/' + tile_url(level, tile_index) + '.spd.' + subtile_index + '.gz', function(bytes) {
         //parse the binary data into an object
         var speedTile = SpeedTile.decode(bytes);
         var subtile = speedTile.subtiles[0];
