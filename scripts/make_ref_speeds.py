@@ -31,6 +31,11 @@ maxy_ = 90
 
 #begin dow is inclusive
 #end dow is exclusive
+#returns first dow @ midnight, last dow + 1 @ midnight
+#example:
+#  input year=2017, week = 1
+#  1483315200, 1483920000
+#  January 2, 2017, January 9, 2017
 def get_week_days(year, week):
   d = datetime.datetime(year,1,1,0,0)
   if(d.weekday()>3):
@@ -40,15 +45,9 @@ def get_week_days(year, week):
   dlt = timedelta(days = (week-1)*7)
   epoch = datetime.datetime(1970,1,1)
   begin = ((d + dlt) - epoch).total_seconds()
+  #add an extra day to go to the next day at midnight because end is exclusive
   end = ((d + dlt + timedelta(days=7)) - epoch).total_seconds()
   return int(begin), int(end)
-
-def make_tags(tags):
-  tag_list = []
-  for k,v in tags.items():
-    tag_list.append({'Key':k,
-      'Value':v if v is not None else ''})
-  return {'TagSet':tag_list}
 
 def get_tile_count(filename):
   #lets load the protobuf speed tile
@@ -146,7 +145,8 @@ def createRefSpeedTile(path, fileName, speedListPerSegment, level, index, year, 
   with open(path + "/" +fileName, 'ab') as f:
     f.write(tile.SerializeToString())
 
-  return make_tags({'rangeStart':st.rangeStart,'rangeEnd':st.rangeEnd})
+  #return our meta tags for s3
+  return {'rangeStart':str(st.rangeStart),'rangeEnd':str(st.rangeEnd)}
 
 class BoundingBox(object):
 
@@ -248,6 +248,7 @@ if __name__ == "__main__":
   parser.add_argument('--ref-tile-path', type=str, help='The public data extract speed tile containing the average speeds per segment per hour of day for one week', required=True)
   parser.add_argument('--speed-bucket', type=str, help='AWS bucket location (i.e., where to get the speed tiles)', required=True)
   parser.add_argument('--ref-speed-bucket', type=str, help='AWS Bucket (e.g., ref-speedtiles-prod) into which we will place the ref tile')
+  parser.add_argument('--ref-bucket-version', type=str, help='Version within the AWS Bucket (e.g., v1.0) into which we will place the ref tile')
   parser.add_argument('--year', type=str, help='The year you wish to get', required=True)
   parser.add_argument('--level', type=int, help='The level to target', required=True)
   parser.add_argument('--tile-id', type=int, help='The tile id to target', required=True)
@@ -272,6 +273,8 @@ if __name__ == "__main__":
   ################################################################################
   # download the speed tiles from aws and decompress
   spdFileNames = []
+  tile_hierarchy = TileHierarchy()
+  file_name = tile_hierarchy.levels[args.level].GetFile(args.tile_id, args.level)
   if not args.local:
 
     # work function for our threads.  Downloads and decompresses the speed tile
@@ -291,7 +294,6 @@ if __name__ == "__main__":
     #our work dir.  deleted everytime if exists
     directory = "ref_working_dir/"
     shutil.rmtree(directory, ignore_errors=True)
-    tile_hierarchy = TileHierarchy()
     key_prefix = args.year + "/"
 
     s3 = boto3.client('s3')
@@ -304,7 +306,6 @@ if __name__ == "__main__":
     # for every week in the year
     while ( week < weeks_per_year):
       key = key_prefix + str(week) + "/"
-      file_name = tile_hierarchy.levels[args.level].GetFile(args.tile_id, args.level)
       key += file_name
       try:
         file_path = os.path.dirname(key + ".0.gz" )
@@ -386,12 +387,22 @@ if __name__ == "__main__":
     print("Ref output filename: " + ref_tile_file)
 
   print 'create reference speed tiles for each segment'
-  tagset = createRefSpeedTile(args.ref_tile_path, ref_tile_file, speedListPerSegment, args.level, args.tile_id, int(args.year), int(min_week), int(max_week))
+  metatags = createRefSpeedTile(args.ref_tile_path, ref_tile_file, speedListPerSegment, args.level, args.tile_id, int(args.year), int(min_week), int(max_week))
 
-  if args.ref_speed_bucket:
-    s3 = boto3.resource('s3')
-    s3.meta.client.upload_file(args.ref_tile_path + "/" + ref_tile_file, args.ref_speed_bucket,os.path.basename(ref_tile_file))
+  #upload to s3
+  if args.ref_speed_bucket and args.ref_bucket_version:
 
-    print tagset
+    s3_client = boto3.client("s3")
+    s3_dir = os.path.dirname(file_name)
+
+    #compress
+    with open(args.ref_tile_path + "/" + ref_tile_file) as f_in, gzip.open(args.ref_tile_path + "/" + ref_tile_file + ".gz", 'wb') as f_out:
+      f_out.writelines(f_in)
+
+    #push up with custom metatags.  All user custom meta data can only be string and will have a prefix of x-amz-meta-
+    with open(args.ref_tile_path + "/" + ref_tile_file + ".gz") as f :
+      object_data = f.read()
+      s3_client.put_object(Body=object_data, Bucket=args.ref_speed_bucket, Key= args.ref_bucket_version + "/" + s3_dir + "/" + ref_tile_file + ".gz", Metadata=metatags)
+
   print 'done'
 
