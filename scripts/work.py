@@ -7,6 +7,7 @@ import argparse
 import subprocess
 import boto3
 import logging
+import math
 from functools import partial
 from multiprocessing.pool import ThreadPool
 from botocore.exceptions import ClientError
@@ -56,17 +57,18 @@ def convert(tile_index, time_bucket, tile_id):
     logger.info('Finished running conversion')
 
 def get_files(keys, s3_reporter_bucket, s3_datastore_bucket):
-    object_id = key.rsplit('/', 1)[-1]
-    session = boto3.session.Session()
-    s3_resource = session.resource('s3')
-    logger.info('downloading ' + object_id + ' from s3 bucket: ' + s3_reporter_bucket)
-    try:
-        if key.endswith('.fb'):
-            s3_resource.Object(s3_datastore_bucket, key).download_file(object_id)
-        else:
-            s3_resource.Object(s3_reporter_bucket, key).download_file(object_id)
-    except Exception as e:
-        logger.error('Failed to download key: %s' % e)
+    for key in keys:
+        object_id = key.rsplit('/', 1)[-1]
+        session = boto3.session.Session()
+        s3_resource = session.resource('s3')
+        logger.info('downloading ' + object_id + ' from s3 bucket: ' + s3_reporter_bucket)
+        try:
+            if key.endswith('.fb'):
+                s3_resource.Object(s3_datastore_bucket, key).download_file(object_id)
+            else:
+                s3_resource.Object(s3_reporter_bucket, key).download_file(object_id)
+        except Exception as e:
+            logger.error('Failed to download key: %s' % e)
 
 def split(l, n):
     size = int(math.ceil(len(l)/float(n)))
