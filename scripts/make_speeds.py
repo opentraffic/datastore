@@ -71,12 +71,12 @@ def getSegments(path, target_level, target_tile_id, lengths):
     for file in files:
       if (root + os.sep + file).endswith('.fb'):
         with open(root + os.sep + file, 'rb') as filehandle:
-          print 'Loading ' + (root + os.sep + file) + '...'
+          log.info('Loading ' + (root + os.sep + file) + '...')
           hist = Histogram.GetRootAsHistogram(bytearray(filehandle.read()), 0)
         level = get_level(hist.TileId())
         tile_index = get_tile_index(hist.TileId())
         if (level == target_level) and (tile_index == target_tile_id):
-          print 'Processing ' + (root + os.sep + file) + '...'
+          log.info('Processing ' + (root + os.sep + file) + '...')
           #for each segment
           for i in range(0, hist.SegmentsLength()):
             segment = hist.Segments(i)
@@ -146,6 +146,7 @@ def write(name, count, tile, should_remove):
     remove(name)
   with open(name, 'ab') as f:
     f.write(tile.SerializeToString())
+    log.info('Wrote ' + name)
   return name
 
 ###############################################################################

@@ -16,7 +16,7 @@ from botocore.exceptions import ClientError
 import make_speeds
 
 logger = logging.getLogger('make_speeds')
-logger.setLevel(logging.DEBUG)
+logger.setLevel(logging.INFO)
 handler = logging.StreamHandler()
 handler.setFormatter(logging.Formatter(fmt='%(asctime)s %(levelname)s %(message)s'))
 logger.addHandler(handler)
@@ -69,22 +69,22 @@ def convert(level, index, week, histograms):
   info = {'rangeStart': start, 'rangeEnd': start + 604800, 'unitSize': 604800, 'entrySize': 3600,
     'description': 'Hourly speeds for the week starting on ' + str(date), 'level': level, 'index': index}
   prefix = url_suffix(int(level), int(index)).split('/')[-1]
-  return make_speeds.createSpeedTiles(lengths, prefix + '.spd', 10000, prefix + '.nex', True, segments, info)
+  return make_speeds.createSpeedTiles(lengths, prefix + '.spd', 10000, prefix + '.nex', True, segments, info), osmlr
 
 def download(src_bucket, tile_level, tile_index, week):
   #we need to get all the histograms for all the hours of this week
   resource = boto3.resource('s3')
   date = datetime.datetime.strptime(week + '/1','%Y/%W/%w')
   downloaded = []
+  logger.info('Downloading files for week ' + '{d.year}/{d.month}/{d.day} tile {l}/{t}.fb'.format(d=date, l=tile_level, t=tile_index))
   for hour in range(0, 24 * 7):
     key = '{d.year}/{d.month}/{d.day}/{d.hour}/{l}/{t}.fb'.format(d=(date + datetime.timedelta(hours=hour)), l=tile_level, t=tile_index)
-    logger.info('Downloading s3://' + src_bucket + '/' + key)
     try:
       resource.Object(src_bucket, key).download_file(key.replace('/', '_'))
       downloaded.append(key.replace('/', '_'))
-      break #TODO REMOVE THIS WHEN DONE TESTING
+      logger.info('Downloaded s3://' + src_bucket + '/' + key)
     except Exception as e:
-      logger.warn(str(e))
+      pass
   return downloaded
 
 if __name__ == '__main__':
@@ -97,20 +97,39 @@ if __name__ == '__main__':
   parser.add_argument('--week', type=str, help='The week used to get the input data from the src_bucket')
   args = parser.parse_args()
 
-  logger.info('Histogram input bucket: ' + args.src_bucket)
-  logger.info('Speedtile output bucket: ' + args.dest_bucket)
-  logger.info('Tile level: ' + str(args.tile_level))
-  logger.info('Tile index: ' + str(args.tile_index))
-  logger.info('Week: ' + args.week)
+  #generate the list of the parent tile and all its subtiles, level 0 and 1 only right now
+  tiles = [(args.tile_level, args.tile_index)]
+  level = filter(lambda x: x['level'] == args.tile_level, valhalla_tiles)[0]
+  next_level = filter(lambda x: x['level'] == args.tile_level + 1, valhalla_tiles)[0]
+  per_row = int(360 / level['size'])
+  row = args.tile_index / per_row
+  col = args.tile_index - row * per_row
+  scale = int(level['size'] / next_level['size'])
+  row *= scale
+  col *= scale
+  per_row = int(360 / next_level['size'])
+  for y in range(row, row + scale):
+    for x in range(col, col + scale):
+      tiles.append((next_level['level'],  y*per_row + x))
 
-  #go get the histogram data
-  histograms = download(args.src_bucket, args.tile_level, args.tile_index, args.week)
-  if histograms:
-    #make the speed tile
-    speed_tiles = convert(args.tile_level, args.tile_index, args.week, histograms)
-    #move the speed tile to its destination
-    upload(args.dest_bucket, args.tile_level, args.tile_index, args.week, speed_tiles)
-  else:
-    logger.info('No histogram data');
+  #for each tile
+  for tile in tiles:
+    logger.info('Histogram input bucket: ' + args.src_bucket)
+    logger.info('Speedtile output bucket: ' + args.dest_bucket)
+    logger.info('Tile level: ' + str(tile[0]))
+    logger.info('Tile index: ' + str(tile[1]))
+    logger.info('Week: ' + args.week)  
+    #go get the histogram data
+    histograms = download(args.src_bucket, tile[0], tile[1], args.week)
+    if histograms:
+      #make the speed tile
+      speed_tiles, osmlr = convert(tile[0], tile[1], args.week, histograms)
+      #move the speed tile to its destination
+      upload(args.dest_bucket, tile[0], tile[1], args.week, speed_tiles)
+      #clean up the files
+      for f in speed_tiles + [osmlr]:
+        os.remove(f)
+    else:
+      logger.info('No histogram data');
 
   logger.info('Run complete')
