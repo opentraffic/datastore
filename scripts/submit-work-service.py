@@ -6,6 +6,7 @@ import sys
 import time
 from multiprocessing.pool import ThreadPool
 import boto3
+import logging
 from functools import partial
 from botocore.exceptions import ClientError
 

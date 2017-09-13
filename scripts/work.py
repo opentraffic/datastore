@@ -6,9 +6,16 @@ import glob
 import argparse
 import subprocess
 import boto3
+import logging
 from functools import partial
 from multiprocessing.pool import ThreadPool
 from botocore.exceptions import ClientError
+
+logger = logging.getLogger('make_histograms')
+logger.setLevel(logging.INFO)
+handler = logging.StreamHandler()
+handler.setFormatter(logging.Formatter(fmt='%(asctime)s %(levelname)s %(message)s'))
+logger.addHandler(handler)
 
 def get_time_key(time_bucket, tile_level, tile_index):
     # path key: year/month/day/hour/tile_level/tile_index
@@ -17,7 +24,7 @@ def get_time_key(time_bucket, tile_level, tile_index):
     return time_key
 
 def upload(time_key, s3_datastore_bucket):
-    print('[INFO] uploading data to bucket: ' + s3_datastore_bucket)
+    logger.info('uploading data to bucket: ' + s3_datastore_bucket)
     s3_client = boto3.client('s3')
 
     uploads = ['.fb']
@@ -33,7 +40,7 @@ def upload(time_key, s3_datastore_bucket):
         data.close()
 
 def convert(tile_index, time_bucket, tile_id):
-    print('[INFO] running conversion process')
+    logger.info('running conversion process')
     sys.stdout.flush()
 
     fb_out_file = str(tile_index) + '.fb'
@@ -42,12 +49,11 @@ def convert(tile_index, time_bucket, tile_id):
     try:
         output = subprocess.check_output(['datastore-histogram-tile-writer', '-b', str(time_bucket), '-t', str(tile_id), '-f', fb_out_file] + glob.glob('*'), timeout=180, universal_newlines=True, stderr=subprocess.STDOUT)
         for line in output.splitlines():
-            print('[INFO]', line)
+            logger.info(line)
     except subprocess.CalledProcessError as tilewriter:
-        print('[ERROR] Failed running datastore-histogram-tile-writer:', tilewriter.returncode, tilewriter.output)
-        sys.exit([tilewriter.returncode])
-
-    print('[INFO] Finished running conversion')
+        logger.error('Failed running datastore-histogram-tile-writer: ' + str(tilewriter.returncode) + ' ' str(tilewriter.output))
+        sys.exit(tilewriter.returncode)
+    logger.info('Finished running conversion')
 
 def get_file(key, **kwargs):
     object_id = key.rsplit('/', 1)[-1]
@@ -55,14 +61,14 @@ def get_file(key, **kwargs):
     s3_datastore_bucket = kwargs['dbucket']
     session = boto3.session.Session()
     s3_resource = session.resource('s3')
-    print('[INFO] downloading ' + object_id + ' from s3 bucket: ' + s3_reporter_bucket)
+    logger.info('downloading ' + object_id + ' from s3 bucket: ' + s3_reporter_bucket)
     try:
         if key.endswith('.fb'):
             s3_resource.Object(s3_datastore_bucket, key).download_file(object_id)
         else:
             s3_resource.Object(s3_reporter_bucket, key).download_file(object_id)
     except Exception as e:
-        print('[ERROR] failed to download key: %s' % e)
+        logger.error('Failed to download key: %s' % e)
 
 def download_data(prefixes_array, s3_reporter_bucket, s3_datastore_bucket, time_key):
     client = boto3.client('s3')
@@ -100,12 +106,12 @@ if __name__ == "__main__":
     parser.add_argument('--tile-index', type=int, help='The tile index')
     args = parser.parse_args()
 
-    print('[INFO] reporter input bucket: ' + args.s3_reporter_bucket)
-    print('[INFO] datastore output bucket: ' + args.s3_datastore_bucket)
-    print('[INFO] time bucket: ' + str(args.time_bucket))
-    print('[INFO] tile id: ' + str(args.tile_id))
-    print('[INFO] tile level: ' + str(args.tile_level))
-    print('[INFO] tile index: ' + str(args.tile_index))
+    logger.info('reporter input bucket: ' + args.s3_reporter_bucket)
+    logger.info('datastore output bucket: ' + args.s3_datastore_bucket)
+    logger.info('time bucket: ' + str(args.time_bucket))
+    logger.info('tile id: ' + str(args.tile_id))
+    logger.info('tile level: ' + str(args.tile_level))
+    logger.info('tile index: ' + str(args.tile_index))
 
     # do work
     time_key = get_time_key(args.time_bucket, args.tile_level, args.tile_index)
@@ -118,4 +124,4 @@ if __name__ == "__main__":
     convert(args.tile_index, args.time_bucket, args.tile_id)
     upload(time_key, args.s3_datastore_bucket)
 
-    print('[INFO] run complete')
+    logger.info('run complete')
