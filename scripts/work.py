@@ -6,6 +6,8 @@ import glob
 import argparse
 import subprocess
 import boto3
+from functools import partial
+from multiprocessing.pool import ThreadPool
 from botocore.exceptions import ClientError
 
 def get_time_key(time_bucket, tile_level, tile_index):
@@ -27,8 +29,7 @@ def upload(time_key, s3_datastore_bucket):
             Bucket=s3_datastore_bucket,
             ContentType='binary/octet-stream',
             Body=data,
-            Key=key
-            )
+            Key=key)
         data.close()
 
 def convert(tile_index, time_bucket, tile_id):
@@ -48,12 +49,27 @@ def convert(tile_index, time_bucket, tile_id):
 
     print('[INFO] Finished running conversion')
 
+def get_file(key, **kwargs):
+    object_id = key.rsplit('/', 1)[-1]
+    s3_reporter_bucket = kwargs['rbucket']
+    s3_datastore_bucket = kwargs['dbucket']
+    session = boto3.session.Session()
+    s3_resource = session.resource('s3')
+    print('[INFO] downloading ' + object_id + ' from s3 bucket: ' + s3_reporter_bucket)
+    try:
+        if key.endswith('.fb'):
+            s3_resource.Object(s3_datastore_bucket, key).download_file(object_id)
+        else:
+            s3_resource.Object(s3_reporter_bucket, key).download_file(object_id)
+    except Exception as e:
+        print('[ERROR] failed to download key: %s' % e)
+
 def download_data(prefixes_array, s3_reporter_bucket, s3_datastore_bucket, time_key):
     client = boto3.client('s3')
     s3_resource = boto3.resource('s3')
     
     # get the keys
-    keys_array = []
+    keys = []
     for prefix in prefixes_array:
         token = None
         first = True
@@ -62,33 +78,16 @@ def download_data(prefixes_array, s3_reporter_bucket, s3_datastore_bucket, time_
                 objects = client.list_objects_v2(Bucket=s3_reporter_bucket, Delimiter='/', Prefix=prefix, ContinuationToken=token)
             else:
                 objects = client.list_objects_v2(Bucket=s3_reporter_bucket, Delimiter='/', Prefix=prefix)
-            keys_array.extend([ o['Key'] for o in objects['Contents']])
+            keys.extend([ o['Key'] for o in objects['Contents']])
             token = objects.get('NextContinuationToken')
             first = False
+    # add the key for the existing file
+    keys.append(time_key + '.fb')
 
     # download the files
-    for key in keys_array:
-        # download the new reporter data
-        object_id = key.rsplit('/', 1)[-1]
+    pool = ThreadPool(processes=10)
+    pool.map(partial(get_file, rbucket=s3_reporter_bucket, dbucket=s3_datastore_bucket), keys)
 
-        print('[INFO] downloading ' + object_id + ' from s3 bucket: ' + s3_reporter_bucket)
-        try:
-            s3_resource.Object(s3_reporter_bucket, key).download_file(object_id)
-        except ClientError as e:
-            print('[ERROR] failed to download key: %s' % e)
-
-    # download any existing datastore data, save the object as
-    #   key + '.current' + extension, e.g. some_file.fb.current
-    # TODO: verify
-    existing_key_name = time_key + '.fb'
-    existing_download_id = time_key.rsplit('/', 1)[-1] + '.existing.fb'
-    try:
-        print('[INFO] checking for existing flatbuffer data for key: ' + existing_key_name + ' in s3 bucket: ' + s3_datastore_bucket)
-        s3_resource.Object(s3_datastore_bucket, existing_key_name).download_file(existing_download_id)
-        print('[INFO] saved existing datastore object as ' + existing_download_id)
-    except ClientError as e:
-        print('[WARN] found no existing data or other error: %s' % e)
-        
 if __name__ == "__main__":
     # build args
     parser = argparse.ArgumentParser()
