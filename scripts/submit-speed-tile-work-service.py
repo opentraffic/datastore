@@ -81,8 +81,8 @@ def submit_jobs(batch_client, job_queue, job_def, src_bucket, dest_bucket, week)
     job = {
         'src_bucket': src_bucket,
         'dest_bucket': dest_bucket,
-        'tile_level': tile_level,
-        'tile_index': tile_id,
+        'tile_level': str(tile_level),
+        'tile_index': str(tile_id),
         'week': week
       }
     logger.info('Submitting speed tile job ' + job_name)
