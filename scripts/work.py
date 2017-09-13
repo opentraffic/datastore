@@ -8,8 +8,6 @@ import subprocess
 import boto3
 import logging
 import math
-from functools import partial
-from multiprocessing.pool import ThreadPool
 from botocore.exceptions import ClientError
 
 logger = logging.getLogger('make_histograms')
