@@ -127,7 +127,7 @@ if __name__ == '__main__':
       #move the speed tile to its destination
       upload(args.dest_bucket, tile[0], tile[1], args.week, speed_tiles)
       #clean up the files
-      for f in speed_tiles + [osmlr]:
+      for f in histograms + speed_tiles + [osmlr]:
         os.remove(f)
     else:
       logger.info('No histogram data');
