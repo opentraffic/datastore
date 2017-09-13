@@ -77,7 +77,7 @@ def submit_jobs(batch_client, job_queue, job_def, src_bucket, dest_bucket, week)
   #loop over all tiles, level 0 are 4 degrees
   tile_level = 0
   for tile_id in range(0, (360 * 180) / 4):
-    job_name = '/'.join([week, str(tile_level), str(tile_id)])
+    job_name = '_'.join([week.replace('/', '-'), str(tile_level), str(tile_id)])
     job = {
         'src_bucket': src_bucket,
         'dest_bucket': dest_bucket,
