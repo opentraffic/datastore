@@ -55,10 +55,8 @@ def convert(tile_index, time_bucket, tile_id):
         sys.exit(tilewriter.returncode)
     logger.info('Finished running conversion')
 
-def get_file(key, **kwargs):
+def get_files(keys, s3_reporter_bucket, s3_datastore_bucket):
     object_id = key.rsplit('/', 1)[-1]
-    s3_reporter_bucket = kwargs['rbucket']
-    s3_datastore_bucket = kwargs['dbucket']
     session = boto3.session.Session()
     s3_resource = session.resource('s3')
     logger.info('downloading ' + object_id + ' from s3 bucket: ' + s3_reporter_bucket)
@@ -69,6 +67,17 @@ def get_file(key, **kwargs):
             s3_resource.Object(s3_reporter_bucket, key).download_file(object_id)
     except Exception as e:
         logger.error('Failed to download key: %s' % e)
+
+def split(l, n):
+    size = int(math.ceil(len(l)/float(n)))
+    cutoff = len(l) % n
+    result = []
+    pos = 0
+    for i in range(0, n):
+        end = pos + size if i < cutoff else pos + size - 1
+        result.append(l[pos:end])
+        pos = end
+    return result
 
 def download_data(prefixes_array, s3_reporter_bucket, s3_datastore_bucket, time_key):
     client = boto3.client('s3')
@@ -91,8 +100,13 @@ def download_data(prefixes_array, s3_reporter_bucket, s3_datastore_bucket, time_
     keys.append(time_key + '.fb')
 
     # download the files
-    pool = ThreadPool(processes=10)
-    pool.map(partial(get_file, rbucket=s3_reporter_bucket, dbucket=s3_datastore_bucket), keys)
+    keys = split(keys, 10)
+    threads = []
+    for chunk in s3_data:
+        threads.append(threading.Thread(target=get_files, args=(chunk, s3_reporter_bucket, s3_datastore_bucket)))
+        threads[-1].start()
+    for t in threads:
+        t.join()
 
 if __name__ == "__main__":
     # build args
