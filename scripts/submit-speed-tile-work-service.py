@@ -8,6 +8,7 @@ import boto3
 import re
 import datetime
 import logging
+import math
 
 logger = logging.getLogger('make_speeds')
 logger.setLevel(logging.DEBUG)
@@ -71,51 +72,63 @@ def get_week(client, src_bucket, dest_bucket):
   else:
     return min_date.strftime("%Y/%W")
 
-def submit_jobs(batch_client, job_queue, job_def, src_bucket, dest_bucket, week):
+def submit_jobs(batch_client, job_queue, job_def, src_bucket, dest_bucket, week, bbox):
   logger.info('Creating speed tiles for the week of ' + week)
+  if bbox is None:
+    bbox=[0, 0, 360, 180]
+  else:
+    bbox = [ float(v) for v in bbox.split(',') ]
+    bbox[0] = int(math.floor(bbox[0])) + 180
+    bbox[1] = int(math.floor(bbox[1])) + 90
+    bbox[2] = int(math.ceil(bbox[2])) + 180
+    bbox[3] = int(math.ceil(bbox[3])) + 90
 
   #loop over all tiles, level 0 are 4 degrees
   tile_level = 0
-  for tile_id in range(0, (360 * 180) / 4):
-    job_name = '_'.join([week.replace('/', '-'), str(tile_level), str(tile_id)])
-    job = {
-        'src_bucket': src_bucket,
-        'dest_bucket': dest_bucket,
-        'tile_level': str(tile_level),
-        'tile_index': str(tile_id),
-        'week': week
-      }
-    logger.info('Submitting speed tile job ' + job_name)
-    logger.info('Job parameters ' + str(job))
-    batch_client.submit_job(
-      jobName = job_name,
-      jobQueue = job_queue,
-      jobDefinition = job_def,
-      parameters = job,
-      containerOverrides={
-        'memory': 8192,
-        'vcpus': 2,
-        'command': [
-          '/scripts/speed-tile-work.py',
-          '--src-bucket',
-          'Ref::src_bucket',
-          '--dest-bucket',
-          'Ref::dest_bucket',
-          '--tile-level',
-          'Ref::tile_level',
-          '--tile-index',
-          'Ref::tile_index',
-          '--week',
-          'Ref::week',
-        ]
-      }
-    )
+  for y in range(bbox[1]/4, bbox[3]/4):
+    for x in range(bbox[0]/4, bbox[2]/4):
+      tile_index = y*90 + x
+      job_name = '_'.join([week.replace('/', '-'), str(tile_level), str(tile_index)])
+      job = {
+          'src_bucket': src_bucket,
+          'dest_bucket': dest_bucket,
+          'tile_level': str(tile_level),
+          'tile_index': str(tile_index),
+          'week': week
+        }
+      logger.info('Submitting speed tile job ' + job_name)
+      logger.info('Job parameters ' + str(job))
+      batch_client.submit_job(
+        jobName = job_name,
+        jobQueue = job_queue,
+        jobDefinition = job_def,
+        parameters = job,
+        containerOverrides={
+          'memory': 8192,
+          'vcpus': 2,
+          'command': [
+            '/scripts/speed-tile-work.py',
+            '--src-bucket',
+            'Ref::src_bucket',
+            '--dest-bucket',
+            'Ref::dest_bucket',
+            '--tile-level',
+            'Ref::tile_level',
+            '--tile-index',
+            'Ref::tile_index',
+            '--week',
+            'Ref::week'
+          ]
+        }
+      )
 
 
 """ the aws lambda entry point """
-env = os.getenv('DATASTORE_ENV', 'BOGUS') # required, 'prod' or 'dev'
+env = os.getenv('DATASTORE_ENV', None) # required, 'prod' or 'dev'
+week = os.getenv('TARGET_WEEK', None) #optional should be iso8601, ordinal_year/ordinal_week
+bbox = os.getenv('TARGET_BBOX', None) #optional should be minx,miny,maxx,maxy
 
-if env == 'BOGUS':
+if env != 'prod' and even != 'dev':
   logger.error('DATASTORE_ENV environment variable not set! Exiting.')
   sys.exit(1)
 else:
@@ -128,9 +141,11 @@ client = boto3.client('s3')
 batch_client = boto3.client('batch')
 
 #figure out what time ranges are available
-week = get_week(client, src_bucket, dest_bucket)
+if week is None:
+  week = get_week(client, src_bucket, dest_bucket)
 
 #send the jobs to batch service
-submit_jobs(batch_client, job_queue, job_def, src_bucket, dest_bucket, week)
+if week is not None:
+  submit_jobs(batch_client, job_queue, job_def, src_bucket, dest_bucket, week, bbox)
 
 logger.info('Run complete!')
