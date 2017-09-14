@@ -12,6 +12,9 @@ import gzip
 import logging as log
 from Queue import Queue
 from threading import Thread
+from datetime import date, timedelta
+import datetime
+import time
 
 try:
   import speedtile_pb2
@@ -125,7 +128,7 @@ def createRefSpeedTile(path, fileName, speedListPerSegment, level, index, minSec
   #print str(st.referenceSpeeds80)
 
   #write it out
-  with open(path + fileName, 'ab') as f:
+  with open(path + "/" +fileName, 'ab') as f:
     f.write(tile.SerializeToString())
 
 class BoundingBox(object):
@@ -223,10 +226,12 @@ class ThreadPool:
 
 # Read in protobuf files from the datastore output in AWS to read in the lengths, speeds & next segment ids and generate the segment speed files in proto output format
 if __name__ == "__main__":
-  parser = argparse.ArgumentParser(description='Generate speed tiles', formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+  parser = argparse.ArgumentParser(description='Generate ref speed tiles', formatter_class=argparse.ArgumentDefaultsHelpFormatter)
   parser.add_argument('--speedtile-list', type=str, nargs='+', help='A list of the PDE speed tiles containing the average speeds per segment per hour of day for one week')
   parser.add_argument('--ref-tile-path', type=str, help='The public data extract speed tile containing the average speeds per segment per hour of day for one week', required=True)
-  parser.add_argument('--bucket', type=str, help='AWS bucket location', required=True)
+  parser.add_argument('--speed-bucket', type=str, help='AWS bucket location (i.e., where to get the speed tiles)', required=True)
+  parser.add_argument('--ref-speed-bucket', type=str, help='AWS Bucket (e.g., ref-speedtiles-prod) into which we will place the ref tile')
+  parser.add_argument('--ref-bucket-version', type=str, help='Version within the AWS Bucket (e.g., v1.0) into which we will place the ref tile')
   parser.add_argument('--year', type=str, help='The year you wish to get', required=True)
   parser.add_argument('--level', type=int, help='The level to target', required=True)
   parser.add_argument('--tile-id', type=int, help='The tile id to target', required=True)
@@ -241,7 +246,7 @@ if __name__ == "__main__":
   if args.verbose:
     log.basicConfig(format='%(asctime)s - %(levelname)s - %(message)s', stream=sys.stdout, level=log.DEBUG)
     log.debug('ref-tile-path=' + args.ref_tile_path)
-    log.debug('bucket=' + args.bucket)
+    log.debug('speed-bucket=' + args.speed_bucket)
     log.debug('year=' + args.year)
     log.debug('level=' + str(args.level))
     log.debug('tile-id=' + str(args.tile_id))
@@ -251,39 +256,39 @@ if __name__ == "__main__":
   ################################################################################
   # download the speed tiles from aws and decompress
   spdFileNames = []
+  tile_hierarchy = TileHierarchy()
+  file_name = tile_hierarchy.levels[args.level].GetFile(args.tile_id, args.level)
   if not args.local:
 
     # work function for our threads.  Downloads and decompresses the speed tile
-    def work(bucket, directory, filename):
+    def work(speed_bucket, directory, filename):
       s3 = boto3.client('s3')
       try:
-        s3.download_file(bucket, filename + ".gz", directory + filename + ".gz")
+        s3.download_file(speed_bucket, filename + ".gz", directory + filename + ".gz")
       except botocore.exceptions.ClientError as e:
         if e.response['Error']['Code'] == "404":
-          print "File not found in bucket! " + filename + ".gz"
+          print "File not found in speed bucket! " + filename + ".gz"
           raise
       decompressedFile = gzip.GzipFile(directory + filename + ".gz", mode='rb')
       with open(directory + filename, 'w') as outfile:
         outfile.write(decompressedFile.read())
-      print('[INFO] downloaded and decompressed file: ' + filename + '.gz from s3 bucket: ' + bucket)
+      print('[INFO] downloaded and decompressed file: ' + filename + '.gz from s3 speed bucket: ' + speed_bucket)
 
     #our work dir.  deleted everytime if exists
     directory = "ref_working_dir/"
     shutil.rmtree(directory, ignore_errors=True)
-    tile_hierarchy = TileHierarchy()
     key_prefix = args.year + "/"
 
     s3 = boto3.client('s3')
 
     #get the first tile *.0.gz so that we can determine the number of subtiles we have
     # if they are separated into subtiles
-    print('[INFO] starting download from s3 bucket: ' + args.bucket)
-    weeks_per_year = 52
-    week = 0
+    print('[INFO] starting download from s3 speed bucket: ' + args.speed_bucket)
+    weeks_per_year = 52 #TODO change to 53
+    week = 0 #TODO change to 1
     # for every week in the year
     while ( week < weeks_per_year):
       key = key_prefix + str(week) + "/"
-      file_name = tile_hierarchy.levels[args.level].GetFile(args.tile_id, args.level)
       key += file_name
       try:
         file_path = os.path.dirname(key + ".0.gz" )
@@ -295,14 +300,14 @@ if __name__ == "__main__":
             if e.errno != errno.EEXIST:
               raise
         #download the file
-        s3.download_file(args.bucket, key + ".0.gz", (directory + key + ".0.gz"))
+        s3.download_file(args.speed_bucket, key + ".0.gz", (directory + key + ".0.gz"))
       except botocore.exceptions.ClientError as e:
         if e.response['Error']['Code'] != "404":
           raise
         else:
           week += 1
           continue
-      print('[INFO] downloaded and decompressed file: ' + (key + ".0.gz") + ' from s3 bucket: ' + args.bucket)
+      print('[INFO] downloaded and decompressed file: ' + (key + ".0.gz") + ' from s3 speed bucket: ' + args.speed_bucket)
       #decompress the file
       decompressedFile = gzip.GzipFile(directory + key + ".0.gz", mode='rb')
       with open(directory + key + ".0", 'w') as outfile:
@@ -320,7 +325,7 @@ if __name__ == "__main__":
           p=ThreadPool(subtile_suffix)
           i = 1;
           while ( i < subtile_suffix):
-            p.add_task(work, args.bucket, directory, key + "." + str(i))
+            p.add_task(work, args.speed_bucket, directory, key + "." + str(i))
             spdFileNames.append(os.path.abspath(directory + key + "." + str(i)))
             i += 1
           p.wait_completion()
@@ -347,6 +352,21 @@ if __name__ == "__main__":
 
   print 'create reference speed tiles for each segment'
   createRefSpeedTile(args.ref_tile_path, ref_tile_file, speedListPerSegment, args.level, args.tile_id, minSeconds, maxSeconds)
+
+  #upload to s3
+  if args.ref_speed_bucket and args.ref_bucket_version:
+
+    s3_client = boto3.client("s3")
+    s3_dir = os.path.dirname(file_name)
+
+    #compress
+    with open(args.ref_tile_path + "/" + ref_tile_file) as f_in, gzip.open(args.ref_tile_path + "/" + ref_tile_file + ".gz", 'wb') as f_out:
+      f_out.writelines(f_in)
+
+    #push up with custom metatags.  All user custom meta data can only be string and will have a prefix of x-amz-meta-
+    with open(args.ref_tile_path + "/" + ref_tile_file + ".gz") as f :
+      object_data = f.read()
+      s3_client.put_object(Body=object_data, Bucket=args.ref_speed_bucket, Key= args.ref_bucket_version + "/" + s3_dir + "/" + ref_tile_file + ".gz", Metadata={'rangeStart'=minSeconds, 'rangeEnd'=maxSeconds})
 
   print 'done'
 
