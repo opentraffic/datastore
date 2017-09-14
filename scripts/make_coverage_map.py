@@ -143,7 +143,6 @@ if __name__ == "__main__":
     response = client.head_object(Bucket=args.ref_speed_bucket, Key=k)
     if 'Metadata' in response:
       metadata = response['Metadata']
-      print metadata
       if metadata:
         if 'rangestart' in metadata and 'rangeend' in metadata:
           if not first:
