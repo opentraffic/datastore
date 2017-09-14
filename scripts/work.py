@@ -62,8 +62,10 @@ def get_files(keys, s3_reporter_bucket, s3_datastore_bucket):
         logger.info('downloading ' + object_id + ' from s3 bucket: ' + s3_reporter_bucket)
         try:
             if key.endswith('.fb'):
+                logger.info('downloading ' + key + ' as ' + object_id + ' from s3 bucket: ' + s3_datastore_bucket)
                 s3_resource.Object(s3_datastore_bucket, key).download_file(object_id)
             else:
+                logger.info('downloading ' + key + ' as ' + object_id + ' from s3 bucket: ' + s3_reporter_bucket)
                 s3_resource.Object(s3_reporter_bucket, key).download_file(object_id)
         except Exception as e:
             logger.error('Failed to download key: %s' % e)
