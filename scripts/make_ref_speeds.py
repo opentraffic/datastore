@@ -366,7 +366,7 @@ if __name__ == "__main__":
     #push up with custom metatags.  All user custom meta data can only be string and will have a prefix of x-amz-meta-
     with open(args.ref_tile_path + "/" + ref_tile_file + ".gz") as f :
       object_data = f.read()
-      s3_client.put_object(Body=object_data, Bucket=args.ref_speed_bucket, Key= args.ref_bucket_version + "/" + s3_dir + "/" + ref_tile_file + ".gz", Metadata={'rangeStart'=minSeconds, 'rangeEnd'=maxSeconds})
+      s3_client.put_object(Body=object_data, Bucket=args.ref_speed_bucket, Key= args.ref_bucket_version + "/" + s3_dir + "/" + ref_tile_file + ".gz", Metadata={'rangeStart':str(minSeconds), 'rangeEnd':str(maxSeconds)})
 
   print 'done'
 
