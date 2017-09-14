@@ -102,7 +102,7 @@ def download_data(prefixes_array, s3_reporter_bucket, s3_datastore_bucket, time_
     # download the files
     keys = split(keys, 10)
     threads = []
-    for chunk in s3_data:
+    for chunk in keys:
         threads.append(threading.Thread(target=get_files, args=(chunk, s3_reporter_bucket, s3_datastore_bucket)))
         threads[-1].start()
     for t in threads:
