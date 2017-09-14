@@ -284,11 +284,14 @@ if __name__ == "__main__":
     #get the first tile *.0.gz so that we can determine the number of subtiles we have
     # if they are separated into subtiles
     print('[INFO] starting download from s3 speed bucket: ' + args.speed_bucket)
-    weeks_per_year = 52 #TODO change to 53
-    week = 0 #TODO change to 1
+    weeks_per_year = 54 #support up to 53 weeks
+    week = 1 #start at 1
     # for every week in the year
     while ( week < weeks_per_year):
-      key = key_prefix + str(week) + "/"
+      if week < 10:
+        key = key_prefix + "0" + str(week) + "/"
+      else:
+        key = key_prefix + str(week) + "/"
       key += file_name
       try:
         file_path = os.path.dirname(key + ".0.gz" )
