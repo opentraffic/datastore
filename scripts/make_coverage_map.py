@@ -144,19 +144,19 @@ if __name__ == "__main__":
     if 'Metadata' in response:
       metadata = response['Metadata']
       if metadata:
-        if 'rangestart' in metadata and 'rangeend' in metadata:
+        if 'rangeStart' in metadata and 'rangeEnd' in metadata:
           if not first:
             geojson += ','
           first = False
 
-          begin = time.strftime('%Y-%m-%d %H:%M:%S',time.gmtime(int(metadata['rangestart'])))   
-          end = time.strftime('%Y-%m-%d %H:%M:%S',time.gmtime(int(metadata['rangeend'])))
+          begin = time.strftime('%Y-%m-%d %H:%M:%S',time.gmtime(int(metadata['rangeStart'])))   
+          end = time.strftime('%Y-%m-%d %H:%M:%S',time.gmtime(int(metadata['rangeEnd'])))
 
           geojson += '{"properties": {"fillOpacity": 0.33,"color": "#50bf40","fill": "#50bf40",'
           geojson += '"fillColor": "#50bf40","contour": 15,"opacity": 0.33,"fill-opacity": 0.33,'
           geojson += '"tileid": ' + str(tileid) + ','
-          geojson += '"rangeStart": ' + metadata['rangestart'] + ','
-          geojson += '"rangeEnd": ' + metadata['rangeend'] + ','
+          geojson += '"rangeStart": ' + metadata['rangeStart'] + ','
+          geojson += '"rangeEnd": ' + metadata['rangeEnd'] + ','
           geojson += '"rangeStartDate": "' + begin + '",'
           geojson += '"rangeEndDate": "' + end + '"},'          
           geojson += '"type": "Feature","geometry": {"coordinates": [['
