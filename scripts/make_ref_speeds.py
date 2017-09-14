@@ -44,6 +44,8 @@ def get_tile_count(filename):
 def createAvgSpeedList(fileNames):
   #each segment has its own list of speeds, we dont know how many segments for the avg speed list to start with
   segments = []
+  minSeconds = None
+  maxSeconds = None
 
   #need to loop thru all of the speed tiles for a given tile id
   for fileName in fileNames:
@@ -58,6 +60,10 @@ def createAvgSpeedList(fileNames):
     for subtile in spdtile.subtiles:
       log.debug('>>>>> subtileCount per file=' + str(subtileCount))
       subtileCount += 1
+      if minSeconds is None or minSeconds > subtile.rangeStart:
+        minSeconds = subtile.rangeStart
+      if maxSeconds is None or maxSeconds < subtile.rangeEnd:
+        maxSeconds = subtile.rangeEnd
 
       #make sure that there are enough lists in the list for all segments
       missing = spdtile.subtiles[0].totalSegments - len(segments)
@@ -83,10 +89,10 @@ def createAvgSpeedList(fileNames):
     segment.sort()
     log.debug('SORTED SPEEDS: segmentIndex=' + str(i) + ' | speeds=' + str(segment))
 
-  return segments
+  return segments, minSeconds, maxSeconds
 
 ###############################################################################
-def createRefSpeedTile(path, fileName, speedListPerSegment, level, index):
+def createRefSpeedTile(path, fileName, speedListPerSegment, level, index, minSeconds, maxSeconds):
   log.debug('createRefSpeedTiles ###############################################################################')
 
   tile = speedtile_pb2.SpeedTile()
@@ -97,8 +103,8 @@ def createRefSpeedTile(path, fileName, speedListPerSegment, level, index):
   st.totalSegments = len(speedListPerSegment)
   st.subtileSegments = len(speedListPerSegment)
   #time stuff
-  #st.rangeStart = #TODO: first second since epoch of first week you have data for
-  #st.rangeEnd = #TODO: last second since epoch of last week you have data for
+  st.rangeStart = minSeconds
+  st.rangeEnd = maxSeconds
   st.unitSize = st.rangeEnd - st.rangeStart
   st.entrySize = st.unitSize
   st.description = 'Reference speeds over 1 year from 08.2016 through 07.2017' #TODO: get this from range start and end
@@ -327,12 +333,12 @@ if __name__ == "__main__":
   ref_tile_file = None
   if not args.local:
     log.debug('AWS speed processing...')
-    speedListPerSegment = createAvgSpeedList(spdFileNames)
+    speedListPerSegment, minSeconds, maxSeconds = createAvgSpeedList(spdFileNames)
     ref_tile_file = os.path.splitext(os.path.splitext(os.path.basename(spdFileNames[0]))[0])[0]
     ref_tile_file += ".ref"
   else:
     log.debug('LOCAL speed processing...')
-    speedListPerSegment = createAvgSpeedList(args.speedtile_list)
+    speedListPerSegment, minSeconds, maxSeconds = createAvgSpeedList(args.speedtile_list)
     ref_tile_file = os.path.splitext(os.path.splitext(os.path.basename(args.speedtile_list[0]))[0])[0]
     ref_tile_file += ".ref"
 
@@ -340,7 +346,7 @@ if __name__ == "__main__":
     print("Ref output filename: " + ref_tile_file)
 
   print 'create reference speed tiles for each segment'
-  createRefSpeedTile(args.ref_tile_path, ref_tile_file, speedListPerSegment, args.level, args.tile_id)
+  createRefSpeedTile(args.ref_tile_path, ref_tile_file, speedListPerSegment, args.level, args.tile_id, minSeconds, maxSeconds)
 
   print 'done'
 
