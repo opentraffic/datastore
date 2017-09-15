@@ -79,7 +79,7 @@ def submit_jobs(tiles, batch_client, job_queue, job_def, reporter_bucket, datast
     #   override whatever the current setting is in the job definition.
     logger.info('Submitting a new job: ' + tile)
     batch_client.submit_job(
-      jobName=job_name,
+      jobName=tile.replace('/','-'),
       jobQueue=job_queue,
       jobDefinition=job_def,
       parameters={
