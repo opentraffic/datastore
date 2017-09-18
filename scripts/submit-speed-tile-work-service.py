@@ -128,7 +128,7 @@ env = os.getenv('DATASTORE_ENV', None) # required, 'prod' or 'dev'
 week = os.getenv('TARGET_WEEK', None) #optional should be iso8601, ordinal_year/ordinal_week
 bbox = os.getenv('TARGET_BBOX', None) #optional should be minx,miny,maxx,maxy
 
-if env != 'prod' and even != 'dev':
+if env != 'prod' and env != 'dev':
   logger.error('DATASTORE_ENV environment variable not set! Exiting.')
   sys.exit(1)
 else:
