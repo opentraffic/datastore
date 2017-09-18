@@ -96,7 +96,7 @@ def split(l, n):
   result = []
   pos = 0
   for i in range(0, n):
-    end = pos + size if i < cutoff else pos + size - 1
+    end = pos + size if cutoff == 0 or i < cutoff else pos + size - 1
     result.append(l[pos:end])
     pos = end
   return result
