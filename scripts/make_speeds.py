@@ -4,6 +4,7 @@ import random
 import os
 import errno
 import sys
+import math
 import logging
 
 log = logging.getLogger('make_speeds')
@@ -185,9 +186,11 @@ def next(startIndex, total, nextName, subtileSegments, extractInfo):
   return tile, subtile, nextTile, nextSubtile
 
 ###############################################################################
-#TODO: figure out how to measure this for real
-def prevalence(val):
-  return int(round(val / 10.0) * 10)
+# Prevalence is a rough measure of count. Want this to obscure the true count
+def prevalence(count):
+  if (count > 120) :
+    return 10
+  return int(math.sqrt(val))
 
 ###############################################################################
 # calculate and return the variance of the specified list
