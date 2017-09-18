@@ -80,7 +80,6 @@ def get_files(keys, s3_reporter_bucket, s3_datastore_bucket):
     object_id = key.rsplit('/', 1)[-1]
     session = boto3.session.Session()
     s3_resource = session.resource('s3')
-    logger.info('downloading ' + object_id + ' from s3 bucket: ' + s3_reporter_bucket)
     try:
       if key.endswith('.fb'):
         logger.info('downloading ' + key + ' as ' + object_id + ' from s3 bucket: ' + s3_datastore_bucket)
