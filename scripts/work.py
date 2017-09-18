@@ -93,6 +93,8 @@ def get_files(keys, s3_reporter_bucket, s3_datastore_bucket):
         break
       except Exception as e:
         logger.error('Failed to download : %s' % e)
+        if key.endswith('.fb'):
+          break
         time.sleep(secs)
         secs *= 2
 
