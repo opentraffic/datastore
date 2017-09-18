@@ -45,14 +45,14 @@ def convert(time_bucket, tile_id, dest_key):
 def upload(dest_key, s3_datastore_bucket):
   s3_client = boto3.client('s3')
   with open(dest_key.split('/')[-1], 'rb') as data:
+    
     logger.info('Uploading to ' + s3_datastore_bucket + ' ' + dest_key)
     s3_client.put_object(Bucket=s3_datastore_bucket, ContentType='binary/octet-stream', Body=data, Key=dest_key)
 
 def delete_keys(keys, s3_reporter_bucket):
-  secs = 2
   s3_client = boto3.client('s3')
   for key in keys:
-    logger.info('Deleting from ' + s3_reporter_bucket + ' ' + key)
+    secs = 1
     while True:
       try:
         s3_client.delete_object(Bucket=s3_reporter_bucket, Key=key)
@@ -63,7 +63,8 @@ def delete_keys(keys, s3_reporter_bucket):
         logger.error('Failed to delete ' + key + ': ' + str(d))
         logger.info('Sleeping %d seconds until next try' % secs)
         time.sleep(secs)
-        secs *= secs
+        secs *= 2
+    logger.info('Deleted from ' + s3_reporter_bucket + ' ' + key)
 
 def delete(keys, s3_reporter_bucket):
   # delete the files
@@ -76,19 +77,24 @@ def delete(keys, s3_reporter_bucket):
     t.join()
 
 def get_files(keys, s3_reporter_bucket, s3_datastore_bucket):
+  session = boto3.session.Session()
+  s3_resource = session.resource('s3')
   for key in keys:
     object_id = key.rsplit('/', 1)[-1]
-    session = boto3.session.Session()
-    s3_resource = session.resource('s3')
-    try:
-      if key.endswith('.fb'):
-        logger.info('downloading ' + key + ' as ' + object_id + ' from s3 bucket: ' + s3_datastore_bucket)
-        s3_resource.Object(s3_datastore_bucket, key).download_file(object_id)
-      else:
-        logger.info('downloading ' + key + ' as ' + object_id + ' from s3 bucket: ' + s3_reporter_bucket)
-        s3_resource.Object(s3_reporter_bucket, key).download_file(object_id)
-    except Exception as e:
-      logger.error('Failed to download key: %s' % e)
+    secs = 1
+    while True:
+      try:
+        if key.endswith('.fb'):
+          s3_resource.Object(s3_datastore_bucket, key).download_file(object_id)
+          logger.info('downloaded ' + key + ' as ' + object_id + ' from s3 bucket: ' + s3_datastore_bucket)
+        else:
+          s3_resource.Object(s3_reporter_bucket, key).download_file(object_id)
+          logger.info('downloaded ' + key + ' as ' + object_id + ' from s3 bucket: ' + s3_reporter_bucket)
+        break
+      except Exception as e:
+        logger.error('Failed to download : %s' % e)
+        time.sleep(secs)
+        secs *= 2
 
 def split(l, n):
   size = int(math.ceil(len(l)/float(n)))
@@ -125,6 +131,8 @@ def download_data(prefix, s3_reporter_bucket, s3_datastore_bucket, dest_key):
 
   # get the keys for the files in this tile
   _, keys = get_prefixes_keys(client, s3_reporter_bucket, [prefix])
+  if not keys:
+    return []
  
   # add the key for the existing file
   keys.append(dest_key)
