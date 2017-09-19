@@ -95,9 +95,9 @@ def get_files(keys, s3_reporter_bucket, s3_datastore_bucket):
         break
       except Exception as e:
         logger.error('Failed to download: %s' % e)
-        logger.warn('%d retries remaining for %s' % (retries, object_id))
         if key.endswith('.fb'):
           break
+        logger.warn('%d retries remaining for %s' % (retries, object_id))
         retries -= 1
         if retries == 0:
           logger.error('Reached maximum retries downloading: %s' % object_id)
