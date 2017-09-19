@@ -7,7 +7,7 @@ import argparse
 import subprocess
 import boto3
 import logging
-import thread
+import _thread
 import threading
 import math
 import time
@@ -101,7 +101,7 @@ def get_files(keys, s3_reporter_bucket, s3_datastore_bucket):
         retries -= 1
         if retries == 0:
           logger.error('Reached maximum retries downloading: %s' % object_id)
-          thread.interrupt_main()
+          _thread.interrupt_main()
         time.sleep(secs)
         secs *= 2
 
