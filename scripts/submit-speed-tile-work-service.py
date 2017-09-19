@@ -78,16 +78,18 @@ def submit_jobs(batch_client, job_queue, job_def, src_bucket, dest_bucket, week,
     bbox=[0, 0, 360, 180]
   else:
     bbox = [ float(v) for v in bbox.split(',') ]
-    bbox[0] = int(math.floor(bbox[0])) + 180
-    bbox[1] = int(math.floor(bbox[1])) + 90
-    bbox[2] = int(math.ceil(bbox[2])) + 180
-    bbox[3] = int(math.ceil(bbox[3])) + 90
+    bbox[0] = int(math.floor((bbox[0] + 90)/4))
+    bbox[1] = int(math.floor((bbox[1] + 180)/4))
+    bbox[2] = int(math.ceil((bbox[2] + 90)/4))
+    bbox[3] = int(math.ceil((bbox[3] + 180)/4))
 
   #loop over all tiles, level 0 are 4 degrees
   tile_level = 0
-  for y in range(bbox[1]/4, bbox[3]/4):
-    for x in range(bbox[0]/4, bbox[2]/4):
-      tile_index = y*90 + x
+  for y in range(bbox[0], bbox[2] + 1):
+    for x in range(bbox[1], bbox[3] + 1):
+      tile_index = y * 90 + x
+      if tile_index > 90 * 45 - 1:
+        continue
       job_name = '_'.join([week.replace('/', '-'), str(tile_level), str(tile_index)])
       job = {
           'src_bucket': src_bucket,
@@ -98,6 +100,7 @@ def submit_jobs(batch_client, job_queue, job_def, src_bucket, dest_bucket, week,
         }
       logger.info('Submitting speed tile job ' + job_name)
       logger.info('Job parameters ' + str(job))
+      continue
       batch_client.submit_job(
         jobName = job_name,
         jobQueue = job_queue,
