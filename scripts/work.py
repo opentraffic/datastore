@@ -7,6 +7,7 @@ import argparse
 import subprocess
 import boto3
 import logging
+import thread
 import threading
 import math
 import time
@@ -79,6 +80,7 @@ def delete(keys, s3_reporter_bucket):
 def get_files(keys, s3_reporter_bucket, s3_datastore_bucket):
   session = boto3.session.Session()
   s3_resource = session.resource('s3')
+  retries = 10
   for key in keys:
     object_id = key.rsplit('/', 1)[-1]
     secs = 1
@@ -92,9 +94,14 @@ def get_files(keys, s3_reporter_bucket, s3_datastore_bucket):
           logger.info('downloaded ' + key + ' as ' + object_id + ' from s3 bucket: ' + s3_reporter_bucket)
         break
       except Exception as e:
-        logger.error('Failed to download : %s' % e)
+        logger.error('Failed to download: %s' % e)
+        logger.warn('%d retries remaining for %s' % (retries, object_id))
         if key.endswith('.fb'):
           break
+        retries -= 1
+        if retries == 0:
+          logger.error('Reached maximum retries downloading: %s' % object_id)
+          thread.interrupt_main()
         time.sleep(secs)
         secs *= 2
 
