@@ -40,9 +40,6 @@ RUN mkdir /output
 RUN mkdir /work
 WORKDIR /work
 
-# setup aws accelated s3 endpoint use
-RUN mkdir -p ~/.aws && echo "[default]\ns3 =\n use_accelerate_endpoint = true" > ~/.aws/config
-
 # cleanup
 RUN apt-get clean && \
       rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
