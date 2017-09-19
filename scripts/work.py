@@ -77,11 +77,13 @@ def delete(keys, s3_reporter_bucket):
   for t in threads:
     t.join()
 
-def get_files(keys, s3_reporter_bucket, s3_datastore_bucket):
+def get_files(keys, s3_reporter_bucket, s3_datastore_bucket, more):
   session = boto3.session.Session()
   s3_resource = session.resource('s3')
-  retries = 10
+  retries = 5
   for key in keys:
+    if not more.is_set():
+      break
     object_id = key.rsplit('/', 1)[-1]
     secs = 1
     while True:
@@ -149,11 +151,18 @@ def download_data(prefix, s3_reporter_bucket, s3_datastore_bucket, dest_key):
   # download the files
   chunks = split(keys, 10)
   threads = []
-  for chunk in chunks:
-    threads.append(threading.Thread(target=get_files, args=(chunk, s3_reporter_bucket, s3_datastore_bucket)))
-    threads[-1].start()
-  for t in threads:
-    t.join()
+  more = threading.Event()
+  more.set()
+  try:
+    for chunk in chunks:
+      threads.append(threading.Thread(target=get_files, args=(chunk, s3_reporter_bucket, s3_datastore_bucket, more)))
+      threads[-1].start()
+  except KeyboardInterrupt:
+    more.clear()
+    sys.exit(1)
+  finally:
+    for t in threads:
+      t.join()
 
   return keys[:-1]
 
