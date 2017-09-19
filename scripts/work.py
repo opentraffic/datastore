@@ -80,12 +80,12 @@ def delete(keys, s3_reporter_bucket):
 def get_files(keys, s3_reporter_bucket, s3_datastore_bucket, more):
   session = boto3.session.Session()
   s3_resource = session.resource('s3')
-  retries = 5
   for key in keys:
     if not more.is_set():
       break
     object_id = key.rsplit('/', 1)[-1]
     secs = 1
+    retries = 5
     while True:
       try:
         if key.endswith('.fb'):
