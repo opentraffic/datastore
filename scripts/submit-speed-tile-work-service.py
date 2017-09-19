@@ -100,7 +100,6 @@ def submit_jobs(batch_client, job_queue, job_def, src_bucket, dest_bucket, week,
         }
       logger.info('Submitting speed tile job ' + job_name)
       logger.info('Job parameters ' + str(job))
-      continue
       batch_client.submit_job(
         jobName = job_name,
         jobQueue = job_queue,
