@@ -84,9 +84,10 @@ def get_files(keys, s3_reporter_bucket, s3_datastore_bucket, more):
     if not more.is_set():
       break
     object_id = key.rsplit('/', 1)[-1]
-    secs = 1
-    retries = 5
-    while True:
+    secs = 0
+    for retry in range(0, 5):
+      time.sleep(secs)
+      secs *= sec * 2 if secs > 0 else 2
       try:
         if key.endswith('.fb'):
           s3_resource.Object(s3_datastore_bucket, key).download_file(object_id)
@@ -96,16 +97,13 @@ def get_files(keys, s3_reporter_bucket, s3_datastore_bucket, more):
           logger.info('downloaded ' + key + ' as ' + object_id + ' from s3 bucket: ' + s3_reporter_bucket)
         break
       except Exception as e:
-        logger.error('Failed to download: %s' % e)
+        logger.error('On attempt %d failed to download: %s with error: %s' % (retry, key, e))
         if key.endswith('.fb'):
           break
-        logger.warn('%d retries remaining for %s' % (retries, object_id))
-        retries -= 1
-        if retries == 0:
-          logger.error('Reached maximum retries downloading: %s' % object_id)
-          _thread.interrupt_main()
-        time.sleep(secs)
-        secs *= 2
+      if secs == 32:
+        logger.error('Reached maximum retries downloading: %s' % key)
+        _thread.interrupt_main()
+      
 
 def split(l, n):
   size = int(math.ceil(len(l)/float(n)))
