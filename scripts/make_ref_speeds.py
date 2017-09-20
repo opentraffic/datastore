@@ -50,6 +50,9 @@ def createAvgSpeedList(fileNames):
   minSeconds = None
   maxSeconds = None
 
+  speedTotals={}
+  speedCounts={}
+
   #need to loop thru all of the speed tiles for a given tile id
   for fileName in fileNames:
     #lets load the protobuf speed tile
@@ -76,14 +79,48 @@ def createAvgSpeedList(fileNames):
       
       print 'total # created in segments ' + str(subtile.totalSegments)
       entries = subtile.unitSize / subtile.entrySize
+      hours={}
       print '# of entries per segment : ' + str(entries)
       for i, speed in enumerate(subtile.speeds):
         segmentIndex = subtile.startSegmentIndex + int(math.floor(i/entries))
-        log.debug('SPEED: i=' + str(i) + ' | segmentIndex=' + str(segmentIndex) + ' | segmentId=' + str((segmentIndex<<25)|(subtile.index<<3)|subtile.level) + ' | speed=' + str(speed))
+        hr = i - (entries * segmentIndex)
+        log.debug('SPEED: i=' + str(i) + ' | hour=' + str(hr) + ' | segmentIndex=' + str(segmentIndex) + ' | segmentId=' + str((segmentIndex<<25)|(subtile.index<<3)|subtile.level) + ' | speed=' + str(speed))
+        hours[hr] = 0
         if speed > 0 and speed <= 160:
           segments[segmentIndex].append(speed)
+          hours[hr] = speed
         elif speed > 160:
           log.error('INVALID SPEED: i=' + str(i) + ' | segmentIndex=' + str(segmentIndex) + ' | segmentId=' + str((segmentIndex<<25)|(subtile.index<<3)|subtile.level) + ' | speed=' + str(speed))
+
+        #add to totals
+        if hr == entries-1:
+          #if the segmentIndex does not exits, create a new entry
+          if segmentIndex not in speedTotals:
+            speedTotals[segmentIndex] = hours
+            speedCounts[segmentIndex] = {}
+            segspeedCounts = {}
+            #update the counts if a value exists
+            for key,value in speedTotals[segmentIndex].iteritems():
+              if value != 0:
+                segspeedCounts[key] = 1
+              else:
+                segspeedCounts[key] = 0
+            speedCounts[segmentIndex] = segspeedCounts
+          #if the segmentIndex does exist, update the totals and counts
+          else:
+            segspeedTotals = speedTotals[segmentIndex]
+            segspeedCounts = speedCounts[segmentIndex]
+            for key,value in segspeedTotals.iteritems():
+              #update the counts if a value exists
+              hours[key] += value
+              if value != 0:
+                segspeedCounts[key] += 1
+
+            speedTotals[segmentIndex] = hours
+            speedCounts[segmentIndex] = segspeedCounts
+
+          #start over for next segmentIndex
+          hours={}
 
   #sort each list of speeds per segment
   for i, segment in enumerate(segments):
@@ -92,10 +129,10 @@ def createAvgSpeedList(fileNames):
     segment.sort()
     log.debug('SORTED SPEEDS: segmentIndex=' + str(i) + ' | speeds=' + str(segment))
 
-  return segments, minSeconds, maxSeconds
+  return segments, minSeconds, maxSeconds, speedTotals, speedCounts
 
 ###############################################################################
-def createRefSpeedTile(path, fileName, speedListPerSegment, level, index, minSeconds, maxSeconds):
+def createRefSpeedTile(path, fileName, speedListPerSegment, speedTotals, speedCounts, level, index, minSeconds, maxSeconds):
   log.debug('createRefSpeedTiles ###############################################################################')
 
   tile = speedtile_pb2.SpeedTile()
@@ -115,12 +152,18 @@ def createRefSpeedTile(path, fileName, speedListPerSegment, level, index, minSec
   print 'speedListPerSegment length: ' + str(len(speedListPerSegment))
   #bucketize avg speeds into 20%, 40%, 60% and 80% reference speed buckets
   #for each segment
-  for segment in speedListPerSegment:
+  #for segment in speedListPerSegment:
+  for i, segment in enumerate(speedListPerSegment):
     size = len(segment)
     st.referenceSpeeds20.append(segment[int(size * .2)] if size > 0 else 0) #0 here represents no data
     st.referenceSpeeds40.append(segment[int(size * .4)] if size > 0 else 0) #0 here represents no data
     st.referenceSpeeds60.append(segment[int(size * .6)] if size > 0 else 0) #0 here represents no data
     st.referenceSpeeds80.append(segment[int(size * .8)] if size > 0 else 0) #0 here represents no data
+
+    # write out the average speeds for each hour for this segmentindex
+    counts = speedCounts[i]
+    for k,v in speedTotals[i].iteritems():
+      st.speeds.append(int(round((v / counts[k]))) if v > 0 else 0)
 
   #print str(st.referenceSpeeds20)
   #print str(st.referenceSpeeds40)
@@ -341,12 +384,12 @@ if __name__ == "__main__":
   ref_tile_file = None
   if not args.local:
     log.debug('AWS speed processing...')
-    speedListPerSegment, minSeconds, maxSeconds = createAvgSpeedList(spdFileNames)
+    speedListPerSegment, minSeconds, maxSeconds, speedTotals, speedCounts = createAvgSpeedList(spdFileNames)
     ref_tile_file = os.path.splitext(os.path.splitext(os.path.basename(spdFileNames[0]))[0])[0]
     ref_tile_file += ".ref"
   else:
     log.debug('LOCAL speed processing...')
-    speedListPerSegment, minSeconds, maxSeconds = createAvgSpeedList(args.speedtile_list)
+    speedListPerSegment, minSeconds, maxSeconds, speedTotals, speedCounts = createAvgSpeedList(args.speedtile_list)
     ref_tile_file = os.path.splitext(os.path.splitext(os.path.basename(args.speedtile_list[0]))[0])[0]
     ref_tile_file += ".ref"
 
@@ -354,7 +397,7 @@ if __name__ == "__main__":
     print("Ref output filename: " + ref_tile_file)
 
   print 'create reference speed tiles for each segment'
-  createRefSpeedTile(args.ref_tile_path, ref_tile_file, speedListPerSegment, args.level, args.tile_id, minSeconds, maxSeconds)
+  createRefSpeedTile(args.ref_tile_path, ref_tile_file, speedListPerSegment, speedTotals, speedCounts, args.level, args.tile_id, minSeconds, maxSeconds)
 
   #upload to s3
   if args.ref_speed_bucket and args.ref_bucket_version:
@@ -369,7 +412,7 @@ if __name__ == "__main__":
     #push up with custom metatags.  All user custom meta data can only be string and will have a prefix of x-amz-meta-
     with open(args.ref_tile_path + "/" + ref_tile_file + ".gz") as f :
       object_data = f.read()
-      s3_client.put_object(Body=object_data, Bucket=args.ref_speed_bucket, Key= args.ref_bucket_version + "/" + s3_dir + "/" + ref_tile_file + ".gz", Metadata={'rangeStart':str(minSeconds), 'rangeEnd':str(maxSeconds)})
+      s3_client.put_object(Body=object_data, Bucket=args.ref_speed_bucket, Key= args.ref_bucket_version + "/" + s3_dir + "/" + ref_tile_file + ".gz", Metadata={'rangestart':str(minSeconds), 'rangeend':str(maxSeconds)})
 
   print 'done'
 
