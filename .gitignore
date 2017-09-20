@@ -5,6 +5,7 @@ target
 .classpath
 scripts/*.pyc
 scripts/*.fbs
+scripts/dsfb
 scripts/segment_pb2.py
 scripts/speedtile_pb2.py
 scripts/tile_pb2.py
