@@ -43,6 +43,8 @@ def createAvgSpeedList(fileNames):
   minSeconds = None
   maxSeconds = None
 
+  segmentHours=[]
+
   #need to loop thru all of the speed tiles for a given tile id
   for fileName in fileNames:
     #lets load the protobuf speed tile
@@ -66,15 +68,22 @@ def createAvgSpeedList(fileNames):
       log.debug('spdtile.subtiles[0].totalSegments=' + str(spdtile.subtiles[0].totalSegments) + ' | len(segments)=' + str(len(segments)) + ' | missing=' + str(missing))
       if missing > 0:
         segments.extend([ [] for i in range(0, missing) ])
+        segmentHours.extend([ {} for i in range(0, missing) ])
       
       print 'total # created in segments ' + str(subtile.totalSegments)
       entries = subtile.unitSize / subtile.entrySize
       print '# of entries per segment : ' + str(entries)
       for i, speed in enumerate(subtile.speeds):
         segmentIndex = subtile.startSegmentIndex + int(math.floor(i/entries))
-        log.debug('SPEED: i=' + str(i) + ' | segmentIndex=' + str(segmentIndex) + ' | segmentId=' + str((segmentIndex<<25)|(subtile.index<<3)|subtile.level) + ' | speed=' + str(speed))
+        hour = i % entries;
+        log.debug('SPEED: i=' + str(i) + ' | hour=' + str(hour) + ' | segmentIndex=' + str(segmentIndex) + ' | segmentId=' + str((segmentIndex<<25)|(subtile.index<<3)|subtile.level) + ' | speed=' + str(speed))
         if speed > 0 and speed <= 160:
           segments[segmentIndex].append(speed)
+          if hour in segmentHours[segmentIndex]:
+            segmentHours[segmentIndex][hour]['total'] += speed
+            segmentHours[segmentIndex][hour]['count'] += 1
+          else:
+            segmentHours[segmentIndex][hour] = {'total': speed, 'count': 1.0}
         elif speed > 160:
           log.error('INVALID SPEED: i=' + str(i) + ' | segmentIndex=' + str(segmentIndex) + ' | segmentId=' + str((segmentIndex<<25)|(subtile.index<<3)|subtile.level) + ' | speed=' + str(speed))
 
@@ -85,10 +94,10 @@ def createAvgSpeedList(fileNames):
     segment.sort()
     log.debug('SORTED SPEEDS: segmentIndex=' + str(i) + ' | speeds=' + str(segment))
 
-  return segments, minSeconds, maxSeconds
+  return segments, segmentHours, minSeconds, maxSeconds
 
 ###############################################################################
-def createRefSpeedTile(path, fileName, speedListPerSegment, level, index, minSeconds, maxSeconds):
+def createRefSpeedTile(path, fileName, speedListPerSegment, speedListPerHourPerSegment, level, index, minSeconds, maxSeconds):
   log.debug('createRefSpeedTiles ###############################################################################')
 
   tile = speedtile_pb2.SpeedTile()
@@ -101,19 +110,25 @@ def createRefSpeedTile(path, fileName, speedListPerSegment, level, index, minSec
   #time stuff
   st.rangeStart = minSeconds
   st.rangeEnd = maxSeconds
-  st.unitSize = st.rangeEnd - st.rangeStart
-  st.entrySize = st.unitSize
-  st.description = 'Reference speeds over 1 year from 08.2016 through 07.2017' #TODO: get this from range start and end
+  st.unitSize = 604800 #a weeks worth of data
+  st.entrySize = st.unitSize  #BAD: this no longer holds because we are doing hourly and weekly averages in the same file :(
+  st.description = 'Week reference speeds averaged over ' + time.strftime('%Y.%m.%d %H:%M:%S', time.gmtime(minSeconds)) + ' - ' + time.strftime('%Y.%m.%d %H:%M:%S', time.gmtime(maxSeconds))
 
   print 'speedListPerSegment length: ' + str(len(speedListPerSegment))
   #bucketize avg speeds into 20%, 40%, 60% and 80% reference speed buckets
   #for each segment
+  #for segment in speedListPerSegment:
   for segment in speedListPerSegment:
     size = len(segment)
     st.referenceSpeeds20.append(segment[int(size * .2)] if size > 0 else 0) #0 here represents no data
     st.referenceSpeeds40.append(segment[int(size * .4)] if size > 0 else 0) #0 here represents no data
     st.referenceSpeeds60.append(segment[int(size * .6)] if size > 0 else 0) #0 here represents no data
     st.referenceSpeeds80.append(segment[int(size * .8)] if size > 0 else 0) #0 here represents no data
+
+  # write out the average speeds for each hour for each segment
+  for segment in speedListPerHourPerSegment:
+    for hour in range(0,168):
+      st.speeds.append(int(round(segment[hour]['total'] / segment[hour]['count'])) if hour in segment else 0)
 
   #write it out
   with open(path + "/" +fileName, 'ab') as f:
@@ -275,12 +290,12 @@ if __name__ == "__main__":
   ref_tile_file = None
   if not args.local:
     log.debug('AWS speed processing...')
-    speedListPerSegment, minSeconds, maxSeconds = createAvgSpeedList(spdFileNames)
+    speedListPerSegment, minSeconds, maxSeconds, speedTotals, speedCounts = createAvgSpeedList(spdFileNames)
     ref_tile_file = os.path.splitext(os.path.splitext(os.path.basename(spdFileNames[0]))[0])[0]
     ref_tile_file += ".ref"
   else:
     log.debug('LOCAL speed processing...')
-    speedListPerSegment, minSeconds, maxSeconds = createAvgSpeedList(args.speedtile_list)
+    speedListPerSegment, speedListPerHourPerSegment, minSeconds, maxSeconds = createAvgSpeedList(args.speedtile_list)
     ref_tile_file = os.path.splitext(os.path.splitext(os.path.basename(args.speedtile_list[0]))[0])[0]
     ref_tile_file += ".ref"
 
@@ -288,7 +303,7 @@ if __name__ == "__main__":
     log.info("Ref output filename: " + ref_tile_file)
 
   log.info('create reference speed tiles for each segment')
-  createRefSpeedTile(args.ref_tile_path, ref_tile_file, speedListPerSegment, args.level, args.tile_id, minSeconds, maxSeconds)
+  createRefSpeedTile(args.ref_tile_path, ref_tile_file, speedListPerSegment, speedListPerHourPerSegment, speedCounts, args.level, args.tile_id, minSeconds, maxSeconds)
 
   #upload to s3
   if args.ref_speed_bucket and args.ref_bucket_version:
@@ -303,3 +318,4 @@ if __name__ == "__main__":
     with open(args.ref_tile_path + "/" + ref_tile_file + ".gz") as f :
       object_data = f.read()
       s3_client.put_object(Body=object_data, Bucket=args.ref_speed_bucket, Key= args.ref_bucket_version + "/" + s3_dir + "/" + ref_tile_file + ".gz", Metadata={'rangeStart':str(minSeconds), 'rangeEnd':str(maxSeconds)})
+
