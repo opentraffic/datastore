@@ -297,6 +297,11 @@ def createSpeedTiles(lengths, fileName, subTileSize, nextName, separate, segment
     log.debug('len(subtile.nextSegmentIndices)=' + str(len(subtile.nextSegmentIndices)))
     log.debug('len(subtile.nextSegmentCounts)=' + str(len(subtile.nextSegmentCounts)))
 
+    # set the last subtile and nextSubtile segment count
+    subtile.subtileSegments = len(subtile.speeds)/(subtile.unitSize/subtile.entrySize)
+    nextSubtile.subtileSegments = subtile.subtileSegments
+    log.debug('LAST subtile segment count=' + str(subtile.subtileSegments))
+
     written.append(write(fileName, subTileCount, tile, first or separate))
     if nextTile is not tile:
       written.append(write(nextName, subTileCount, nextTile, first or separate))
