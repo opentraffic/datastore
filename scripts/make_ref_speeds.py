@@ -1,20 +1,22 @@
 #!/usr/bin/env python
 import argparse
-import random
 import math
 import os
-import errno
 import sys
 import boto3
-import botocore
-import shutil
 import gzip
-import logging as log
-from Queue import Queue
-from threading import Thread
-from datetime import date, timedelta
+import logging
 import datetime
 import time
+import StringIO
+from Queue import Queue
+from threading import Thread
+
+log = logging.getLogger('make_ref_speeds')
+log.setLevel(logging.INFO)
+handler = logging.StreamHandler()
+handler.setFormatter(logging.Formatter(fmt='%(asctime)s %(levelname)s %(message)s'))
+log.addHandler(handler)
 
 try:
   import speedtile_pb2
@@ -22,37 +24,108 @@ except ImportError:
   print 'You need to generate protobuffer source via: protoc --python_out . --proto_path ../proto ../proto/*.proto'
   sys.exit(1)
 
-def get_tile_count(filename):
-  #lets load the protobuf speed tile
-  spdtile = speedtile_pb2.SpeedTile()
-  with open(filename, 'rb') as f:
-    spdtile.ParseFromString(f.read())
-  if spdtile.subtiles[0].totalSegments <= spdtile.subtiles[0].subtileSegments:
-    return 0
-  return int(math.ceil(spdtile.subtiles[0].totalSegments / (spdtile.subtiles[0].subtileSegments * 1.0)))
+valhalla_tiles = [{'level': 2, 'size': 0.25}, {'level': 1, 'size': 1.0}, {'level': 0, 'size': 4.0}]
 
-###############################################################################
-### tile 2415
-### segment0{refspdlist[hour0:avgspd, hour1:avgspd, hour2:avgspd, etc]} -> sort lo to hi, index in to get refspd20:int, refspd40:int, refspd60:int, refspd80:int
-### segment1{refspdlist[hour0:avgspd, hour1:avgspd, hour2:avgspd, etc]}
-# get the avg speeds for a given segment for each hour (168 hr/day) over 52 weeks
+def url_suffix(tile_level, tile_index):
+  tile_set = filter(lambda x: x['level'] == tile_level, valhalla_tiles)[0]
+  max_index = int(360.0/tile_set['size'] * 180.0/tile_set['size']) - 1
+  num_dirs = int(math.ceil(len(str(max_index)) / 3.0))
+  suffix = list(str(tile_index).zfill(3 * num_dirs))
+  for i in range(0, num_dirs):
+    suffix.insert(i * 3 + i, '/')
+  suffix = '/' + str(tile_level) + ''.join(suffix) 
+  return suffix
+
+def get_subtile_count(filename):
+  spdtile = speedtile_pb2.SpeedTile()
+  with gzip.open(filename, 'rb') as f:
+    spdtile.ParseFromString(f.read())
+  count = int(math.ceil(spdtile.subtiles[0].totalSegments / float(spdtile.subtiles[0].subtileSegments)))
+  del spdtile
+  return count
+
+class Worker(Thread):
+  def __init__(self, tasks, results, adder):
+    Thread.__init__(self)
+    self.tasks = tasks
+    self.results = results
+    self.adder = adder
+    self.daemon = True
+    self.start()
+  def run(self):
+    while True:
+      func, args, kargs = self.tasks.get()
+      kargs['adder'] = self.adder
+      try: 
+        result = func(*args, **kargs)
+        if result is not None:
+          self.results.put(result)
+      except Exception as e: log.error(e)
+      self.tasks.task_done()
+
+class ThreadPool:
+  def __init__(self, num_threads):
+    self.tasks = Queue(0)
+    self.results = Queue(0)
+    for _ in range(num_threads): Worker(self.tasks, self.results, self.add_task)
+  def add_task(self, func, *args, **kargs):
+    self.tasks.put((func, args, kargs))
+  def wait_completion(self):
+    self.tasks.join()
+    return list(self.results.queue)
+
+def work(speed_bucket, week_tile, part, **kargs):
+  session = boto3.session.Session()
+  client = session.client('s3')
+  #make sure we have a spot for this
+  key = week_tile % part
+  try:
+    os.makedirs('/'.join(key.split('/')[:-1]))
+  except:
+    pass
+  #try to get it
+  try:
+    client.download_file(speed_bucket, key, key)
+    log.info('Downloaded %s from %s' % (key, speed_bucket))
+    #queue up more if there is more
+    if part == 0:
+      parts = get_subtile_count(key)
+      for p in range(1, parts):
+        kargs['adder'](work, speed_bucket, week_tile, p)
+    return key
+  except:
+    pass
+
+def download(tile_level, tile_index, start_week, weeks, speed_bucket):
+  #TODO: check if the bucket is valid and if not pretend its a dir to scan for speed tiles
+  log.info('Downloading speed information for the time range')
+  pool = ThreadPool(10)
+  start = datetime.datetime.strptime(start_week + '/1','%Y/%W/%w').date()
+  suffix = url_suffix(tile_level, tile_index) + '.spd.%d.gz'
+  for week in range(0, weeks):
+    key = (start + datetime.timedelta(weeks=week)).strftime("%Y/%W") + suffix
+    pool.add_task(work, speed_bucket, key, 0)
+  return pool.wait_completion()
 
 def createAvgSpeedList(fileNames):
+  log.info('Getting speed information for time range')
+
+  #TODO: when this is getting data over a range of time that includes an update to OSMLR definitions
+  #this process will waste time computing values for segments that are marked deleted, this is probably
+  #a good thing as it means that people using previous version of osmlr will still have reference speeds
+
   #each segment has its own list of speeds, we dont know how many segments for the avg speed list to start with
   segments = []
+  segmentHours=[]
   minSeconds = None
   maxSeconds = None
 
-  segmentHours=[]
-
   #need to loop thru all of the speed tiles for a given tile id
   for fileName in fileNames:
-    #lets load the protobuf speed tile
+    log.info('Processing ' + fileName)
     spdtile = speedtile_pb2.SpeedTile()
-    with open(fileName, 'rb') as f:
+    with gzip.open(fileName, 'rb') as f:
       spdtile.ParseFromString(f.read())
-
-    log.debug('Process ' + fileName)
     subtileCount = 1;
     #we now need to retrieve all of the speeds for each segment in this tile
     for subtile in spdtile.subtiles:
@@ -70,9 +143,7 @@ def createAvgSpeedList(fileNames):
         segments.extend([ [] for i in range(0, missing) ])
         segmentHours.extend([ {} for i in range(0, missing) ])
       
-      print 'total # created in segments ' + str(subtile.totalSegments)
       entries = subtile.unitSize / subtile.entrySize
-      print '# of entries per segment : ' + str(entries)
       for i, speed in enumerate(subtile.speeds):
         segmentIndex = subtile.startSegmentIndex + int(math.floor(i/entries))
         hour = i % entries;
@@ -89,21 +160,18 @@ def createAvgSpeedList(fileNames):
 
   #sort each list of speeds per segment
   for i, segment in enumerate(segments):
-    if len(segment) > 0:
-      print '# of valid average speeds in segment ' + str(i) + ' is ' + str(len(segment))
     segment.sort()
     log.debug('SORTED SPEEDS: segmentIndex=' + str(i) + ' | speeds=' + str(segment))
 
   return segments, segmentHours, minSeconds, maxSeconds
 
-###############################################################################
-def createRefSpeedTile(path, fileName, speedListPerSegment, speedListPerHourPerSegment, level, index, minSeconds, maxSeconds):
-  log.debug('createRefSpeedTiles ###############################################################################')
+def createRefSpeedTile(speedListPerSegment, speedListPerHourPerSegment, tile_level, tile_index, minSeconds, maxSeconds):
+  log.info('Creating reference speed tile')
 
   tile = speedtile_pb2.SpeedTile()
   st = tile.subtiles.add()
-  st.level = level
-  st.index = index
+  st.level = tile_level
+  st.index = tile_index
   st.startSegmentIndex = 0
   st.totalSegments = len(speedListPerSegment)
   st.subtileSegments = len(speedListPerSegment)
@@ -111,10 +179,9 @@ def createRefSpeedTile(path, fileName, speedListPerSegment, speedListPerHourPerS
   st.rangeStart = minSeconds
   st.rangeEnd = maxSeconds
   st.unitSize = 604800 #a weeks worth of data
-  st.entrySize = st.unitSize  #BAD: this no longer holds because we are doing hourly and weekly averages in the same file :(
+  st.entrySize = 3600 #note that this only holds true for the average per hour speeds, the references speeds have no bearing on unit and entry size since they are one speed per segment
   st.description = 'Week reference speeds averaged over ' + time.strftime('%Y.%m.%d %H:%M:%S', time.gmtime(minSeconds)) + ' - ' + time.strftime('%Y.%m.%d %H:%M:%S', time.gmtime(maxSeconds))
 
-  print 'speedListPerSegment length: ' + str(len(speedListPerSegment))
   #bucketize avg speeds into 20%, 40%, 60% and 80% reference speed buckets
   #for each segment
   #for segment in speedListPerSegment:
@@ -129,193 +196,64 @@ def createRefSpeedTile(path, fileName, speedListPerSegment, speedListPerHourPerS
   for segment in speedListPerHourPerSegment:
     for hour in range(0,168):
       st.speeds.append(int(round(segment[hour]['total'] / segment[hour]['count'])) if hour in segment else 0)
+  return tile
 
-  #write it out
-  with open(path + "/" +fileName, 'ab') as f:
-    f.write(tile.SerializeToString())
+def writeTile(tile, bucket):
+  #compress
+  log.info('Compressing reference speed tile')
+  zipped = StringIO.StringIO()
+  f_out = gzip.GzipFile(mode='wb',fileobj=zipped)
+  f_out.write(tile.SerializeToString())
 
-def url_suffix(tile_level, tile_index):
-  tile_set = filter(lambda x: x['level'] == tile_level, valhalla_tiles)[0]
-  max_index = int(360.0/tile_set['size'] * 180.0/tile_set['size']) - 1
-  num_dirs = int(math.ceil(len(str(max_index)) / 3.0))
-  suffix = list(str(tile_index).zfill(3 * num_dirs))
-  for i in range(0, num_dirs):
-    suffix.insert(i * 3 + i, '/')
-  suffix = '/' + str(tile_level) + ''.join(suffix) 
-  return suffix
-
-#this is from:
-#http://code.activestate.com/recipes/577187-python-thread-pool/
-
-class Worker(Thread):
-    """Thread executing tasks from a given tasks queue"""
-    def __init__(self, tasks):
-        Thread.__init__(self)
-        self.tasks = tasks
-        self.daemon = True
-        self.start()
-
-    def run(self):
-        while True:
-            func, args, kargs = self.tasks.get()
-            try: func(*args, **kargs)
-            except Exception, e: print e
-            self.tasks.task_done()
-
-class ThreadPool:
-    """Pool of threads consuming tasks from a queue"""
-    def __init__(self, num_threads):
-        self.tasks = Queue(num_threads)
-        for _ in range(num_threads): Worker(self.tasks)
-
-    def add_task(self, func, *args, **kargs):
-        """Add a task to the queue"""
-        self.tasks.put((func, args, kargs))
-
-    def wait_completion(self):
-        """Wait for completion of all the tasks in the queue"""
-        self.tasks.join()
-
-
-################################################################################
-# work function for our threads.  Downloads and decompresses the speed tile
-def work(speed_bucket, directory, filename):
-  s3 = boto3.client('s3')
-  try:
-    s3.download_file(speed_bucket, filename + ".gz", directory + filename + ".gz")
-  except botocore.exceptions.ClientError as e:
-    if e.response['Error']['Code'] == "404":
-      print "File not found in speed bucket! " + filename + ".gz"
-      raise
-  decompressedFile = gzip.GzipFile(directory + filename + ".gz", mode='rb')
-  with open(directory + filename, 'w') as outfile:
-    outfile.write(decompressedFile.read())
-  log.info('downloaded and decompressed file: ' + filename + '.gz from s3 speed bucket: ' + speed_bucket)
-
-
-#########################
-def download(level, tile_id, year, speed_bucket):
-  # download the speed tiles from aws and decompress
-  spdFileNames = []
-  file_name = url_suffix(args.level, args.tile_id)
-
-  #our work dir.  deleted everytime if exists
-  directory = "ref_working_dir/"
-  shutil.rmtree(directory, ignore_errors=True)
-  key_prefix = args.year + "/"
-
-  s3 = boto3.client('s3')
-
-  #get the first tile *.0.gz so that we can determine the number of subtiles we have
-  # if they are separated into subtiles
-  log.info('starting download from s3 speed bucket: ' + args.speed_bucket)
-  weeks_per_year = 54 #support up to 53 weeks
-  week = 1 #start at 1
-  # for every week in the year
-  while ( week < weeks_per_year):
-    if week < 10:
-      key = key_prefix + "0" + str(week) + "/"
-    else:
-      key = key_prefix + str(week) + "/"
-    key += file_name
-    try:
-      file_path = os.path.dirname(key + ".0.gz" )
-      # create the directory for the tiles
-      if not os.path.exists(directory + file_path):
-        try:
-          os.makedirs(directory + file_path)
-        except OSError as e:
-          if e.errno != errno.EEXIST:
-            raise
-      #download the file
-      s3.download_file(args.speed_bucket, key + ".0.gz", (directory + key + ".0.gz"))
-    except botocore.exceptions.ClientError as e:
-      if e.response['Error']['Code'] != "404":
-        raise
-      else:
-        week += 1
-        continue
-    log.info('downloaded and decompressed file: ' + (key + ".0.gz") + ' from s3 speed bucket: ' + args.speed_bucket)
-    #decompress the file
-    decompressedFile = gzip.GzipFile(directory + key + ".0.gz", mode='rb')
-    with open(directory + key + ".0", 'w') as outfile:
-      outfile.write(decompressedFile.read())
-
-    #append the file name
-    spdFileNames.append(os.path.abspath(outfile.name))
-
-    # create a thread pool based on the subtile count, download, and decompress them
-    subtile_suffix = get_tile_count(directory + key + ".0")
-    if subtile_suffix != 0:
-      p=ThreadPool(subtile_suffix)
-      i = 1;
-      while ( i < subtile_suffix):
-        p.add_task(work, args.speed_bucket, directory, key + "." + str(i))
-        spdFileNames.append(os.path.abspath(directory + key + "." + str(i)))
-        i += 1
-      p.wait_completion()
-
-    week += 1
-
-###############################################################################
+  #maybe local maybe s3
+  key = (url_suffix(tile.subtiles[0].level, tile.subtiles[0].index) + '.ref.gz').strip('/')
+  if bucket is not None:
+    #push up with custom metatags.  All user custom meta data can only be string and will have a prefix of x-amz-meta-
+    log.info('Uploading reference speed tile to %s as %s' % (bucket, key))
+    client = boto3.client("s3")
+    client.put_object(ACL='public-read', Bucket=bucket, ContentType='application/octet-stream', ContentEncoding='gzip', Body=zipped.getvalue(), Key=key,
+      Metadata={'rangeStart':str(tile.subtiles[0].rangeStart), 'rangeEnd':str(tile.subtiles[0].rangeEnd)})
+  else:
+    fileName = (key).split('/')[-1]
+    log.info('Writing reference speed tile to %s' % fileName)
+    with open(fileName, 'wb') as f:
+      f.write(zipped.getvalue())
 
 # Read in protobuf files from the datastore output in AWS to read in the lengths, speeds & next segment ids and generate the segment speed files in proto output format
 if __name__ == "__main__":
   parser = argparse.ArgumentParser(description='Generate ref speed tiles', formatter_class=argparse.ArgumentDefaultsHelpFormatter)
   parser.add_argument('--speed-bucket', type=str, help='AWS bucket location (i.e., where to get the speed tiles), if its not a valid bucket it will be treated as a local path', required=True)
   parser.add_argument('--ref-speed-bucket', type=str, help='AWS Bucket (e.g., ref-speedtiles-prod) into which we will place the ref tile')
-  parser.add_argument('--year', type=str, help='The year you wish to get', required=True)
-  parser.add_argument('--level', type=int, help='The level to target', required=True)
-  parser.add_argument('--tile-id', type=int, help='The tile id to target', required=True)
+  parser.add_argument('--start-week', type=str, help='The first week you want to use', required=True)
+  parser.add_argument('--weeks', type=int, help='How many weeks after the first week to make use of', default=52)
+  parser.add_argument('--tile-level', type=int, help='The level to target', required=True)
+  parser.add_argument('--tile-index', type=int, help='The tile id to target', required=True)
   parser.add_argument('--verbose', '-v', help='Turn on verbose output i.e. DEBUG level logging', action='store_true')
 
   # parse the arguments
   args = parser.parse_args()
 
-  # setup log
+  if log.level == logging.NOTSET:
+    log.setLevel(logging.DEBUG if args.verbose else logging.WARN)
+    handler = logging.StreamHandler()
+    handler.setFormatter(logging.Formatter(fmt='%(asctime)s %(levelname)s %(message)s'))
+    log.addHandler(handler)
+
   if args.verbose:
-    log.basicConfig(format='%(asctime)s - %(levelname)s - %(message)s', stream=sys.stdout, level=log.DEBUG)
-    log.debug('speed-bucket=' + args.speed_bucket)
-    log.debug('year=' + args.year)
-    log.debug('level=' + str(args.level))
-    log.debug('tile-id=' + str(args.tile_id))
-  else:
-    log.basicConfig(format='%(asctime)s - %(levelname)s - %(message)s', stream=sys.stdout)
+    log.debug('speed-bucket ' + args.speed_bucket)
+    log.debug('start-week ' + args.start_week)
+    log.debug('weeks ' + args.weeks)
+    log.debug('tile-level=' + str(args.tile_level))
+    log.debug('tile-index=' + str(args.tile_index))
 
   #get the data
-  download()
+  fileNames = download(args.tile_level, args.tile_index, args.start_week, args.weeks, args.speed_bucket)
   
-  ################################################################################
-  log.info('getting avg speeds from list of protobuf speed tile extracts')
-  ref_tile_file = None
-  if not args.local:
-    log.debug('AWS speed processing...')
-    speedListPerSegment, minSeconds, maxSeconds, speedTotals, speedCounts = createAvgSpeedList(spdFileNames)
-    ref_tile_file = os.path.splitext(os.path.splitext(os.path.basename(spdFileNames[0]))[0])[0]
-    ref_tile_file += ".ref"
-  else:
-    log.debug('LOCAL speed processing...')
-    speedListPerSegment, speedListPerHourPerSegment, minSeconds, maxSeconds = createAvgSpeedList(args.speedtile_list)
-    ref_tile_file = os.path.splitext(os.path.splitext(os.path.basename(args.speedtile_list[0]))[0])[0]
-    ref_tile_file += ".ref"
+  #read the data
+  speedListPerSegment, speedListPerHourPerSegment, minSeconds, maxSeconds = createAvgSpeedList(fileNames)
 
-  if args.verbose:
-    log.info("Ref output filename: " + ref_tile_file)
+  #turn the data into a tile
+  tile = createRefSpeedTile(speedListPerSegment, speedListPerHourPerSegment, args.tile_level, args.tile_index, minSeconds, maxSeconds)
 
-  log.info('create reference speed tiles for each segment')
-  createRefSpeedTile(args.ref_tile_path, ref_tile_file, speedListPerSegment, speedListPerHourPerSegment, speedCounts, args.level, args.tile_id, minSeconds, maxSeconds)
-
-  #upload to s3
-  if args.ref_speed_bucket and args.ref_bucket_version:
-    s3_client = boto3.client("s3")
-    s3_dir = os.path.dirname(file_name)
-
-    #compress
-    with open(args.ref_tile_path + "/" + ref_tile_file) as f_in, gzip.open(args.ref_tile_path + "/" + ref_tile_file + ".gz", 'wb') as f_out:
-      f_out.writelines(f_in)
-
-    #push up with custom metatags.  All user custom meta data can only be string and will have a prefix of x-amz-meta-
-    with open(args.ref_tile_path + "/" + ref_tile_file + ".gz") as f :
-      object_data = f.read()
-      s3_client.put_object(Body=object_data, Bucket=args.ref_speed_bucket, Key= args.ref_bucket_version + "/" + s3_dir + "/" + ref_tile_file + ".gz", Metadata={'rangeStart':str(minSeconds), 'rangeEnd':str(maxSeconds)})
-
+  #store the ref tile
+  writeTile(tile, args.ref_speed_bucket)
