@@ -96,14 +96,14 @@ def work(speed_bucket, week_tile, part, **kargs):
   except:
     pass
 
-def download(tile_level, tile_index, start_week, weeks, speed_bucket):
+def download(tile_level, tile_index, end_week, weeks, speed_bucket):
   #TODO: check if the bucket is valid and if not pretend its a dir to scan for speed tiles
   log.info('Downloading speed information for the time range')
   pool = ThreadPool(10)
-  start = datetime.datetime.strptime(start_week + '/1','%Y/%W/%w').date()
+  end = datetime.datetime.strptime(end_week + '/1','%Y/%W/%w').date()
   suffix = url_suffix(tile_level, tile_index) + '.spd.%d.gz'
   for week in range(0, weeks):
-    key = (start + datetime.timedelta(weeks=week)).strftime("%Y/%W") + suffix
+    key = (end - datetime.timedelta(weeks=week)).strftime("%Y/%W") + suffix
     pool.add_task(work, speed_bucket, key, 0)
   return pool.wait_completion()
 
@@ -224,8 +224,8 @@ if __name__ == "__main__":
   parser = argparse.ArgumentParser(description='Generate ref speed tiles', formatter_class=argparse.ArgumentDefaultsHelpFormatter)
   parser.add_argument('--speed-bucket', type=str, help='AWS bucket location (i.e., where to get the speed tiles), if its not a valid bucket it will be treated as a local path', required=True)
   parser.add_argument('--ref-speed-bucket', type=str, help='AWS Bucket (e.g., ref-speedtiles-prod) into which we will place the ref tile')
-  parser.add_argument('--start-week', type=str, help='The first week you want to use', required=True)
-  parser.add_argument('--weeks', type=int, help='How many weeks after the first week to make use of', default=52)
+  parser.add_argument('--end-week', type=str, help='The last week you want to use', required=True)
+  parser.add_argument('--weeks', type=int, help='How many weeks up to and including this end week to make use of', default=52)
   parser.add_argument('--tile-level', type=int, help='The level to target', required=True)
   parser.add_argument('--tile-index', type=int, help='The tile id to target', required=True)
   parser.add_argument('--verbose', '-v', help='Turn on verbose output i.e. DEBUG level logging', action='store_true')
@@ -241,13 +241,16 @@ if __name__ == "__main__":
 
   if args.verbose:
     log.debug('speed-bucket ' + args.speed_bucket)
-    log.debug('start-week ' + args.start_week)
+    log.debug('end-week ' + args.end_week)
     log.debug('weeks ' + args.weeks)
     log.debug('tile-level=' + str(args.tile_level))
     log.debug('tile-index=' + str(args.tile_index))
 
   #get the data
-  fileNames = download(args.tile_level, args.tile_index, args.start_week, args.weeks, args.speed_bucket)
+  fileNames = download(args.tile_level, args.tile_index, args.end_week, args.weeks, args.speed_bucket)
+  if not fileNames:
+    log.info('No data was found')
+    sys.exit(0)
   
   #read the data
   speedListPerSegment, speedListPerHourPerSegment, minSeconds, maxSeconds = createAvgSpeedList(fileNames)
