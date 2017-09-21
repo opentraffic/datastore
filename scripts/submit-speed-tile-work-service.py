@@ -147,7 +147,7 @@ def submit_jobs(batch_client, env, week, bbox):
         logger.info('Submitting reference tile job ' + job_name)
         logger.info('Job parameters ' + str(job))
         batch_client.submit_job(
-          dependsOn = [ submitted['jobId'] ],
+          dependsOn = [ submitted ],
           jobName = job_name,
           jobQueue = ref_job_queue,
           jobDefinition = ref_job_def,
