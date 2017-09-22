@@ -188,9 +188,9 @@ def next(startIndex, total, nextName, subtileSegments, extractInfo):
 ###############################################################################
 # Prevalence is a rough measure of count. Want this to obscure the true count
 def prevalence(count):
-  if (count > 120):
+  if (count >= 100):
     return 10
-  return int(math.sqrt(val))
+  return int(round(math.sqrt(val)))
 
 ###############################################################################
 # calculate and return the variance of the specified list
