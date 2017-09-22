@@ -96,7 +96,7 @@ def get_tiles(tile_level, tile_index):
 def submit_jobs(batch_client, env, week, bbox):
   src_bucket = 'datastore-output-' + env
   dest_bucket = 'speedtiles-' + env
-  ref_bucket = 'referencetile-' + env
+  ref_bucket = 'referencetiles-' + env
   job_queue = 'speedtiles-' + env
   job_def = 'speedtiles-' + env
   ref_job_queue = 'referencetiles-' + env
