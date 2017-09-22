@@ -190,7 +190,7 @@ def next(startIndex, total, nextName, subtileSegments, extractInfo):
 def prevalence(count):
   if (count >= 100):
     return 10
-  return int(round(math.sqrt(val)))
+  return int(round(math.sqrt(count)))
 
 ###############################################################################
 # calculate and return the variance of the specified list
