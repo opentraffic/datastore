@@ -253,16 +253,13 @@ def createSpeedTiles(lengths, fileName, subTileSize, nextName, separate, segment
       maxSpeed = 0
       if nextSegments:
         speeds = [int(round(length / n['duration'] * 3.6)) for nid, n in nextSegments.iteritems()]
-        maxSpeed = max(speeds)
+        minDuration = min(nextSegments.iteritems(), key=lambda n:n[1]['duration'])
+        maxSpeed = int(round(length / minDuration[1]['duration'] * 3.6))
         #we do not want to include the invalid speeds
-        if maxSpeed > 160:
+        if maxSpeed > 160 or maxSpeed < 0:          
           # flag invalid speed and set to zero
-          log.error('**********INVALID SPEED > 160 KPH: ' + str(maxSpeed))
-          maxSpeed = 0;
-        elif maxSpeed < 0:
-          # flag invalid speed and set to zero
-          log.error('**********INVALID SPEED < 0 KPH: ' + str(maxSpeed))
-          maxSpeed = 0;
+          log.warn('Invalid speed of %d with length %d found for segment %d with next segment %s' % (maxSpeed, length, (k<<25)|(extractInfo['index']<<3)|extractInfo['level'], minDuration))
+          maxSpeed = 0
 
       #any time its a dead one we put in 0's for the data
       minDuration = min([n['duration'] for nid, n in nextSegments.iteritems()]) if nextSegments else 0
