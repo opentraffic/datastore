@@ -102,8 +102,6 @@ def submit_jobs(batch_client, env, week, bbox):
   ref_job_queue = 'referencetiles-' + env
   ref_job_def = 'referencetiles-' + env
 
-
-
   logger.info('Creating speed tiles for the week of ' + week)
   if bbox is None:
     bbox=[0, 0, 360, 180]
@@ -138,6 +136,8 @@ def submit_jobs(batch_client, env, week, bbox):
           'command': ['/scripts/speed-tile-work.py', '--src-bucket', 'Ref::src_bucket', '--dest-bucket', 'Ref::dest_bucket', '--tile-level', 'Ref::tile_level', '--tile-index', 'Ref::tile_index', '--week', 'Ref::week']
         }
       )
+      parent_id = submitted['jobId']
+      logger.info('Job %s was submitted and got id %s' % (job_name, parent_id))
 
       #submit the corresponding jobs to make the reference tiles using the above speed tiles
       tiles = get_tiles(tile_level, tile_index)
@@ -146,8 +146,8 @@ def submit_jobs(batch_client, env, week, bbox):
         job = {'speed_bucket': dest_bucket, 'ref_speed_bucket': ref_bucket, 'tile_level': str(t[0]), 'tile_index': str(t[1]), 'week': week}
         logger.info('Submitting reference tile job ' + job_name)
         logger.info('Job parameters ' + str(job))
-        batch_client.submit_job(
-          dependsOn = [ {'jobId': submitted['jobId']} ],
+        submitted = batch_client.submit_job(
+          dependsOn = [ {'jobId': parent_id} ],
           jobName = job_name,
           jobQueue = ref_job_queue,
           jobDefinition = ref_job_def,
@@ -158,6 +158,7 @@ def submit_jobs(batch_client, env, week, bbox):
             'command': ['/scripts/ref-tile-work.py', '--speed-bucket', 'Ref::speed_bucket', '--ref-speed-bucket', 'Ref::ref_speed_bucket', '--end-week', 'Ref::week', '--weeks', '52', '--tile-level', 'Ref::tile_level', '--tile-index', 'Ref::tile_index']
           }
         )
+        logger.info('Job %s was submitted and got id %s' % (job_name, submitted['jobId']))
 
 
 """ the aws lambda entry point """
