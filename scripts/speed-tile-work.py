@@ -54,7 +54,7 @@ def upload(dest_bucket, level, index, week, speed_tiles):
       Key=key)
 
 def convert(level, index, week, histograms):
-  url = 'http://s3.amazonaws.com/osmlr-tiles/v0.1/pbf' + url_suffix(level, index) + '.osmlr'
+  url = 'http://s3.amazonaws.com/osmlr-tiles/v1.0/pbf' + url_suffix(level, index) + '.osmlr'
   logger.info('Fetching osmlr tile: ' + url)
   osmlr = str(level) + '_' + str(index) + '.osmlr'
   urllib.URLopener().retrieve(url, osmlr)
