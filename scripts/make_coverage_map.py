@@ -104,7 +104,6 @@ class Tiles(object):
 if __name__ == "__main__":
   parser = argparse.ArgumentParser(description='Generate Coverage Map', formatter_class=argparse.ArgumentDefaultsHelpFormatter)
   parser.add_argument('--ref-speed-bucket', type=str, help='AWS Ref Bucket location.', required=True)
-  parser.add_argument('--ref-bucket-version', type=str, help='Version within the AWS Bucket (e.g., v1.0)', required=True)
   parser.add_argument('--output-file', default=None, type=str, help='geojson output file')
   parser.add_argument('--upload-results', help='Upload the results to the AWS Bucket', action='store_true')
 
@@ -112,7 +111,7 @@ if __name__ == "__main__":
   args = parser.parse_args()
   
   if not args.output_file:
-    args.output_file = args.ref_bucket_version + '.geojson'
+    args.output_file = '.geojson'
    
   print('[INFO] Output file: ' + args.output_file)
   tile_hierarchy = TileHierarchy()
@@ -120,8 +119,8 @@ if __name__ == "__main__":
   batch_client = boto3.client('batch')
 
   print('[INFO] Getting keys from bucket')
-  # version with only level 1
-  prefixes, _ = get_prefixes_keys(client, args.ref_speed_bucket, [args.ref_bucket_version + "/1"] )
+  # only level 1
+  prefixes, _ = get_prefixes_keys(client, args.ref_speed_bucket, "/1")
   # tile dirs
   prefixes, _ = get_prefixes_keys(client, args.ref_speed_bucket, prefixes)
   # physical tiles
@@ -137,7 +136,7 @@ if __name__ == "__main__":
   print('[INFO] Getting metadata from keys and building geojson')
   for k in keys:
     path_list = k.split(os.sep)
-    prefix_tileid = str(path_list[path_list.index(args.ref_bucket_version)+2])
+    prefix_tileid = str(path_list[1])
     suffix_tileid = str(os.path.splitext(os.path.splitext(os.path.basename(k))[0])[0])
     tileid = int(prefix_tileid + suffix_tileid)
     response = client.head_object(Bucket=args.ref_speed_bucket, Key=k)
@@ -181,5 +180,5 @@ if __name__ == "__main__":
     #push up 
     with open(args.output_file) as f :
       object_data = f.read()
-      s3_client.put_object(Body=object_data, Bucket=args.ref_speed_bucket, Key= args.ref_bucket_version + "/" + args.output_file)
+      s3_client.put_object(Body=object_data, Bucket=args.ref_speed_bucket, ACL='public-read', Key=args.output_file)
     print('[INFO] Done.  Uploading file....')
