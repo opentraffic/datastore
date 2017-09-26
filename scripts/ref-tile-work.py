@@ -202,8 +202,8 @@ def writeTile(tile, bucket):
   #compress
   log.info('Compressing reference speed tile')
   zipped = StringIO.StringIO()
-  f_out = gzip.GzipFile(mode='wb',fileobj=zipped)
-  f_out.write(tile.SerializeToString())
+  with gzip.GzipFile(mode='wb',fileobj=zipped) as f_out:
+    f_out.write(tile.SerializeToString())
 
   #maybe local maybe s3
   key = (url_suffix(tile.subtiles[0].level, tile.subtiles[0].index) + '.ref.gz').strip('/')
