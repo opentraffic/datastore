@@ -180,5 +180,5 @@ if __name__ == "__main__":
     #push up 
     with open(args.output_file) as f :
       object_data = f.read()
-      s3_client.put_object(Body=object_data, Bucket=args.ref_speed_bucket, ACL='public-read', Key=args.output_file)
+      s3_client.put_object(Body=object_data, Bucket=args.ref_speed_bucket, ACL='public-read', ContentType='text/plain', Key=args.output_file)
     print('[INFO] Done.  Uploading file....')
