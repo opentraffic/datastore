@@ -13,13 +13,15 @@ import calendar
 import logging
 import StringIO
 from botocore.exceptions import ClientError
-import make_speeds
 
 logger = logging.getLogger('make_speeds')
 logger.setLevel(logging.INFO)
 handler = logging.StreamHandler()
 handler.setFormatter(logging.Formatter(fmt='%(asctime)s %(levelname)s %(message)s'))
 logger.addHandler(handler)
+
+# import make_speeds after logger has been setup
+import make_speeds
 
 valhalla_tiles = [{'level': 2, 'size': 0.25}, {'level': 1, 'size': 1.0}, {'level': 0, 'size': 4.0}]
 
