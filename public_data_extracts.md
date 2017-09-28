@@ -39,42 +39,36 @@ Each Public Data Extract tile contains header and summary information describing
 
 Average speed tiles contain average speeds along OSMLR segments for each hour of the wwek. There are also varianaces and prevalence (estimate of how prevalent the data is for this segment at each hour). Each of these mearures has 168 entries per segment.
 
-    repeated uint32 speeds = 12 [packed=true];            //the average speed of each segment of each entry
-    repeated uint32 speedVariances = 13 [packed=true];    //the variance between samples of each segment of each entry, also fixed precision
-    repeated uint32 prevalences = 14 [packed=true];       //a rough indication of how many samples of ecah segment of each entry
-    
+| Summary message | Description |
+| :--------- | :----------- |
+| `speeds` | The average speed of each segment of each entry (time period). A value of 0 indicates there were not enough samples for an entry to compute an average speed. |
+| `speedVariances` | The variance between samples of each segment of each entry. This field is fixed precision. (TBD - describe precision!). |
+| `prevalences` | A rough indication of how many samples exist for each segment, for each entry. This is a value from 1 to 10, where 1 indicates few samples, and 10 indicates many samples. This value is purposely rough, to help preserve privacy. |
+
 A single array (keyword repeated) is used so that the data is compressed or packed within the protocol buffer. To further reduce file size, values are such that the all lie within a single byte. 
 
 To index a particular hour within a segment the following equation is used to find the index within the array:
-   int index = segment * 168 + hour
+* int index = segment * 168 + hour
 
 ### Intersection Delays and Queue Lengths
 
+| Summary message | Description |
+| :--------- | :----------- |
+| `nextSegmentIds` | This is a list of all next segment Ids. This is a full mask of tile, level, and Id from corresponding entry. |
+| `nextSegmentDelays` | Average delay in seconds when transitioning from one segment onto the next segment. |
+| `nextSegmentDelayVariances` | Variance of delay samples from corresponding entry. |
+| `nextSegmentQueueLengths` | Length of any queue on the segment when transitioning to the next segment. |
+| `nextSegmentQueueLengthVariances` | Variance of queue length samples from corresponding entry. |
+
 ### Reference Speed Tiles
 
-message SpeedTile {
-  
-  //this allows us to chunk up large tiles into smaller pieces
-  repeated SubTile subtiles = 1;
-  message SubTile {
-  
-    optional uint32 deprecated=11;
+The reference speed tiles provide average speeds across time periods (generally hours) for which average speed data exists (includes all speedtiles across all time periods). It also includes "reference speeds" which provide a rough approximation of hte distribution of average speeds across all hours for which average speed data exists.
 
-    repeated uint32 speeds = 12 [packed=true];            //the average speed of each segment of each entry
-    repeated uint32 speedVariances = 13 [packed=true];    //the variance between samples of each segment of each entry, also fixed precision
-    repeated uint32 prevalences = 14 [packed=true];       //a rough indication of how many samples of ecah segment of each entry
-    repeated uint32 nextSegmentIndices = 15 [packed=true];//an index into the next segment array of a given entry of a given segment
-    repeated uint32 nextSegmentCounts = 16 [packed=true]; //total next segments for this segment of a given entry of a given segment
+| Summary message | Description |
+| :--------- | :----------- |
+| `speeds` | The average speed of each segment of each entry (time period). A value of 0 indicates there were no average speeds for this segment across all time periods. |
+| `referenceSpeeds20` | 20% of average speeds across all time periods are slower than or equal to this specific reference speed. This is repeated across each segment. |
+| `referenceSpeeds40` | 40% of average speeds across all time periods are slower than or equal to this specific reference speed. This is repeated across each segment. |
+| `referenceSpeeds60` | 60% of average speeds across all time periods are slower than or equal to this specific reference speed. This is repeated across each segment. |
+| `referenceSpeeds80` | 80% of average speeds across all time periods are slower than or equal to this specific reference speed. This is repeated across each segment. |
 
-    repeated uint64 nextSegmentIds = 17 [packed=true];                  //full mask of tile and level and id from corresponding  entry
-    repeated uint32 nextSegmentDelays = 18 [packed=true];               //delay in seconds from average speed from corresponding entry
-    repeated uint32 nextSegmentDelayVariances = 19 [packed=true];       //variance of delay samples from corresponding entry
-    repeated uint32 nextSegmentQueueLengths = 20 [packed=true];         //length of any queue on segment from corresponding entry
-    repeated uint32 nextSegmentQueueLengthVariances = 21 [packed=true]; //variance of queue length samples from corresponding entry
-
-    repeated uint32 referenceSpeeds20 = 22 [packed=true]; //20% are this speed or slower than this specific ref speed for each segment
-    repeated uint32 referenceSpeeds40 = 23 [packed=true]; //40% are this speed or slower than this specific ref speed for each segment
-    repeated uint32 referenceSpeeds60 = 24 [packed=true]; //60% are this speed or slower than this specific ref speed for each segment
-    repeated uint32 referenceSpeeds80 = 25 [packed=true]; //80% are this speed or slower than this specific ref speed for each segment
-
-}
