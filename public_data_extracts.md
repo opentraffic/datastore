@@ -20,28 +20,20 @@ There are 3 separate tile sets within the Public Data Extract:
 These all use the same .proto specification. Protocol buffers generally include "optional" message fields. One should always check for the presence of a particular message or data member prior to accessing. Different Public Data Extract tiles contain different data members.
 
 ###Header and Summary Information
-Each Public Data Extract tile contains header and summary information describing the contents of the file.
+Each Public Data Extract tile contains header and summary information describing the contents of the file. This includes tile information, a description of the traffic segments found within this protocol buffer file (for multi-part protocol buffer representations), and a description of the time period supported within this file. The individual entries include:
 
-  //tile information, where this is
-    optional uint32 level = 1;  //the tile level
-    optional uint32 index = 2;  //the tile index
-
-    //what segments will be found in this tile
-    optional uint32 startSegmentIndex = 3; //the first segment index in the subtile
-                                           //makes up the highest 21 bits of of the segment id
-    optional uint32 totalSegments = 4;     //how many segments there are across all subtiles in this tile
-                                           //these may be in this message or in another proto message
-    optional uint32 subtileSegments = 5;   //the total number of segments in this subtile should be the same
-                                           //for all subtiles except the last one might have less
-
-    //time information, when this is
-    //Note: that it represent both a single ordinal unit in time (if rangeEnd - rangeStart == unitSize)
-    //but also be an average unit over a longer period of time (if rangeEnd - rangeStart > unitSize)
-    optional uint32 rangeStart = 6; //epoch start time (inclusive) seconds
-    optional uint32 rangeEnd = 7;   //epoch end time (exclusive) seconds
-    optional uint32 unitSize = 8;   //target time range seconds, a week would be 604800
-    optional uint32 entrySize = 9;  //target time range granularity seconds, an hour would be 3600
-    optional string description = 10; //text describing the time period this covers
+| Summary message | Description |
+| :--------- | :----------- |
+| `level` | The tile hierarchy level. |
+| `index` | The tile index within the hierarchy level. |
+| `startSegmentIndex` | The first segment index in the subtile. This index makes up the highest 21 bits of of the segment Id. |
+| `totalSegments` | How many segments there are across all subtiles in this tile. These may be in this message or in another protocol buffer message. |
+| `subtileSegments` | The total number of segments in this subtile. This should be the same for all subtiles except the last one might have less. |
+| `rangeStart` | Epoch start time (inclusive) seconds. |
+| `rangeEnd` | Epoch end time (exclusive) seconds. |
+| `unitSize` | Target time range in seconds. For example, one week would be 604800. |
+| `entrySize` | Target time range granularity in seconds. For example, one hour would be 3600. |
+| `description` | Text describing the time period this covers. |
 
 ### Average Speed Tiles
 
