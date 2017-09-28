@@ -7,7 +7,7 @@ Tile Specification
 
 Tiles are split up into three levels or hierarchies.  Hierarchy 0 contains segments pertaining to roads that are considered highway roads and are stored in 4 degree tiles.  Hierarchy 1 contains segments for roads that are at a arterial level and are saved in 1 degree tiles.  Finally, Hierarchy 2 contains segments that are considered at a local level.  These tiles are saved in .25 degree tiles.  For open traffic, we are only using levels 0 and 1.  
 
-A tile id is determined by concatenating the tile index with the id of the tile.  For example, the tile id for the following speed tile `https://<Prefix URL>/1/037/740.spd.0.gz` is 37740.  The 1 in this example is the hierarchy level.  In this case, tile 740.spd.0.gz is located in level 1.  
+A tile id is determined by concatenating the tile index directory with the id of the tile.  For example, the tile id for the following speed tile `https://<Prefix URL>/1/037/740.spd.0.gz` is 37740.  The 1 in this example is the hierarchy level.  In this case, tile 740.spd.0.gz is located in level 1.  
 
 Located within the speed tile bucket are speed and next segment tiles.  The first speed and next tile will have a 0 suffix, after that they will be numbered starting at 1. (e.g. tile.spd.0, tile.spd.1, tile.spd.2 or tile.nex.0, tile.nex.1, tile.nex.2)  These tiles are also stored in the following format: `year/week/level/tile index/tile id.[spd|nex].gz`.  So, again using the tile 740.spd.0.gz as an example, the URL is `https://<Prefix URL>/2017/01/1/037/740.spd.0.gz` for week 1 in 2017.  Note that the weeks begin at 1 and end at 52 or 53 as defined by [ISO_8601](https://en.wikipedia.org/wiki/ISO_8601).
 
