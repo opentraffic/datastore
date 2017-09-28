@@ -1,9 +1,8 @@
+# Open Traffic Public Data Extract
 
-Open Traffic Public Data Extract
+Open Traffic Public Data Extracts are protocol buffer format. The format is described within a .proto file. This can be compiled into C++, Python, Java, Javascript to parse and access the protocol buffer files.
 
-Open Traffic Public Data Extracts are protocol buffer format. The format is described within a .proto file. This can be compiled into C++, Pythin, Java, Javascript to parse and access the protocol buffer files.
-
-Tile Specification
+### Tile Specification
 
 Tiles are split up into three levels or hierarchies.  Hierarchy 0 contains segments pertaining to roads that are considered highway roads and are stored in 4 degree tiles.  Hierarchy 1 contains segments for roads that are at a arterial level and are saved in 1 degree tiles.  Finally, Hierarchy 2 contains segments that are considered at a local level.  These tiles are saved in .25 degree tiles.  For open traffic, we are only using levels 0 and 1.  
 
@@ -14,75 +13,62 @@ Located within the speed tile bucket are speed and next segment tiles.  The firs
 Reference tiles are structured in the same manner as speed tiles; however, there is only one tile per tile id and they have no number in the suffix (e.g., `https://<Prefix URL>/1/037/740.ref.gz`) 
 
 There are 3 separate tile sets within the Public Data Extract:
-Historical Average Speeds
-Intersection Delay and Queue
-Reference Speeds
+* Historical Average Speeds
+* Intersection Delay and Queue
+* Reference Speeds
+
 These all use the same .proto specification. Protocol buffers generally include "optional" message fields. One should always check for the presence of a particular message or data member prior to accessing. Different Public Data Extract tiles contain different data members.
 
-Header and Summary Information
-Each Public Data Extract tile contains header and summary information describing the contents of the file.
+###Header and Summary Information
+Each Public Data Extract tile contains header and summary information describing the contents of the file. This includes tile information, a description of the traffic segments found within this protocol buffer file (for multi-part protocol buffer representations), and a description of the time period supported within this file. The individual entries include:
 
-  //tile information, where this is
-    optional uint32 level = 1;  //the tile level
-    optional uint32 index = 2;  //the tile index
+| Summary message | Description |
+| :--------- | :----------- |
+| `level` | The tile hierarchy level. |
+| `index` | The tile index within the hierarchy level. |
+| `startSegmentIndex` | The first segment index in the subtile. This index makes up the highest 21 bits of of the segment Id. |
+| `totalSegments` | How many segments there are across all subtiles in this tile. These may be in this message or in another protocol buffer message. |
+| `subtileSegments` | The total number of segments in this subtile. This should be the same for all subtiles except the last one might have less. |
+| `rangeStart` | Epoch start time (inclusive) seconds. |
+| `rangeEnd` | Epoch end time (exclusive) seconds. |
+| `unitSize` | Target time range in seconds. For example, one week would be 604800. |
+| `entrySize` | Target time range granularity in seconds. For example, one hour would be 3600. |
+| `description` | Text describing the time period this covers. |
 
-    //what segments will be found in this tile
-    optional uint32 startSegmentIndex = 3; //the first segment index in the subtile
-                                           //makes up the highest 21 bits of of the segment id
-    optional uint32 totalSegments = 4;     //how many segments there are across all subtiles in this tile
-                                           //these may be in this message or in another proto message
-    optional uint32 subtileSegments = 5;   //the total number of segments in this subtile should be the same
-                                           //for all subtiles except the last one might have less
-
-    //time information, when this is
-    //Note: that it represent both a single ordinal unit in time (if rangeEnd - rangeStart == unitSize)
-    //but also be an average unit over a longer period of time (if rangeEnd - rangeStart > unitSize)
-    optional uint32 rangeStart = 6; //epoch start time (inclusive) seconds
-    optional uint32 rangeEnd = 7;   //epoch end time (exclusive) seconds
-    optional uint32 unitSize = 8;   //target time range seconds, a week would be 604800
-    optional uint32 entrySize = 9;  //target time range granularity seconds, an hour would be 3600
-    optional string description = 10; //text describing the time period this covers
-
-Average Speed Tiles
+### Average Speed Tiles
 
 Average speed tiles contain average speeds along OSMLR segments for each hour of the wwek. There are also varianaces and prevalence (estimate of how prevalent the data is for this segment at each hour). Each of these mearures has 168 entries per segment.
 
-    repeated uint32 speeds = 12 [packed=true];            //the average speed of each segment of each entry
-    repeated uint32 speedVariances = 13 [packed=true];    //the variance between samples of each segment of each entry, also fixed precision
-    repeated uint32 prevalences = 14 [packed=true];       //a rough indication of how many samples of ecah segment of each entry
-    
+| Summary message | Description |
+| :--------- | :----------- |
+| `speeds` | The average speed of each segment of each entry (time period). A value of 0 indicates there were not enough samples for an entry to compute an average speed. |
+| `speedVariances` | The variance between samples of each segment of each entry. This field is fixed precision. (TBD - describe precision!). |
+| `prevalences` | A rough indication of how many samples exist for each segment, for each entry. This is a value from 1 to 10, where 1 indicates few samples, and 10 indicates many samples. This value is purposely rough, to help preserve privacy. |
+
 A single array (keyword repeated) is used so that the data is compressed or packed within the protocol buffer. To further reduce file size, values are such that the all lie within a single byte. 
 
 To index a particular hour within a segment the following equation is used to find the index within the array:
-   int index = segment * 168 + hour
+* int index = segment * 168 + hour
 
-Intersection Delays and Queue Lengths
+### Intersection Delays and Queue Lengths
 
-Reference Speed Tiles
+| Summary message | Description |
+| :--------- | :----------- |
+| `nextSegmentIds` | This is a list of all next segment Ids. This is a full mask of tile, level, and Id from corresponding entry. |
+| `nextSegmentDelays` | Average delay in seconds when transitioning from one segment onto the next segment. |
+| `nextSegmentDelayVariances` | Variance of delay samples from corresponding entry. |
+| `nextSegmentQueueLengths` | Length of any queue on the segment when transitioning to the next segment. |
+| `nextSegmentQueueLengthVariances` | Variance of queue length samples from corresponding entry. |
 
-message SpeedTile {
-  
-  //this allows us to chunk up large tiles into smaller pieces
-  repeated SubTile subtiles = 1;
-  message SubTile {
-  
-    optional uint32 deprecated=11;
+### Reference Speed Tiles
 
-    repeated uint32 speeds = 12 [packed=true];            //the average speed of each segment of each entry
-    repeated uint32 speedVariances = 13 [packed=true];    //the variance between samples of each segment of each entry, also fixed precision
-    repeated uint32 prevalences = 14 [packed=true];       //a rough indication of how many samples of ecah segment of each entry
-    repeated uint32 nextSegmentIndices = 15 [packed=true];//an index into the next segment array of a given entry of a given segment
-    repeated uint32 nextSegmentCounts = 16 [packed=true]; //total next segments for this segment of a given entry of a given segment
+The reference speed tiles provide average speeds across time periods (generally hours) for which average speed data exists (includes all speedtiles across all time periods). It also includes "reference speeds" which provide a rough approximation of hte distribution of average speeds across all hours for which average speed data exists.
 
-    repeated uint64 nextSegmentIds = 17 [packed=true];                  //full mask of tile and level and id from corresponding  entry
-    repeated uint32 nextSegmentDelays = 18 [packed=true];               //delay in seconds from average speed from corresponding entry
-    repeated uint32 nextSegmentDelayVariances = 19 [packed=true];       //variance of delay samples from corresponding entry
-    repeated uint32 nextSegmentQueueLengths = 20 [packed=true];         //length of any queue on segment from corresponding entry
-    repeated uint32 nextSegmentQueueLengthVariances = 21 [packed=true]; //variance of queue length samples from corresponding entry
+| Summary message | Description |
+| :--------- | :----------- |
+| `speeds` | The average speed of each segment of each entry (time period). A value of 0 indicates there were no average speeds for this segment across all time periods. |
+| `referenceSpeeds20` | 20% of average speeds across all time periods are slower than or equal to this specific reference speed. This is repeated across each segment. |
+| `referenceSpeeds40` | 40% of average speeds across all time periods are slower than or equal to this specific reference speed. This is repeated across each segment. |
+| `referenceSpeeds60` | 60% of average speeds across all time periods are slower than or equal to this specific reference speed. This is repeated across each segment. |
+| `referenceSpeeds80` | 80% of average speeds across all time periods are slower than or equal to this specific reference speed. This is repeated across each segment. |
 
-    repeated uint32 referenceSpeeds20 = 22 [packed=true]; //20% are this speed or slower than this specific ref speed for each segment
-    repeated uint32 referenceSpeeds40 = 23 [packed=true]; //40% are this speed or slower than this specific ref speed for each segment
-    repeated uint32 referenceSpeeds60 = 24 [packed=true]; //60% are this speed or slower than this specific ref speed for each segment
-    repeated uint32 referenceSpeeds80 = 25 [packed=true]; //80% are this speed or slower than this specific ref speed for each segment
-
-}
