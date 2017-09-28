@@ -1,9 +1,8 @@
+# Open Traffic Public Data Extract
 
-Open Traffic Public Data Extract
+Open Traffic Public Data Extracts are protocol buffer format. The format is described within a .proto file. This can be compiled into C++, Python, Java, Javascript to parse and access the protocol buffer files.
 
-Open Traffic Public Data Extracts are protocol buffer format. The format is described within a .proto file. This can be compiled into C++, Pythin, Java, Javascript to parse and access the protocol buffer files.
-
-Tile Specification
+### Tile Specification
 
 Tiles are split up into three levels or hierarchies.  Hierarchy 0 contains segments pertaining to roads that are considered highway roads and are stored in 4 degree tiles.  Hierarchy 1 contains segments for roads that are at a arterial level and are saved in 1 degree tiles.  Finally, Hierarchy 2 contains segments that are considered at a local level.  These tiles are saved in .25 degree tiles.  For open traffic, we are only using levels 0 and 1.  
 
@@ -14,12 +13,13 @@ Located within the speed tile bucket are speed and next segment tiles.  The firs
 Reference tiles are structured in the same manner as speed tiles; however, there is only one tile per tile id and they have no number in the suffix (e.g., `https://<Prefix URL>/1/037/740.ref.gz`) 
 
 There are 3 separate tile sets within the Public Data Extract:
-Historical Average Speeds
-Intersection Delay and Queue
-Reference Speeds
+* Historical Average Speeds
+* Intersection Delay and Queue
+* Reference Speeds
+
 These all use the same .proto specification. Protocol buffers generally include "optional" message fields. One should always check for the presence of a particular message or data member prior to accessing. Different Public Data Extract tiles contain different data members.
 
-Header and Summary Information
+###Header and Summary Information
 Each Public Data Extract tile contains header and summary information describing the contents of the file.
 
   //tile information, where this is
@@ -43,7 +43,7 @@ Each Public Data Extract tile contains header and summary information describing
     optional uint32 entrySize = 9;  //target time range granularity seconds, an hour would be 3600
     optional string description = 10; //text describing the time period this covers
 
-Average Speed Tiles
+### Average Speed Tiles
 
 Average speed tiles contain average speeds along OSMLR segments for each hour of the wwek. There are also varianaces and prevalence (estimate of how prevalent the data is for this segment at each hour). Each of these mearures has 168 entries per segment.
 
@@ -56,9 +56,9 @@ A single array (keyword repeated) is used so that the data is compressed or pack
 To index a particular hour within a segment the following equation is used to find the index within the array:
    int index = segment * 168 + hour
 
-Intersection Delays and Queue Lengths
+### Intersection Delays and Queue Lengths
 
-Reference Speed Tiles
+### Reference Speed Tiles
 
 message SpeedTile {
   
