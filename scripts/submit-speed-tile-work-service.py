@@ -96,11 +96,8 @@ def get_tiles(tile_level, tile_index):
 def submit_jobs(batch_client, env, week, bbox):
   src_bucket = 'datastore-output-' + env
   dest_bucket = 'speedtiles-' + env
-  ref_bucket = 'referencetiles-' + env
   job_queue = 'speedtiles-' + env
   job_def = 'speedtiles-' + env
-  ref_job_queue = 'referencetiles-' + env
-  ref_job_def = 'referencetiles-' + env
 
   logger.info('Creating speed tiles for the week of ' + week)
   if bbox is None:
@@ -139,29 +136,7 @@ def submit_jobs(batch_client, env, week, bbox):
       parent_id = submitted['jobId']
       logger.info('Job %s was submitted and got id %s' % (job_name, parent_id))
 
-      #submit the corresponding jobs to make the reference tiles using the above speed tiles
-      tiles = get_tiles(tile_level, tile_index)
-      for t in tiles:
-        job_name = '_'.join([week.replace('/', '-'), str(t[0]), str(t[1])])
-        job = {'speed_bucket': dest_bucket, 'ref_speed_bucket': ref_bucket, 'tile_level': str(t[0]), 'tile_index': str(t[1]), 'week': week}
-        logger.info('Submitting reference tile job ' + job_name)
-        logger.info('Job parameters ' + str(job))
-        submitted = batch_client.submit_job(
-          dependsOn = [ {'jobId': parent_id} ],
-          jobName = job_name,
-          jobQueue = ref_job_queue,
-          jobDefinition = ref_job_def,
-          parameters = job,
-          containerOverrides={
-            'memory': 8192,
-            'vcpus': 2,
-            'command': ['/scripts/ref-tile-work.py', '--speed-bucket', 'Ref::speed_bucket', '--ref-speed-bucket', 'Ref::ref_speed_bucket', '--end-week', 'Ref::week', '--weeks', '52', '--tile-level', 'Ref::tile_level', '--tile-index', 'Ref::tile_index']
-          }
-        )
-        logger.info('Job %s was submitted and got id %s' % (job_name, submitted['jobId']))
-
-
-""" the aws lambda entry point """
+""" entry point """
 env = os.getenv('DATASTORE_ENV', None) # required, 'prod' or 'dev'
 week = os.getenv('TARGET_WEEK', None) #optional should be iso8601, ordinal_year/ordinal_week
 bbox = os.getenv('TARGET_BBOX', None) #optional should be minx,miny,maxx,maxy
