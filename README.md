@@ -20,3 +20,7 @@ The image is available via DockerHub: `docker pull opentraffic/datastore:latest`
 #### Building with Maven
 
     mvn clean package
+    
+#### Public Data Extracts
+
+Documentation for the Public Data Extract tiles can be found [here](./public_data_extracts.md)
