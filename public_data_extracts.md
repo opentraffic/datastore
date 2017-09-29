@@ -4,7 +4,7 @@ Open Traffic Public Data Extracts are protocol buffer format. The format is desc
 
 ### Tile Specification
 
-Tiles are split up into three levels or hierarchies.  Hierarchy 0 contains segments pertaining to roads that are considered highway roads and are stored in 4 degree tiles.  Hierarchy 1 contains segments for roads that are at a arterial level and are saved in 1 degree tiles.  Finally, Hierarchy 2 contains segments that are considered at a local level.  These tiles are saved in .25 degree tiles.  For open traffic, we are only using levels 0 and 1.  
+Public Data Extract data is divided into geographic regions or tiles. The tiles are also broken up by the road hierarchy level. The tiling and road hierarchy system is described [here]:(https://github.com/valhalla/valhalla-docs)
 
 A tile id is determined by concatenating the tile index directory with the id of the tile.  For example, the tile id for the following speed tile `https://<Prefix URL>/1/037/740.spd.0.gz` is 37740.  The 1 in this example is the hierarchy level.  In this case, tile 740.spd.0.gz is located in level 1.  
 
