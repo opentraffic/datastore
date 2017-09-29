@@ -10,12 +10,12 @@ A tile id is determined by concatenating the tile index directory with the id of
 
 Located within the speed tile bucket are speed and next segment tiles.  The first speed and next tile will have a 0 suffix, after that they will be numbered starting at 1. (e.g. tile.spd.0, tile.spd.1, tile.spd.2 or tile.nex.0, tile.nex.1, tile.nex.2)  These tiles are also stored in the following format: `year/week/level/tile index/tile id.[spd|nex].gz`.  So, again using the tile 740.spd.0.gz as an example, the URL is `https://<Prefix URL>/2017/01/1/037/740.spd.0.gz` for week 1 in 2017.  Note that the weeks begin at 1 and end at 52 or 53 as defined by [ISO_8601](https://en.wikipedia.org/wiki/ISO_8601).
 
-Reference tiles are structured in the same manner as speed tiles; however, there is only one tile per tile id and they have no number in the suffix (e.g., `https://<Prefix URL>/1/037/740.ref.gz`) 
+Reference tiles are structured in the same manner as speed tiles; however, there is only one tile per tile id and they have no number in the suffix (e.g., `https://<Prefix URL>/1/037/740.ref.gz`)
 
 There are 3 separate tile sets within the Public Data Extract:
-* Historical Average Speeds
-* Intersection Delay and Queue
-* Reference Speeds
+* Historical Average Speeds (.spd tiles)
+* Intersection Delay and Queue (.nex tiles)
+* Reference Speeds (.ref tiles)
 
 These all use the same .proto specification. Protocol buffers generally include "optional" message fields. One should always check for the presence of a particular message or data member prior to accessing. Different Public Data Extract tiles contain different data members.
 
@@ -35,9 +35,16 @@ Each Public Data Extract tile contains header and summary information describing
 | `entrySize` | Target time range granularity in seconds. For example, one hour would be 3600. |
 | `description` | Text describing the time period this covers. |
 
+### Subtiles
+
+Subtiles are created so that we can break up the large tile into smaller tiles, keeping the tiles in the single-digit megabyte range.  This will help a lot once all segments have full data.
+The subtiles are broken up into a maximum of 10,000 segments.  All of the subtiles will contain 10,000 segments except for the final one, which will be the difference of (10,000 - `totalSegments`).
+The total of all the `subtileSegments` will equal the `totalSegments`.
+
+
 ### Average Speed Tiles
 
-Average speed tiles contain average speeds along OSMLR segments for each hour of the wwek. There are also varianaces and prevalence (estimate of how prevalent the data is for this segment at each hour). Each of these mearures has 168 entries per segment.
+Average speed tiles contain average speeds along OSMLR segments for each hour of the week. There are also variances and prevalence (estimate of how prevalent the data is for this segment at each hour). Each of these measures has 168 entries per segment.
 
 | Summary message | Description |
 | :--------- | :----------- |
@@ -45,10 +52,10 @@ Average speed tiles contain average speeds along OSMLR segments for each hour of
 | `speedVariances` | The variance between samples of each segment of each entry. This field is fixed precision. (TBD - describe precision!). |
 | `prevalences` | A rough indication of how many samples exist for each segment, for each entry. This is a value from 1 to 10, where 1 indicates few samples, and 10 indicates many samples. This value is purposely rough, to help preserve privacy. |
 
-A single array (keyword repeated) is used so that the data is compressed or packed within the protocol buffer. To further reduce file size, values are such that the all lie within a single byte. 
+A single array (keyword repeated) is used so that the data is compressed or packed within the protocol buffer. To further reduce file size, values are such that the all lie within a single byte.
 
 To index a particular hour within a segment the following equation is used to find the index within the array:
-* int index = segment * 168 + hour
+* int index = segment index * 168 + hour
 
 ### Intersection Delays and Queue Lengths
 
@@ -62,7 +69,7 @@ To index a particular hour within a segment the following equation is used to fi
 
 ### Reference Speed Tiles
 
-The reference speed tiles provide average speeds across time periods (generally hours) for which average speed data exists (includes all speedtiles across all time periods). It also includes "reference speeds" which provide a rough approximation of hte distribution of average speeds across all hours for which average speed data exists.
+The reference speed tiles provide average speeds across time periods (generally hours) for which average speed data exists (includes all speed tiles across all time periods). It also includes "reference speeds" which provide a rough approximation of the distribution of average speeds across all hours for which average speed data exists.
 
 | Summary message | Description |
 | :--------- | :----------- |
@@ -71,4 +78,3 @@ The reference speed tiles provide average speeds across time periods (generally 
 | `referenceSpeeds40` | 40% of average speeds across all time periods are slower than or equal to this specific reference speed. This is repeated across each segment. |
 | `referenceSpeeds60` | 60% of average speeds across all time periods are slower than or equal to this specific reference speed. This is repeated across each segment. |
 | `referenceSpeeds80` | 80% of average speeds across all time periods are slower than or equal to this specific reference speed. This is repeated across each segment. |
-
