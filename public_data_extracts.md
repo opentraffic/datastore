@@ -14,7 +14,7 @@ Reference tiles are structured in the same manner as speed tiles; however, there
 
 There are 3 separate tile sets within the Public Data Extract:
 * Historical Average Speeds (.spd tiles)
-* Intersection Delay and Queue (.nex tiles)
+* Intersection Delay and Queue Lengths (.nex tiles)
 * Reference Speeds (.ref tiles)
 
 These all use the same .proto specification. Protocol buffers generally include "optional" message fields. One should always check for the presence of a particular message or data member prior to accessing. Different Public Data Extract tiles contain different data members.
@@ -42,7 +42,7 @@ The subtiles are broken up into a maximum of 10,000 segments.  All of the subtil
 The total of all the `subtileSegments` will equal the `totalSegments`.
 
 
-### Average Speed Tiles
+### Historical Average Speed Tiles
 
 Average speed tiles contain average speeds along OSMLR segments for each hour of the week. There are also variances and prevalence (estimate of how prevalent the data is for this segment at each hour). Each of these measures has 168 entries per segment.
 
@@ -51,6 +51,8 @@ Average speed tiles contain average speeds along OSMLR segments for each hour of
 | `speeds` | The average speed of each segment of each entry (time period). A value of 0 indicates there were not enough samples for an entry to compute an average speed. |
 | `speedVariances` | The variance between samples of each segment of each entry. This field is fixed precision. (TBD - describe precision!). |
 | `prevalences` | A rough indication of how many samples exist for each segment, for each entry. This is a value from 1 to 10, where 1 indicates few samples, and 10 indicates many samples. This value is purposely rough, to help preserve privacy. |
+| `nextSegmentIndices` | An index into the next segment array of a given entry of a given segment.|
+| `nextSegmentCounts` | The total next segments for this segment of a given entry of a given segment.|
 
 A single array (keyword repeated) is used so that the data is compressed or packed within the protocol buffer. To further reduce file size, values are such that the all lie within a single byte.
 
@@ -58,6 +60,8 @@ To index a particular hour within a segment the following equation is used to fi
 * int index = segment index * 168 + hour
 
 ### Intersection Delays and Queue Lengths
+
+The Next Segment Tiles contain the intersection delays and queue lengths along the OSMLR next segments for each hour of the week.  At an intersection, one or multiple next segments can be tied/paired to a segment. The segments' `nextSegmentCounts` will tell you the total number of next segments that should be associated to it.  The segments' `nextSegmentIndices` will tell you the index into the next segment array so that you can get the corresponding delay, queue length, etc.    
 
 | Summary message | Description |
 | :--------- | :----------- |
