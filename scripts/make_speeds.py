@@ -268,12 +268,12 @@ def createSpeedTiles(lengths, fileName, subTileSize, nextName, separate, segment
       minDuration = min([n['duration'] for nid, n in nextSegments.iteritems()]) if nextSegments else 0
 
       if nextSegments:
-        log.debug('segmentId=' + str((k<<25)|(extractInfo['index']<<3)|extractInfo['level']) + ' | hour=' + str(i) + ' | nextSegments=' + str(nextSegments) + ' | length=' + str(length) + ' | minDuration=' + str(minDuration) + ' | speed=' + str(maxSpeed) + ' | varSpeed=' + str(variance(speeds) if (maxSpeed > 0) else 0))
+        log.debug('segmentId=' + str((k<<25)|(extractInfo['index']<<3)|extractInfo['level']) + ' | hour=' + str(i) + ' | nextSegments=' + str(nextSegments) + ' | length=' + str(length) + ' | minDuration=' + str(minDuration) + ' | speed=' + str(maxSpeed) + ' | varSpeed=' + str(variance(speeds) if (maxSpeed > 0) else 0) + ' | nextSegmentIndice=' + str(len(nextSubtile.nextSegmentIds)) + ' | nextSegmentCount=' + str(len(nextSegments)))
 
       subtile.speeds.append(maxSpeed if nextSegments else 0)
       subtile.speedVariances.append(variance(speeds) if (maxSpeed > 0) else 0)
       subtile.prevalences.append(prevalence(sum([n['count'] for nid, n in nextSegments.iteritems()]) if nextSegments else 0))
-      subtile.nextSegmentIndices.append(len(subtile.nextSegmentIds) if 1 else 0)
+      subtile.nextSegmentIndices.append(len(nextSubtile.nextSegmentIds) if 1 else 0)
       subtile.nextSegmentCounts.append(len(nextSegments) if nextSegments else 0)
 
       if nextSegments:
