@@ -12,6 +12,8 @@ Located within the speed tile bucket are speed and next segment tiles.  The firs
 
 Reference tiles are structured in the same manner as speed tiles; however, there is only one tile per tile id and they have no number in the suffix (e.g., `https://<Prefix URL>/1/037/740.ref.gz`)
 
+### Public Data Extract Tile Sets
+
 There are 3 separate tile sets within the Public Data Extract:
 * Historical Average Speeds (.spd tiles)
 * Intersection Delay and Queue Lengths (.nex tiles)
