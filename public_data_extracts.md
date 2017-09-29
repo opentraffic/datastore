@@ -19,7 +19,7 @@ There are 3 separate tile sets within the Public Data Extract:
 
 These all use the same .proto specification. Protocol buffers generally include "optional" message fields. One should always check for the presence of a particular message or data member prior to accessing. Different Public Data Extract tiles contain different data members.
 
-###Header and Summary Information
+### Header and Summary Information
 Each Public Data Extract tile contains header and summary information describing the contents of the file. This includes tile information, a description of the traffic segments found within this protocol buffer file (for multi-part protocol buffer representations), and a description of the time period supported within this file. The individual entries include:
 
 | Summary message | Description |
