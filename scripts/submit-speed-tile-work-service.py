@@ -96,6 +96,7 @@ def get_tiles(tile_level, tile_index):
 def submit_jobs(batch_client, env, week, bbox):
   src_bucket = 'datastore-output-' + env
   dest_bucket = 'speedtiles-' + env
+  reference_dest_bucket = 'referencetiles-' + env
   job_queue = 'speedtiles-' + env
   job_def = 'speedtiles-' + env
 
@@ -130,7 +131,7 @@ def submit_jobs(batch_client, env, week, bbox):
         containerOverrides={
           'memory': 8192,
           'vcpus': 2,
-          'command': ['/scripts/speed-tile-work.py', '--src-bucket', 'Ref::src_bucket', '--dest-bucket', 'Ref::dest_bucket', '--tile-level', 'Ref::tile_level', '--tile-index', 'Ref::tile_index', '--week', 'Ref::week']
+          'command': ['/scripts/speed-tile-work.py', '--src-bucket', 'Ref::src_bucket', '--dest-bucket', 'Ref::dest_bucket', '--reference-dest-bucket', 'Ref::reference_dest_bucket', '--tile-level', 'Ref::tile_level', '--tile-index', 'Ref::tile_index', '--week', 'Ref::week']
         }
       )
       parent_id = submitted['jobId']
