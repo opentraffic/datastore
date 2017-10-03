@@ -111,7 +111,7 @@ if __name__ == "__main__":
   args = parser.parse_args()
   
   if not args.output_file:
-    args.output_file = '.geojson'
+    args.output_file = 'coverage_map.geojson'
    
   print('[INFO] Output file: ' + args.output_file)
   tile_hierarchy = TileHierarchy()
