@@ -24,3 +24,7 @@ The image is available via DockerHub: `docker pull opentraffic/datastore:latest`
 #### Public Data Extracts
 
 Documentation for the Public Data Extract tiles can be found [here](./public_data_extracts.md)
+
+#### Coverage Map
+
+Documentation for the Coverage Map can be found [here](./coverage_map.md)
