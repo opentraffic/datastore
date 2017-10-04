@@ -21,9 +21,11 @@ The image is available via DockerHub: `docker pull opentraffic/datastore:latest`
 
     mvn clean package
     
-#### Public Data Extracts
+#### Public Data Extract Tiles
 
 Documentation for the Public Data Extract tiles can be found [here](./public_data_extracts.md)
+
+For information on the processes used to generate these tiles see [here](./data_generation.md) 
 
 #### Coverage Map
 
