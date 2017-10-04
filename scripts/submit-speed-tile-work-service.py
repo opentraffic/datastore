@@ -42,31 +42,31 @@ def get_prefixes_keys(client, bucket, prefixes):
   return pres, keys
 
 def get_week(client, env):
-  src_bucket = 'datastore-output-' + env
-  dest_bucket = 'speedtiles-' + env
+  histogram_bucket = 'datastore-output-' + env
+  speed_bucket = 'speedtiles-' + env
 
   #what source data do we have
-  logger.info('Getting time range for source ' + src_bucket)
-  years = natural_sorted(get_prefixes_keys(client, src_bucket, [''])[0])
-  min_month = natural_sorted(get_prefixes_keys(client, src_bucket, years[:1])[0])[0]
-  max_month = natural_sorted(get_prefixes_keys(client, src_bucket, years[-1:])[0])[-1]
+  logger.info('Getting time range for source ' + histogram_bucket)
+  years = natural_sorted(get_prefixes_keys(client, histogram_bucket, [''])[0])
+  min_month = natural_sorted(get_prefixes_keys(client, histogram_bucket, years[:1])[0])[0]
+  max_month = natural_sorted(get_prefixes_keys(client, histogram_bucket, years[-1:])[0])[-1]
 
-  min_day = natural_sorted(get_prefixes_keys(client, src_bucket, [min_month])[0])[0]
+  min_day = natural_sorted(get_prefixes_keys(client, histogram_bucket, [min_month])[0])[0]
   min_date = datetime.datetime.strptime(min_day, '%Y/%m/%d/').date()
   min_date = min_date - datetime.timedelta(days=min_date.weekday())
 
-  max_day = natural_sorted(get_prefixes_keys(client, src_bucket, [max_month])[0])[-1]
+  max_day = natural_sorted(get_prefixes_keys(client, histogram_bucket, [max_month])[0])[-1]
   max_date = datetime.datetime.strptime(max_day, '%Y/%m/%d/').date()
   max_date = max_date + datetime.timedelta(days=(6 - max_date.weekday()))
   logger.info('Source data ranges from ' + min_day + ' to ' + max_day)
   logger.info('From the week starting on ' + str(min_date) + ' through the week ending on ' + str(max_date))
 
   #what dest data did we already create
-  logger.info('Getting week for destination ' + dest_bucket)
+  logger.info('Getting week for destination ' + speed_bucket)
   
-  years = natural_sorted(get_prefixes_keys(client, dest_bucket, [''])[0])
+  years = natural_sorted(get_prefixes_keys(client, speed_bucket, [''])[0])
   if len(years):
-    week = natural_sorted(get_prefixes_keys(client, dest_bucket, years[-1:])[0])[-1]
+    week = natural_sorted(get_prefixes_keys(client, speed_bucket, years[-1:])[0])[-1]
     date = datetime.datetime.strptime(week + '1','%Y/%W/%w').date()
     date = date + datetime.timedelta(days=7)
     #this week falls too far in the future
@@ -94,9 +94,6 @@ def get_tiles(tile_level, tile_index):
   return tiles
 
 def submit_jobs(batch_client, env, week, bbox):
-  src_bucket = 'datastore-output-' + env
-  dest_bucket = 'speedtiles-' + env
-  reference_dest_bucket = 'referencetiles-' + env
   job_queue = 'speedtiles-' + env
   job_def = 'speedtiles-' + env
 
@@ -120,7 +117,7 @@ def submit_jobs(batch_client, env, week, bbox):
 
       #submit the job to make the speed tiles for level 0 and level 1
       job_name = '_'.join([week.replace('/', '-'), str(tile_level), str(tile_index)])
-      job = {'src_bucket': src_bucket, 'dest_bucket': dest_bucket, 'reference_dest_bucket': reference_dest_bucket, 'tile_level': str(tile_level), 'tile_index': str(tile_index), 'week': week}
+      job = {'environment': env, 'tile_level': str(tile_level), 'tile_index': str(tile_index), 'week': week}
       logger.info('Submitting speed tile job ' + job_name)
       logger.info('Job parameters ' + str(job))
       submitted = batch_client.submit_job(
@@ -131,7 +128,7 @@ def submit_jobs(batch_client, env, week, bbox):
         containerOverrides={
           'memory': 8192,
           'vcpus': 2,
-          'command': ['/scripts/speed-tile-work.py', '--src-bucket', 'Ref::src_bucket', '--dest-bucket', 'Ref::dest_bucket', '--reference-dest-bucket', 'Ref::reference_dest_bucket', '--tile-level', 'Ref::tile_level', '--tile-index', 'Ref::tile_index', '--week', 'Ref::week']
+          'command': ['/scripts/speed-tile-work.py', '--environment', 'Ref::environment', '--tile-level', 'Ref::tile_level', '--tile-index', 'Ref::tile_index', '--week', 'Ref::week']
         }
       )
       parent_id = submitted['jobId']

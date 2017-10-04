@@ -222,8 +222,7 @@ def writeTile(tile, bucket):
 # Read in protobuf files from the datastore output in AWS to read in the lengths, speeds & next segment ids and generate the segment speed files in proto output format
 if __name__ == "__main__":
   parser = argparse.ArgumentParser(description='Generate ref speed tiles', formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-  parser.add_argument('--speed-bucket', type=str, help='AWS bucket location (i.e., where to get the speed tiles), if its not a valid bucket it will be treated as a local path', required=True)
-  parser.add_argument('--ref-speed-bucket', type=str, help='AWS Bucket (e.g., ref-speedtiles-prod) into which we will place the ref tile')
+  parser.add_argument('--environment', type=str, help='The environment prod or dev to use when computing bucket names and batch job queues and definitions')
   parser.add_argument('--end-week', type=str, help='The last week you want to use', required=True)
   parser.add_argument('--weeks', type=int, help='How many weeks up to and including this end week to make use of', default=52)
   parser.add_argument('--tile-level', type=int, help='The level to target', required=True)
@@ -232,6 +231,8 @@ if __name__ == "__main__":
 
   # parse the arguments
   args = parser.parse_args()
+  speed_bucket = 'speedtiles-' + args.environment
+  reference_bucket = 'referencetiles-' + args.environment
 
   if log.level == logging.NOTSET:
     log.setLevel(logging.DEBUG if args.verbose else logging.WARN)
@@ -240,14 +241,14 @@ if __name__ == "__main__":
     log.addHandler(handler)
 
   if args.verbose:
-    log.debug('speed-bucket ' + args.speed_bucket)
+    log.debug('speed-bucket ' + speed_bucket)
     log.debug('end-week ' + args.end_week)
     log.debug('weeks ' + args.weeks)
     log.debug('tile-level=' + str(args.tile_level))
     log.debug('tile-index=' + str(args.tile_index))
 
   #get the data
-  fileNames = download(args.tile_level, args.tile_index, args.end_week, args.weeks, args.speed_bucket)
+  fileNames = download(args.tile_level, args.tile_index, args.end_week, args.weeks, speed_bucket)
   if not fileNames:
     log.info('No data was found')
     sys.exit(0)
@@ -259,4 +260,4 @@ if __name__ == "__main__":
   tile = createRefSpeedTile(speedListPerSegment, speedListPerHourPerSegment, args.tile_level, args.tile_index, minSeconds, maxSeconds)
 
   #store the ref tile
-  writeTile(tile, args.ref_speed_bucket)
+  writeTile(tile, reference_bucket)

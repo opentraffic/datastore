@@ -35,8 +35,8 @@ def url_suffix(tile_level, tile_index):
   suffix = '/' + str(tile_level) + ''.join(suffix) 
   return suffix
 
-def upload(dest_bucket, level, index, week, speed_tiles):
-  logger.info('Uploading data to bucket: ' + dest_bucket)
+def upload(speed_bucket, level, index, week, speed_tiles):
+  logger.info('Uploading data to bucket: ' + speed_bucket)
   client = boto3.client('s3')
   prefix = week + '/'.join(url_suffix(int(level), int(index)).split('/')[:-1])
   for tile in speed_tiles:
@@ -47,7 +47,7 @@ def upload(dest_bucket, level, index, week, speed_tiles):
       f_out.write(f_in.read())
     client.put_object(
       ACL='public-read',
-      Bucket=dest_bucket,
+      Bucket=speed_bucket,
       ContentType='application/octet-stream',
       ContentEncoding='gzip',
       Body=zipped.getvalue(),
@@ -74,7 +74,7 @@ def convert(level, index, week, histograms):
   prefix = url_suffix(int(level), int(index)).split('/')[-1]
   return make_speeds.createSpeedTiles(lengths, prefix + '.spd', 10000, prefix + '.nex', True, segments, info), osmlr
 
-def download(src_bucket, tile_level, tile_index, week):
+def download(histogram_bucket, tile_level, tile_index, week):
   #we need to get all the histograms for all the hours of this week
   resource = boto3.resource('s3')
   date = datetime.datetime.strptime(week + '/1','%Y/%W/%w')
@@ -83,9 +83,9 @@ def download(src_bucket, tile_level, tile_index, week):
   for hour in range(0, 24 * 7):
     key = '{d.year}/{d.month}/{d.day}/{d.hour}/{l}/{t}.fb'.format(d=(date + datetime.timedelta(hours=hour)), l=tile_level, t=tile_index)
     try:
-      resource.Object(src_bucket, key).download_file(key.replace('/', '_'))
+      resource.Object(histogram_bucket, key).download_file(key.replace('/', '_'))
       downloaded.append(key.replace('/', '_'))
-      logger.info('Downloaded s3://' + src_bucket + '/' + key)
+      logger.info('Downloaded s3://' + histogram_bucket + '/' + key)
     except Exception as e:
       pass
   return downloaded
@@ -93,12 +93,10 @@ def download(src_bucket, tile_level, tile_index, week):
 if __name__ == '__main__':
   #build args
   parser = argparse.ArgumentParser()
-  parser.add_argument('--src-bucket', type=str, help='Bucket (e.g. datastore-output-prod) in which the data we wish to process is located')
-  parser.add_argument('--dest-bucket', type=str, help='Bucket (e.g. speedtiles-prod) into which we will place transformed data')
-  parser.add_argument('--reference-dest-bucket', type=str, help='Bucket (e.g. referencetiles-prod) into which we will place reference tile data')
-  parser.add_argument('--tile-level', type=int, help='The tile level used to get the input data from the src_bucket')
-  parser.add_argument('--tile-index', type=int, help='The tile index used to get the input data from the src_bucket')
-  parser.add_argument('--week', type=str, help='The week used to get the input data from the src_bucket')
+  parser.add_argument('--environment', type=str, help='The environment prod or dev to use when computing bucket names and batch job queues and definitions')
+  parser.add_argument('--tile-level', type=int, help='The tile level used to get the input data from the histogram bucket')
+  parser.add_argument('--tile-index', type=int, help='The tile index used to get the input data from the histogram bucket')
+  parser.add_argument('--week', type=str, help='The week used to get the input data from the histogram bucket')
   args = parser.parse_args()
 
   #generate the list of the parent tile and all its subtiles, level 0 and 1 only right now
@@ -118,25 +116,30 @@ if __name__ == '__main__':
 
   #need this to submit jobs
   batch_client = boto3.client('batch')
+  histogram_bucket = 'datastore-output-' + args.environment
+  speed_bucket = 'speedtiles-' + args.environment
+  reference_bucket = 'referencetiles-' + args.environment
+  job_queue = 'referencetiles-' + args.environment
+  job_def = 'referencetiles-' + args.environment
 
   #for each tile
   for tile in tiles:
-    logger.info('Histogram input bucket: ' + args.src_bucket)
-    logger.info('Speedtile output bucket: ' + args.dest_bucket)
-    logger.info('Referencetiles output bucket: ' + args.reference_dest_bucket)
+    logger.info('Histogram input bucket: ' + histogram_bucket)
+    logger.info('Speedtile output bucket: ' + speed_bucket)
+    logger.info('Referencetiles output bucket: ' + reference_bucket)
     logger.info('Tile level: ' + str(tile[0]))
     logger.info('Tile index: ' + str(tile[1]))
     logger.info('Week: ' + args.week)  
     #go get the histogram data
-    histograms = download(args.src_bucket, tile[0], tile[1], args.week)
+    histograms = download(histogram_bucket, tile[0], tile[1], args.week)
     if histograms:
       #make the speed tile
       speed_tiles, osmlr = convert(tile[0], tile[1], args.week, histograms)
       #move the speed tile to its destination
-      upload(args.dest_bucket, tile[0], tile[1], args.week, speed_tiles)
+      upload(speed_bucket, tile[0], tile[1], args.week, speed_tiles)
       # create the corresponding referencetile jobs
       job_name = '_'.join([args.week.replace('/', '-'), str(tile[0]), str(tile[1])])
-      job = {'speed_bucket': args.dest_bucket, 'ref_speed_bucket': args.reference_dest_bucket, 'tile_level': str(tile[0]), 'tile_index': str(tile[1]), 'week': args.week}
+      job = {'environment': args.environment, 'tile_level': str(tile[0]), 'tile_index': str(tile[1]), 'week': args.week}
       logger.info('Submitting reference tile job ' + job_name)
       logger.info('Job parameters ' + str(job))
       submitted = batch_client.submit_job(
@@ -147,7 +150,7 @@ if __name__ == '__main__':
         containerOverrides={
           'memory': 8192,
           'vcpus': 2,
-          'command': ['/scripts/ref-tile-work.py', '--speed-bucket', 'Ref::speed_bucket', '--ref-speed-bucket', 'Ref::ref_speed_bucket', '--end-week', 'Ref::week', '--weeks', '52', '--tile-level', 'Ref::tile_level', '--tile-index', 'Ref::tile_index']
+          'command': ['/scripts/ref-tile-work.py', '--environment', 'Ref::environment', '--end-week', 'Ref::week', '--weeks', '52', '--tile-level', 'Ref::tile_level', '--tile-index', 'Ref::tile_index']
         }
       )
       logger.info('Job %s was submitted and got id %s' % (job_name, submitted['jobId']))
