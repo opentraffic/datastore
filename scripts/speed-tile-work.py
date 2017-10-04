@@ -118,7 +118,6 @@ if __name__ == '__main__':
   batch_client = boto3.client('batch')
   histogram_bucket = 'datastore-output-' + args.environment
   speed_bucket = 'speedtiles-' + args.environment
-  reference_bucket = 'referencetiles-' + args.environment
   job_queue = 'referencetiles-' + args.environment
   job_def = 'referencetiles-' + args.environment
 
@@ -126,7 +125,6 @@ if __name__ == '__main__':
   for tile in tiles:
     logger.info('Histogram input bucket: ' + histogram_bucket)
     logger.info('Speedtile output bucket: ' + speed_bucket)
-    logger.info('Referencetiles output bucket: ' + reference_bucket)
     logger.info('Tile level: ' + str(tile[0]))
     logger.info('Tile index: ' + str(tile[1]))
     logger.info('Week: ' + args.week)  
@@ -144,8 +142,8 @@ if __name__ == '__main__':
       logger.info('Job parameters ' + str(job))
       submitted = batch_client.submit_job(
         jobName = job_name,
-        jobQueue = ref_job_queue,
-        jobDefinition = ref_job_def,
+        jobQueue = job_queue,
+        jobDefinition = job_def,
         parameters = job,
         containerOverrides={
           'memory': 8192,
