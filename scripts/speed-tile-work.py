@@ -95,6 +95,7 @@ if __name__ == '__main__':
   parser = argparse.ArgumentParser()
   parser.add_argument('--src-bucket', type=str, help='Bucket (e.g. datastore-output-prod) in which the data we wish to process is located')
   parser.add_argument('--dest-bucket', type=str, help='Bucket (e.g. speedtiles-prod) into which we will place transformed data')
+  parser.add_argument('--reference-dest-bucket', type=str, help='Bucket (e.g. referencetiles-prod) into which we will place reference tile data')
   parser.add_argument('--tile-level', type=int, help='The tile level used to get the input data from the src_bucket')
   parser.add_argument('--tile-index', type=int, help='The tile index used to get the input data from the src_bucket')
   parser.add_argument('--week', type=str, help='The week used to get the input data from the src_bucket')
@@ -119,6 +120,7 @@ if __name__ == '__main__':
   for tile in tiles:
     logger.info('Histogram input bucket: ' + args.src_bucket)
     logger.info('Speedtile output bucket: ' + args.dest_bucket)
+    logger.info('Referencetiles output bucket: ' + args.reference_dest_bucket)
     logger.info('Tile level: ' + str(tile[0]))
     logger.info('Tile index: ' + str(tile[1]))
     logger.info('Week: ' + args.week)  
@@ -129,6 +131,23 @@ if __name__ == '__main__':
       speed_tiles, osmlr = convert(tile[0], tile[1], args.week, histograms)
       #move the speed tile to its destination
       upload(args.dest_bucket, tile[0], tile[1], args.week, speed_tiles)
+      # create the corresponding referencetile jobs
+      job_name = '_'.join([week.replace('/', '-'), str(t[0]), str(t[1])])
+      job = {'speed_bucket': args.dest_bucket, 'ref_speed_bucket': args.reference_dest_bucket, 'tile_level': str(tile[0]), 'tile_index': str(tile[1]), 'week': week}
+      logger.info('Submitting reference tile job ' + job_name)
+      logger.info('Job parameters ' + str(job))
+      submitted = batch_client.submit_job(
+        jobName = job_name,
+        jobQueue = ref_job_queue,
+        jobDefinition = ref_job_def,
+        parameters = job,
+        containerOverrides={
+          'memory': 8192,
+          'vcpus': 2,
+          'command': ['/scripts/ref-tile-work.py', '--speed-bucket', 'Ref::speed_bucket', '--ref-speed-bucket', 'Ref::ref_speed_bucket', '--end-week', 'Ref::week', '--weeks', '52', '--tile-level', 'Ref::tile_level', '--tile-index', 'Ref::tile_index']
+        }
+      )
+      logger.info('Job %s was submitted and got id %s' % (job_name, submitted['jobId']))
       #clean up the files
       for f in histograms + speed_tiles + [osmlr]:
         os.remove(f)
