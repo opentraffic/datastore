@@ -116,6 +116,9 @@ if __name__ == '__main__':
     for x in range(col, col + scale):
       tiles.append((next_level['level'],  y*per_row + x))
 
+  #need this to submit jobs
+  batch_client = boto3.client('batch')
+
   #for each tile
   for tile in tiles:
     logger.info('Histogram input bucket: ' + args.src_bucket)
