@@ -120,7 +120,7 @@ def submit_jobs(batch_client, env, week, bbox):
 
       #submit the job to make the speed tiles for level 0 and level 1
       job_name = '_'.join([week.replace('/', '-'), str(tile_level), str(tile_index)])
-      job = {'src_bucket': src_bucket, 'dest_bucket': dest_bucket, 'tile_level': str(tile_level), 'tile_index': str(tile_index), 'week': week}
+      job = {'src_bucket': src_bucket, 'dest_bucket': dest_bucket, 'reference_dest_bucket': reference_dest_bucket, 'tile_level': str(tile_level), 'tile_index': str(tile_index), 'week': week}
       logger.info('Submitting speed tile job ' + job_name)
       logger.info('Job parameters ' + str(job))
       submitted = batch_client.submit_job(
