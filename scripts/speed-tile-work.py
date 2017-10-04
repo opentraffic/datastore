@@ -132,8 +132,8 @@ if __name__ == '__main__':
       #move the speed tile to its destination
       upload(args.dest_bucket, tile[0], tile[1], args.week, speed_tiles)
       # create the corresponding referencetile jobs
-      job_name = '_'.join([week.replace('/', '-'), str(t[0]), str(t[1])])
-      job = {'speed_bucket': args.dest_bucket, 'ref_speed_bucket': args.reference_dest_bucket, 'tile_level': str(tile[0]), 'tile_index': str(tile[1]), 'week': week}
+      job_name = '_'.join([args.week.replace('/', '-'), str(t[0]), str(t[1])])
+      job = {'speed_bucket': args.dest_bucket, 'ref_speed_bucket': args.reference_dest_bucket, 'tile_level': str(tile[0]), 'tile_index': str(tile[1]), 'week': args.week}
       logger.info('Submitting reference tile job ' + job_name)
       logger.info('Job parameters ' + str(job))
       submitted = batch_client.submit_job(
