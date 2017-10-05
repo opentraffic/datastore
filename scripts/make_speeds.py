@@ -64,29 +64,23 @@ def unquantise(val):
   raise (hi, lo)
 
 ###############################################################################
-def getSegments(path, extractInfo, lengths):
-  log.debug('getSegments ###############################################################################')
-  log.debug('Looking for level=' + str(extractInfo['level']) + ' and tile_id=' + str(extractInfo['index']) + ' here:' + path)
-  segments = {}
-  for root, dirs, files in os.walk(path):
-    for file in files:
-      if (root + os.sep + file).endswith('.fb'):
-        with open(root + os.sep + file, 'rb') as filehandle:
-          log.info('Loading ' + (root + os.sep + file) + '...')
-          hist = Histogram.GetRootAsHistogram(bytearray(filehandle.read()), 0)
-        level = get_level(hist.TileId())
-        tile_index = get_tile_index(hist.TileId())
-        if (level == extractInfo['level']) and (tile_index == extractInfo['index']):
-          log.info('Processing ' + (root + os.sep + file) + '...')
-          #for each segment
-          for i in range(0, hist.SegmentsLength()):
-            segment = hist.Segments(i)
-            #has to be one we know about and its not tombstoned/markered
-            if segment.EntriesLength() > 0 and segment.SegmentId() < len(lengths) and lengths[segment.SegmentId()] > 0:
-              length = lengths[segment.SegmentId()]
-              processSegment(segments, segment, extractInfo, length)
-        del hist
-  return segments
+def addSegments(file_name, extractInfo, lengths, segments):
+  with open(file_name, 'rb') as filehandle:
+    log.info('Loading %s...' % file_name)
+    hist = Histogram.GetRootAsHistogram(bytearray(filehandle.read()), 0)
+  level = get_level(hist.TileId())
+  tile_index = get_tile_index(hist.TileId())
+  if (level == extractInfo['level']) and (tile_index == extractInfo['index']):
+    log.info('Processing %s...' % file_name)
+    #for each segment
+    for i in range(0, hist.SegmentsLength()):
+      segment = hist.Segments(i)
+      #has to be one we know about and its not tombstoned/markered
+      if segment.EntriesLength() > 0 and segment.SegmentId() < len(lengths) and lengths[segment.SegmentId()] > 0:
+        length = lengths[segment.SegmentId()]
+        processSegment(segments, segment, extractInfo, length)
+    log.info('Processed %s' % file_name)
+  del hist
 
 ###############################################################################
 def processSegment(segments, segment, extractInfo, length):
@@ -100,24 +94,28 @@ def processSegment(segments, segment, extractInfo, length):
       continue
 
     #get the right segment
-    if segment.SegmentId() not in segments:
-      segments[segment.SegmentId()] = { }
-    hours = segments[segment.SegmentId()]
+    hours = segments.setdefault(segment.SegmentId(), {})
 
     #get the right hour in there
-    if e.EpochHour() not in hours:
-       hours[e.EpochHour()] = { }
-    nexts = hours[e.EpochHour()]
+    nexts = hours.setdefault(e.EpochHour(), {})
 
     #if you dont have the right next segment in there
-    if segment.NextSegmentIds(e.NextSegmentIdx()) not in nexts:
-      nexts[segment.NextSegmentIds(e.NextSegmentIdx())] = {'count': 0, 'duration': 0, 'queue': 0 }
-    totals = nexts[segment.NextSegmentIds(e.NextSegmentIdx())]
+    totals = nexts.setdefault(segment.NextSegmentIds(e.NextSegmentIdx()), {'count': 0, 'duration': 0, 'queue': 0 })
 
     #continuing a previous pair
     totals['count'] += e.Count()
     totals['duration'] += unquantise(e.DurationBucket()) * e.Count()
     totals['queue'] += (e.Queue()/255.0) * length * e.Count()
+
+###############################################################################
+def getSegments(path, extractInfo, lengths):
+  log.debug('getSegments ###############################################################################')
+  log.debug('Looking for level=' + str(extractInfo['level']) + ' and tile_id=' + str(extractInfo['index']) + ' here:' + path)
+  segments = {}
+  for root, dirs, files in os.walk(path):
+    for file in files:
+      if (root + os.sep + file).endswith('.fb'):
+        addSegments(root + os.sep + file, extractInfo, lengths, segments)
 
 ###############################################################################
 # length in meters, rounded to the nearest meter
