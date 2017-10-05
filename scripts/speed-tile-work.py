@@ -13,6 +13,7 @@ import calendar
 import logging
 import StringIO
 import multiprocessing
+import Queue
 import random
 import functools
 
@@ -72,17 +73,21 @@ def upload(speed_bucket, level, index, week, speed_tiles):
       Body=zipped.getvalue(),
       Key=key)
 
-def load(histograms, segments, info, lengths):
+def load(histograms, sub_segments, info, lengths):
+  segments = {}
   while True:
     try:
-      file_name = histograms.get()
-      histograms.task_done()
-      if file_name:
-        make_speeds.addSegments(file_name, info, lengths, segments)
-      else:
-        break
+      file_name = histograms.get(block=False)
+      make_speeds.addSegments(file_name, info, lengths, segments)
+    except Queue.Empty:
+      break
     except (KeyboardInterrupt, SystemExit) as e:
       raise e
+    except Exception as e:
+      logger.error('Failed to load segments from %s' % file_name)
+
+  #send back the info
+  sub_segments.put(segments)
 
 def convert(level, index, week, histograms, concurrency):
   url = 'http://s3.amazonaws.com/osmlr-tiles/v1.0/pbf' + url_suffix(level, index) + '.osmlr'
@@ -100,23 +105,27 @@ def convert(level, index, week, histograms, concurrency):
 
   logger.info('Accumulating segment speeds from histograms')
   #we share the segments dict in a process safe way
-  manager = multiprocessing.Manager()
-  segments = manager.dict()
+  sub_segments = multiprocessing.Queue()
   processes = []
-  #start them up
+  #start them up and wait for them to get all the results back
   for i in xrange(concurrency):
-    bound = functools.partial(load, histograms, segments, info, lengths)
+    bound = functools.partial(load, histograms, sub_segments, info, lengths)
     processes.append(multiprocessing.Process(target=interrupt_wrapper, args=(bound,)))
     processes[-1].start()
-  #wait for them to finish everything then send a sentinel to kill them
-  histograms.join()
-  for i in xrange(concurrency):
-    histograms.put(None)
-  #then wait for them to die
-  for p in processes:
-    if p.is_alive():
-      p.join()
 
+  #then harvest all the sub_segments
+  segments = {}
+  for i in xrange(concurrency):
+    #get out the segments and merge them all together
+    sub = sub_segments.get()
+    while len(sub):
+      seg_id = sub.iterkeys().next()
+      hours = sub.pop(seg_id)
+      #since each histogram is a specific hour no two dicts will have the same hour
+      segments.setdefault(seg_id, {}).update(hours)
+    logger.info('Merged result segments from sub process %d' % i)
+
+  #then make some tiles
   logger.info('Creating speed tiles')
   prefix = url_suffix(int(level), int(index)).split('/')[-1]
   return make_speeds.createSpeedTiles(lengths, prefix + '.spd', 10000, prefix + '.nex', True, segments, info), osmlr
@@ -148,7 +157,7 @@ def download(histogram_bucket, tile_level, tile_index, week, concurrency):
   keys = split(keys, concurrency)
 
   processes = []
-  downloaded = multiprocessing.JoinableQueue()
+  downloaded = multiprocessing.Queue()
   for i in xrange(concurrency):
     bound = functools.partial(fetch, histogram_bucket, keys[i], downloaded)
     processes.append(multiprocessing.Process(target=interrupt_wrapper, args=(bound,)))
