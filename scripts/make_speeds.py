@@ -94,19 +94,13 @@ def processSegment(segments, segment, extractInfo, length):
       continue
 
     #get the right segment
-    if segment.SegmentId() not in segments:
-      segments[segment.SegmentId()] = { }
-    hours = segments[segment.SegmentId()]
+    hours = segments.setdefault(segment.SegmentId(), {})
 
     #get the right hour in there
-    if e.EpochHour() not in hours:
-       hours[e.EpochHour()] = { }
-    nexts = hours[e.EpochHour()]
+    nexts = hours.setdefault(e.EpochHour(), {})
 
     #if you dont have the right next segment in there
-    if segment.NextSegmentIds(e.NextSegmentIdx()) not in nexts:
-      nexts[segment.NextSegmentIds(e.NextSegmentIdx())] = {'count': 0, 'duration': 0, 'queue': 0 }
-    totals = nexts[segment.NextSegmentIds(e.NextSegmentIdx())]
+    totals = nexts.setdefault(segment.NextSegmentIds(e.NextSegmentIdx()), {'count': 0, 'duration': 0, 'queue': 0 })
 
     #continuing a previous pair
     totals['count'] += e.Count()
