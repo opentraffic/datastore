@@ -165,7 +165,26 @@ def download(histogram_bucket, tile_level, tile_index, week, concurrency):
   for p in processes:
     if p.is_alive():
       p.join()
-  return downloaded  
+  return downloaded
+
+def add_tiles(tiles, tile_level, tile_index, max_level):
+  #keep this one
+  tiles.append((tile_level, tile_index))
+  #add the subtiles
+  if tile_level < max_level:
+    level = filter(lambda x: x['level'] == tile_level, valhalla_tiles)[0]
+    next_level = filter(lambda x: x['level'] == tile_level + 1, valhalla_tiles)[0]
+    per_row = int(360 / level['size'])
+    row = tile_index / per_row
+    col = tile_index - row * per_row
+    scale = int(level['size'] / next_level['size'])
+    row *= scale
+    col *= scale
+    per_row = int(360 / next_level['size'])
+    #add the children recursively
+    for y in range(row, row + scale):
+      for x in range(col, col + scale):
+        add_tiles(tiles, next_level['level'],  y*per_row + x, max_level)
 
 if __name__ == '__main__':
   #build args
@@ -175,22 +194,12 @@ if __name__ == '__main__':
   parser.add_argument('--tile-index', type=int, help='The tile index used to get the input data from the histogram bucket', required=True)
   parser.add_argument('--week', type=str, help='The week used to get the input data from the histogram bucket', required=True)
   parser.add_argument('--concurrency', type=int, help='The week used to get the input data from the histogram bucket', default=1)
+  parser.add_argument('--max-tile-level', type=int, help='The max tile level to generate speed tiles for. Must be at least 0 and can go up to 2', default=1)
   args = parser.parse_args()
 
   #generate the list of the parent tile and all its subtiles, level 0 and 1 only right now
-  tiles = [(args.tile_level, args.tile_index)]
-  level = filter(lambda x: x['level'] == args.tile_level, valhalla_tiles)[0]
-  next_level = filter(lambda x: x['level'] == args.tile_level + 1, valhalla_tiles)[0]
-  per_row = int(360 / level['size'])
-  row = args.tile_index / per_row
-  col = args.tile_index - row * per_row
-  scale = int(level['size'] / next_level['size'])
-  row *= scale
-  col *= scale
-  per_row = int(360 / next_level['size'])
-  for y in range(row, row + scale):
-    for x in range(col, col + scale):
-      tiles.append((next_level['level'],  y*per_row + x))
+  tiles = []
+  add_tiles(tiles, args.tile_level, args.tile_index, args.max_tile_level)
 
   #need this to submit jobs
   batch_client = boto3.client('batch')
@@ -214,7 +223,7 @@ if __name__ == '__main__':
         speed_tiles, osmlr = convert(tile[0], tile[1], args.week, histograms, args.concurrency)
         #move the speed tile to its destination
         upload(speed_bucket, tile[0], tile[1], args.week, speed_tiles)
-        # create the corresponding referencetile jobs
+        #create the corresponding referencetile job
         job_name = '_'.join([args.week.replace('/', '-'), str(tile[0]), str(tile[1])])
         job = {'environment': args.environment, 'tile_level': str(tile[0]), 'tile_index': str(tile[1]), 'week': args.week}
         logger.info('Submitting reference tile job ' + job_name)
