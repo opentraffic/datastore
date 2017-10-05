@@ -244,8 +244,8 @@ if __name__ == "__main__":
     log.debug('speed-bucket ' + speed_bucket)
     log.debug('end-week ' + args.end_week)
     log.debug('weeks ' + args.weeks)
-    log.debug('tile-level=' + str(args.tile_level))
-    log.debug('tile-index=' + str(args.tile_index))
+    log.debug('tile-level ' + str(args.tile_level))
+    log.debug('tile-index ' + str(args.tile_index))
 
   #get the data
   fileNames = download(args.tile_level, args.tile_index, args.end_week, args.weeks, speed_bucket)
