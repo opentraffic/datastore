@@ -107,7 +107,7 @@ def submit_jobs(batch_client, env, week, bbox):
     bbox[2] = int(math.ceil((bbox[2] + 90)/4))
     bbox[3] = int(math.ceil((bbox[3] + 180)/4))
 
-  #loop over all tiles, level 0 are 4 degrees
+  #loop over all tiles in bbox, level 0 are 4 degrees
   tile_level = 0
   for y in range(bbox[0], bbox[2] + 1):
     for x in range(bbox[1], bbox[3] + 1):
@@ -128,7 +128,7 @@ def submit_jobs(batch_client, env, week, bbox):
         containerOverrides={
           'memory': 8192,
           'vcpus': 2,
-          'command': ['/scripts/speed-tile-work.py', '--environment', 'Ref::environment', '--tile-level', 'Ref::tile_level', '--tile-index', 'Ref::tile_index', '--week', 'Ref::week']
+          'command': ['/scripts/speed-tile-work.py', '--environment', 'Ref::environment', '--tile-level', 'Ref::tile_level', '--tile-index', 'Ref::tile_index', '--week', 'Ref::week', '--concurrency', '2', '--max-tile-level', max_level]
         }
       )
       parent_id = submitted['jobId']
@@ -138,6 +138,7 @@ def submit_jobs(batch_client, env, week, bbox):
 env = os.getenv('DATASTORE_ENV', None) # required, 'prod' or 'dev'
 week = os.getenv('TARGET_WEEK', None) #optional should be iso8601, ordinal_year/ordinal_week
 bbox = os.getenv('TARGET_BBOX', None) #optional should be minx,miny,maxx,maxy
+max_level = os.getenv('TARGET_LEVEL', 1) #optional defaults to up to level 1
 
 if env != 'prod' and env != 'dev':
   logger.error('DATASTORE_ENV environment variable not set! Exiting.')
