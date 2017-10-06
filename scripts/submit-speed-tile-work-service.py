@@ -138,7 +138,7 @@ def submit_jobs(batch_client, env, week, bbox):
 env = os.getenv('DATASTORE_ENV', None) # required, 'prod' or 'dev'
 week = os.getenv('TARGET_WEEK', None) #optional should be iso8601, ordinal_year/ordinal_week
 bbox = os.getenv('TARGET_BBOX', None) #optional should be minx,miny,maxx,maxy
-max_level = os.getenv('TARGET_LEVEL', 1) #optional defaults to up to level 1
+max_level = os.getenv('TARGET_LEVEL', '1') #optional defaults to up to level 1
 
 if env != 'prod' and env != 'dev':
   logger.error('DATASTORE_ENV environment variable not set! Exiting.')
