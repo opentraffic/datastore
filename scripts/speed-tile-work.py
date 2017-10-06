@@ -218,7 +218,7 @@ if __name__ == '__main__':
       logger.info('Week: ' + args.week)  
       #go get the histogram data
       histograms = download(histogram_bucket, tile[0], tile[1], args.week, args.concurrency)
-      if histograms:
+      if not histograms.empty():
         #make the speed tile
         speed_tiles, osmlr = convert(tile[0], tile[1], args.week, histograms, args.concurrency)
         #move the speed tile to its destination
