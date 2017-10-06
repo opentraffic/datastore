@@ -114,7 +114,7 @@ The usage for `make_coverage_map.py` is controlled via arguments to the program 
     Generate Coverage Map
     
     optional arguments:
-  -h, --help            show this help message and exit
+      -h, --help            show this help message and exit
       --ref-speed-bucket REF_SPEED_BUCKET
                             AWS Ref Bucket location. (default: None)
       --output-file OUTPUT_FILE
