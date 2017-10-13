@@ -141,9 +141,11 @@ def get_osmlr_version(version):
   prefixes = filter(re.compile('^v[0-9]+.[0-9]+/$').match, prefixes)
   prefixes = [ p.strip('/') for p in prefixes ]
   version = version.strip('/') if version else version
-  if version and version not in prefixes:
+  if version is None:
+    return natural_sorted(prefixes)[-1]
+  if version not in prefixes:
     raise Exception('Unknown osmlr version, try one of: %s' % str(prefixes))
-  return natural_sorted(prefixes)[-1]
+  return version
 
 """ entry point """
 env = os.getenv('DATASTORE_ENV', None) # required, 'prod' or 'dev'
