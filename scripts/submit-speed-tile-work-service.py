@@ -128,7 +128,7 @@ def submit_jobs(batch_client, env, week, bbox, max_level, osmlr_version):
         containerOverrides={
           'memory': 8192,
           'vcpus': 2,
-          'command': ['/scripts/speed-tile-work.py', '--environment', 'Ref::environment', '--tile-level', 'Ref::tile_level', '--tile-index', 'Ref::tile_index', '--week', 'Ref::week', '--concurrency', '2', '--max-tile-level', 'Ref::max_level', '--osmlr-version', 'Ref:osmlr_version']
+          'command': ['/scripts/speed-tile-work.py', '--environment', 'Ref::environment', '--tile-level', 'Ref::tile_level', '--tile-index', 'Ref::tile_index', '--week', 'Ref::week', '--concurrency', '2', '--max-tile-level', 'Ref::max_level', '--osmlr-version', 'Ref::osmlr_version']
         }
       )
       parent_id = submitted['jobId']
