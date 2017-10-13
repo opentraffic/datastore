@@ -68,6 +68,9 @@ The usage for `speed-tile-work.py` is controlled via arguments to the program as
       --max-tile-level MAX_TILE_LEVEL
                             The max tile level to generate speed tiles for. Must
                             be at least 0 and can go up to 2
+      --osmlr-version OSMLR_VERSION
+                            The version of osmlr to fetch when creating speed
+                            tiles
 ```
 
 Speed tile generation is idempotent, you may run it as many times as you like without affecting the veracity of the data.
