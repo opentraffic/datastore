@@ -89,8 +89,8 @@ def load(histograms, sub_segments, info, lengths):
   #send back the info
   sub_segments.put(segments)
 
-def convert(level, index, week, histograms, concurrency):
-  url = 'http://s3.amazonaws.com/osmlr-tiles/v1.0/pbf' + url_suffix(level, index) + '.osmlr'
+def convert(level, index, week, osmlr_version, histograms, concurrency):
+  url = 'http://s3.amazonaws.com/osmlr-tiles/' + osmlr_version + '/pbf' + url_suffix(level, index) + '.osmlr'
   logger.info('Fetching osmlr tile: ' + url)
   osmlr = str(level) + '_' + str(index) + '.osmlr'
   urllib.URLopener().retrieve(url, osmlr)
@@ -195,6 +195,7 @@ if __name__ == '__main__':
   parser.add_argument('--week', type=str, help='The week used to get the input data from the histogram bucket', required=True)
   parser.add_argument('--concurrency', type=int, help='The week used to get the input data from the histogram bucket', default=1)
   parser.add_argument('--max-tile-level', type=int, help='The max tile level to generate speed tiles for. Must be at least 0 and can go up to 2', default=1)
+  parser.add_argument('--osmlr-version', type=str, help='The version of osmlr to fetch when creating speed tiles', required=True)
   args = parser.parse_args()
 
   #generate the list of the parent tile and all its subtiles, level 0 and 1 only right now
@@ -215,12 +216,13 @@ if __name__ == '__main__':
       logger.info('Speedtile output bucket: ' + speed_bucket)
       logger.info('Tile level: ' + str(tile[0]))
       logger.info('Tile index: ' + str(tile[1]))
-      logger.info('Week: ' + args.week)  
+      logger.info('Week: ' + args.week)
+      logger.info('OSMLR: ' + args.osmlr_version)
       #go get the histogram data
       histograms = download(histogram_bucket, tile[0], tile[1], args.week, args.concurrency)
       if not histograms.empty():
         #make the speed tile
-        speed_tiles, osmlr = convert(tile[0], tile[1], args.week, histograms, args.concurrency)
+        speed_tiles, osmlr = convert(tile[0], tile[1], args.week, args.osmlr_version, histograms, args.concurrency)
         #move the speed tile to its destination
         upload(speed_bucket, tile[0], tile[1], args.week, speed_tiles)
         #create the corresponding referencetile job

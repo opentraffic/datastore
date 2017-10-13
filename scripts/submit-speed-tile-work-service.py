@@ -93,7 +93,7 @@ def get_tiles(tile_level, tile_index):
       tiles.append((next_level['level'],  y*per_row + x))
   return tiles
 
-def submit_jobs(batch_client, env, week, bbox):
+def submit_jobs(batch_client, env, week, bbox, max_level, osmlr_version):
   job_queue = 'speedtiles-' + env
   job_def = 'speedtiles-' + env
 
@@ -117,7 +117,7 @@ def submit_jobs(batch_client, env, week, bbox):
 
       #submit the job to make the speed tiles for level 0 and level 1
       job_name = '_'.join([week.replace('/', '-'), str(tile_level), str(tile_index)])
-      job = {'environment': env, 'tile_level': str(tile_level), 'tile_index': str(tile_index), 'week': week}
+      job = {'environment': env, 'tile_level': str(tile_level), 'tile_index': str(tile_index), 'week': week, 'max_level': max_level, 'osmlr_version': osmlr_version}
       logger.info('Submitting speed tile job ' + job_name)
       logger.info('Job parameters ' + str(job))
       submitted = batch_client.submit_job(
@@ -128,17 +128,29 @@ def submit_jobs(batch_client, env, week, bbox):
         containerOverrides={
           'memory': 8192,
           'vcpus': 2,
-          'command': ['/scripts/speed-tile-work.py', '--environment', 'Ref::environment', '--tile-level', 'Ref::tile_level', '--tile-index', 'Ref::tile_index', '--week', 'Ref::week', '--concurrency', '2', '--max-tile-level', max_level]
+          'command': ['/scripts/speed-tile-work.py', '--environment', 'Ref::environment', '--tile-level', 'Ref::tile_level', '--tile-index', 'Ref::tile_index', '--week', 'Ref::week', '--concurrency', '2', '--max-tile-level', 'Ref::max_level', '--osmlr-version', 'Ref:osmlr_version']
         }
       )
       parent_id = submitted['jobId']
       logger.info('Job %s was submitted and got id %s' % (job_name, parent_id))
+
+def get_osmlr_version(version):
+  session = boto3.session.Session()
+  client = session.client('s3')
+  prefixes, _ = get_prefixes_keys(client, 'osmlr-tiles', [''])
+  prefixes = filter(re.compile('^v[0-9]+.[0-9]+/$').match, prefixes)
+  prefixes = [ p.strip('/') for p in prefixes ]
+  version = version.strip('/') if version else version
+  if version and version not in prefixes:
+    raise Exception('Unknown osmlr version, try one of: %s' % str(prefixes))
+  return natural_sorted(prefixes)[-1]
 
 """ entry point """
 env = os.getenv('DATASTORE_ENV', None) # required, 'prod' or 'dev'
 week = os.getenv('TARGET_WEEK', None) #optional should be iso8601, ordinal_year/ordinal_week
 bbox = os.getenv('TARGET_BBOX', None) #optional should be minx,miny,maxx,maxy
 max_level = os.getenv('TARGET_LEVEL', '1') #optional defaults to up to level 1
+osmlr_version = get_osmlr_version(os.getenv('TARGET_OSMLR', None)) #optional osmlr version
 
 if env != 'prod' and env != 'dev':
   logger.error('DATASTORE_ENV environment variable not set! Exiting.')
@@ -153,6 +165,6 @@ if week is None:
 
 #send the jobs to batch service
 if week is not None:
-  submit_jobs(batch_client, env, week, bbox)
+  submit_jobs(batch_client, env, week, bbox, max_level, osmlr_version)
 
 logger.info('Run complete!')
