@@ -73,14 +73,16 @@ def upload(speed_bucket, level, index, week, speed_tiles):
       Body=zipped.getvalue(),
       Key=key)
 
-def load(histograms, sub_segments, info, lengths):
+def load(histograms, sub_segments, info, lengths, loaded):
   segments = {}
   while True:
     try:
-      file_name = histograms.get(block=False)
+      file_name = histograms.get()
+      #finished if we get the sentinel
+      if not file_name:
+        break
+      loaded.put(file_name)
       make_speeds.addSegments(file_name, info, lengths, segments)
-    except Queue.Empty:
-      break
     except (KeyboardInterrupt, SystemExit) as e:
       raise e
     except Exception as e:
@@ -106,10 +108,13 @@ def convert(level, index, week, osmlr_version, histograms, concurrency):
   logger.info('Accumulating segment speeds from histograms')
   #we share the segments dict in a process safe way
   sub_segments = multiprocessing.Queue()
+  loaded = multiprocessing.Queue()
   processes = []
   #start them up and wait for them to get all the results back
   for i in xrange(concurrency):
-    bound = functools.partial(load, histograms, sub_segments, info, lengths)
+    histograms.put(False)
+  for i in xrange(concurrency):
+    bound = functools.partial(load, histograms, sub_segments, info, lengths, loaded)
     processes.append(multiprocessing.Process(target=interrupt_wrapper, args=(bound,)))
     processes[-1].start()
 
@@ -128,7 +133,7 @@ def convert(level, index, week, osmlr_version, histograms, concurrency):
   #then make some tiles
   logger.info('Creating speed tiles')
   prefix = url_suffix(int(level), int(index)).split('/')[-1]
-  return make_speeds.createSpeedTiles(lengths, prefix + '.spd', 10000, prefix + '.nex', True, segments, info), osmlr
+  return make_speeds.createSpeedTiles(lengths, prefix + '.spd', 10000, prefix + '.nex', True, segments, info), loaded, osmlr
 
 def fetch(histogram_bucket, keys, results):
   session = boto3.session.Session()
@@ -222,7 +227,7 @@ if __name__ == '__main__':
       histograms = download(histogram_bucket, tile[0], tile[1], args.week, args.concurrency)
       if not histograms.empty():
         #make the speed tile
-        speed_tiles, osmlr = convert(tile[0], tile[1], args.week, args.osmlr_version, histograms, args.concurrency)
+        speed_tiles, histograms, osmlr = convert(tile[0], tile[1], args.week, args.osmlr_version, histograms, args.concurrency)
         #move the speed tile to its destination
         upload(speed_bucket, tile[0], tile[1], args.week, speed_tiles)
         #create the corresponding referencetile job
@@ -243,7 +248,13 @@ if __name__ == '__main__':
         )
         logger.info('Job %s was submitted and got id %s' % (job_name, submitted['jobId']))
         #clean up the files
-        for f in histograms + speed_tiles + [osmlr]:
+        histograms.put(False)
+        while True:
+          f = histograms.get()
+          if not f:
+            break
+          os.remove(f)
+        for f in speed_tiles + [osmlr]:
           os.remove(f)
       else:
         logger.info('No histogram data')
