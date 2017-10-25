@@ -6,12 +6,12 @@ The coverage map creation is dependent on the generation of the reference speed 
 --output-file: Specify the output file; otherwise, it will be saved to coverage_map.geojson.<br/>
 --upload-results: Do you want to upload the coverage map to the AWS Reference Speed Tile Bucket when complete?<br/>
 
-## Geojson Properties
+## GeoJSON Properties
 In addition to styling attributes, we also store the tileid, rangeStart, rangeEnd, rangeStartDate, and rangeEndDate in the geojson properties for each feature.  The rangeStart and rangeEnd is in epoch time.  The rangeStartDate and rangeEndDate is the formated date and time of the corresponding epoch values.  The dates are formatted as %Y-%m-%d %H:%M:%S.
 
 ## Feature Geometry
 Each feature's geometry is the bounding box of the tile.
 
 ## Sample Coverage Map
-![Coverage Map](images/coverage_map.png)
+![Coverage Map](coverage_map.png)
 Image generated using http://geojson.io
