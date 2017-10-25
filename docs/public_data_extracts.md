@@ -1,6 +1,6 @@
 # Open Traffic Public Data Extract
 
-Open Traffic Public Data Extracts are protocol buffer format. The format is described within a .proto file. This can be compiled into C++, Python, Java, Javascript to parse and access the protocol buffer files.
+Open Traffic Public Data Extracts are [protocol buffer format](https://developers.google.com/protocol-buffers/). The format is described within a .proto file. This can be compiled into C++, Python, Java, Javascript to parse and access the protocol buffer files.
 
 ### Tile Specification
 
