@@ -184,11 +184,41 @@ def next(startIndex, total, nextName, subtileSegments, extractInfo):
   return tile, subtile, nextTile, nextSubtile
 
 ###############################################################################
+# To increase obscurity we want 15% of the values in a lower bucket and 15% in
+# a higher bucket and 70% in the correct bucket
+def randomBucket():
+  rand = random.random()
+  if (rand < 0.15):
+    return -1
+  elif (rand < 0.85):
+    return 0
+  else:
+    return 1
+###############################################################################
 # Prevalence is a rough measure of count. Want this to obscure the true count
 def prevalence(count):
-  if (count >= 100):
+  if (count <=0):
+    return 0
+  elif (count <= 2):
+    return 1 + randomBucket()
+  elif (count <= 6):
+    return 2 + randomBucket()
+  elif (count <= 12):
+    return 3 + randomBucket()
+  elif (count <= 20):
+    return 4 + randomBucket()
+  elif (count <= 30):
+    return 5 + randomBucket()
+  elif (count <= 42):
+    return 6 + randomBucket()
+  elif (count <= 56):
+    return 7 + randomBucket()
+  elif (count <= 72):
+    return 8 + randomBucket()
+  elif (count <= 90):
+    return 9 + randomBucket()
+  else:
     return 10
-  return int(round(math.sqrt(count)))
 
 ###############################################################################
 # calculate and return the variance of the specified list
